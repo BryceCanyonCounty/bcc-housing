@@ -6,7 +6,7 @@ end)
 VORPInv = {}
 VORPInv = exports.vorp_inventory:vorp_inventoryApi()
 BccUtils = exports['bcc-utils'].initiate()
-local discord = BccUtils.Discord.setup('https://discord.com/api/webhooks/1099550456310665297/pgGWpXlAcoTzmwSPJXtbjvwR85rR8InWqaup8baEycb-skDsgxxx7t1VmkAuOLNik9Ll', 'bcc-housing', 'https://steamuserimages-a.akamaihd.net/ugc/1759186614239848553/8C42E78A07CB85399889CD5C82C63235F6C61F0F/?imw=637&imh=358&ima=fit&impolicy=Letterbox&imcolor=%23000000&letterbox=true')
+local discord = BccUtils.Discord.setup(Config.WebhookLink, 'bcc-housing', 'https://steamuserimages-a.akamaihd.net/ugc/1759186614239848553/8C42E78A07CB85399889CD5C82C63235F6C61F0F/?imw=637&imh=358&ima=fit&impolicy=Letterbox&imcolor=%23000000&letterbox=true')
 
 ------ Commands Admin Check --------
 RegisterServerEvent('bcc-housing:AdminCheck', function()
