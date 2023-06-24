@@ -2,7 +2,7 @@ Config = {}
 
 Config.defaultlang = 'en_lang' --set your language here
 
-Config.DevMode = true --False on live server
+Config.DevMode = false --False on live server
 
 Config.Setup = {
     MaxHousePerChar = 2, --Maximum allowed houses per character
@@ -11,6 +11,9 @@ Config.Setup = {
 Config.TaxDay = 23 --This is the number day of each month that taxes will be collected on
 Config.TaxResetDay = 24 --This MUST be the day after TaxDay set above!!! (do not change either of these dates if the current date is one of the 2 for ex if its the 22 or 23rd day do not change these dates it will break the code)
 
+Config.WebhookLink = 'youlink' --insert your webhook link here if you want webhooks
+
+Config.CreateHouseCommand = 'createHouse' --the name of the command to create a house
 
 
 Config.Hotels = {

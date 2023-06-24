@@ -1,7 +1,7 @@
 --Insert Your Main Client Side Code Here
 HouseCoords, HouseRadius, HouseId, AdminAllowed, Owner, OwnedHotels = nil, nil, nil, false, nil, {}
 
-RegisterCommand('createHouse', function() --house creation command
+RegisterCommand(Config.CreateHouseCommand, function() --house creation command
     if AdminAllowed then
         CreateHouseMenu()
     end
