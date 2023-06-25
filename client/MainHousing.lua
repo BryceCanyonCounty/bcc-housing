@@ -110,7 +110,7 @@ RegisterNetEvent('bcc-housing:MainHotelHandler', function()
                                     hotelInside = v
                                     coordsWhenEntered = plc
                                     SetEntityCoords(PlayerPedId(), -325.29, 765.23, 121.64)
-                                    instanceNumber = math.random(1, 100000000000)
+                                    instanceNumber = math.random(1, 100000 + tonumber(GetPlayerServerId(PlayerPedId())))
                                     VORPcore.instancePlayers(tonumber(GetPlayerServerId(PlayerId()))+ instanceNumber)
                                 end
                             else
@@ -149,3 +149,8 @@ end)
 RegisterNetEvent('bcc-housing:HousingTableUpdate', function(houseId) --event to update the housing table
     table.insert(OwnedHotels, houseId)
 end)
+
+--[[
+    --Sacred Comment
+    8========D
+]]
