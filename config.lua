@@ -58,3 +58,10 @@ Config.AdminSteamIds = {
         steamid = 'steam:11000013707db22', --insert players steam id
     }, --to add more just copy this table paste and change id
 }
+
+----- Jobs that can create Houses -----
+Config.ALlowedJobs = { --these are jobs that will be able to make houses just like the admins can above useful for real estate jobs
+    {
+        jobname = '' --the job name
+    }, --to add more just copy this table paste and change job name
+}

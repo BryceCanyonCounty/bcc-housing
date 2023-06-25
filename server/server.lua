@@ -12,9 +12,18 @@ local discord = BccUtils.Discord.setup(Config.WebhookLink, 'bcc-housing', 'https
 RegisterServerEvent('bcc-housing:AdminCheck', function()
   local _source = source
   local character = VORPcore.getUser(_source).getUsedCharacter
+  local admin = false
   for k, v in pairs(Config.AdminSteamIds) do
     if character.identifier == v.steamid then
+      admin = true
       TriggerClientEvent('bcc-housing:AdminClientCatch', _source, true) break
+    end
+  end
+  if not admin then
+    for k, v in pairs(Config.ALlowedJobs) do
+      if character.job == v.jobname then
+        TriggerClientEvent('bcc-housing:AdminClientCatch', _source, true) break
+      end
     end
   end
 end)

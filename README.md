@@ -36,5 +36,5 @@
 
 # Side Notes
 - This is a massive project there is most likely oversights if you have any suggestions or bugs report them asap!
-- To delete ranches you will currently have to delete them manually from the database!
+- To delete houses you will currently have to delete them manually from the database!
 - Do not place furniture directly ontop of one another they can be really close/sitting ontop of each other etc just make sure they are not in the exact same spot. If they are when you try to sell one of them it will sell every piece of furniture that is in the exact same spot as the one your trying to sell
