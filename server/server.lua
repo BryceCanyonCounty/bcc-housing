@@ -239,8 +239,10 @@ function delSpawnedFurn(source) --funct to del furniture if the source is the pl
       end
     end
   end
-  local param = { ['resetvar'] = 'none', ['houseid'] = houseFurnDeleted.houseid }
-  exports.oxmysql:execute("UPDATE bcchousing SET player_source_spawnedfurn=@resetvar WHERE houseid=@houseid", param)
+  if houseFurnDeleted ~= nil then
+    local param = { ['resetvar'] = 'none', ['houseid'] = houseFurnDeleted.houseid }
+    exports.oxmysql:execute("UPDATE bcchousing SET player_source_spawnedfurn=@resetvar WHERE houseid=@houseid", param)
+  end
 end
 
 RegisterServerEvent('bcc-housing:BuyFurn', function(cost, entId, furnitureCreatedTable)
