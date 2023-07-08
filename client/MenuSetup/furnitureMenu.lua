@@ -173,6 +173,7 @@ function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
                     local cr = GetEntityRotation(createdObject)
                     FreezeEntityPosition(createdObject)
                     local furnitureCreatedTable = { model = model, coords = co, rotation = cr, displayName = displayName, sellprice = sellPrice }
+                    SetEntityCollision(createdObject, true, true)
                     local entId = NetworkGetNetworkIdFromEntity(createdObject)
                     furnObj = createdObject
                     TriggerServerEvent('bcc-housing:BuyFurn', cost, entId, furnitureCreatedTable)
