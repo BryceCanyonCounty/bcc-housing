@@ -7,7 +7,10 @@ function FurnitureMenu()
         { label = _U("tables"), value = 'tables', desc = _U("tables_desc") },
         { label = _U("beds"), value = 'beds', desc = _U("beds_desc") },
         { label = _U("lights"), value = 'lights', desc = _U("lights_desc") },
-        { label = _U("misc"), value = 'misc', desc = _U("misc_desc") },
+        { label = _U("post"), value = 'post', desc = _U("post_desc") },
+        { label = _U("couch"), value = 'couch', desc = _U("couch_desc") },
+        { label = _U("seat"), value = 'seat', desc = _U("seat_desc") },
+        { label = _U("shelf"), value = 'shelf', desc = _U("shelf_desc") },
         { label = _U("sellOwnerFurn"), value = 'sellownerfurn', desc = _U("sellOwnerFurn_desc") }
     }
 
@@ -32,8 +35,14 @@ function FurnitureMenu()
                 IndFurnitureTypeMenu('beds')
             elseif data.current.value == 'lights' then
                 IndFurnitureTypeMenu('lights')
-            elseif data.current.value == 'misc' then
-                IndFurnitureTypeMenu('misc')
+            elseif data.current.value == 'post' then
+                IndFurnitureTypeMenu('post')
+            elseif data.current.value == 'couch' then
+                IndFurnitureTypeMenu('couch')
+            elseif data.current.value == 'seat' then
+                IndFurnitureTypeMenu('seat')
+            elseif data.current.value == 'shelf' then
+                IndFurnitureTypeMenu('shelf')
             elseif data.current.value == 'sellownerfurn' then
                 TriggerServerEvent('bcc-housing:GetOwnerFurniture', HouseId)
                 MenuData.CloseAll()
@@ -54,8 +63,14 @@ function IndFurnitureTypeMenu(type)
         furnConfigTable = Config.Furniture.Beds
     elseif type == 'lights' then
         furnConfigTable = Config.Furniture.Lights
-    elseif type == 'misc' then
-        furnConfigTable = Config.Furniture.Misc
+    elseif type == 'post' then
+        furnConfigTable = Config.Furniture.Post
+    elseif type == 'couch' then
+        furnConfigTable = Config.Furniture.Couch
+    elseif type == 'seat' then
+        furnConfigTable = Config.Furniture.Seat
+    elseif type == 'shelf' then
+        furnConfigTable = Config.Furniture.Shelf
     end
     for k, v in pairs(furnConfigTable) do
         elements[#elements + 1] = {
