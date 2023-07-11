@@ -18,3 +18,6 @@ CREATE TABLE IF NOT EXISTS `bcchousinghotels` (
     `charidentifier` varchar(50) NOT NULL,
     `hotels` LONGTEXT NOT NULL DEFAULT 'none'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE `bcchousing` ADD COLUMN IF NOT EXISTS (`tpInt` int(10) DEFAULT 0);
+ALTER TABLE `bcchousing` ADD COLUMN IF NOT EXISTS (`tpInstance` int(10) DEFAULT 0);

@@ -1,9 +1,9 @@
 --Insert Your Main Client Side Code Here
-HouseCoords, HouseRadius, HouseId, AdminAllowed, Owner, OwnedHotels = nil, nil, nil, false, nil, {}
+HouseCoords, HouseRadius, HouseId, AdminAllowed, Owner, OwnedHotels, TpHouse, TpHouseInstance = nil, nil, nil, false, nil, {}, nil, nil
 
 RegisterCommand(Config.CreateHouseCommand, function() --house creation command
     if AdminAllowed then
-        CreateHouseMenu()
+        TpOptMenu()
     end
 end)
 
@@ -37,26 +37,16 @@ RegisterNetEvent('bcc-housing:OwnsHouseClientHandler', function(houseTable, owne
     HouseRadius = houseTable.house_radius_limit
     HouseId = houseTable.houseid
     Owner = owner
-    local PromptGroup = VORPutils.Prompts:SetupPromptGroup()
-    local firstprompt = PromptGroup:RegisterPrompt(_U("openOwnerManage"), 0x760A9C6F, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+    if houseTable.tpInt ~= 0 then
+        TpHouse = houseTable.tpInt
+        TpHouseInstance = houseTable.tpInstance
+    end
 
     -----ManageHouse Menu Setup ----
     TriggerEvent('bcc-housing:FurnCheckHandler')
     local  blip = VORPutils.Blips:SetBlip(_U("houseBlip"), 'blip_mp_base', 0.2, HouseCoords.x, HouseCoords.y, HouseCoords.z)
     table.insert(HouseBlips, blip)
-    while true do
-        Wait(5)
-        local plc = GetEntityCoords(PlayerPedId())
-        local dist = GetDistanceBetweenCoords(plc.x, plc.y, plc.z, HouseCoords.x, HouseCoords.y, HouseCoords.z, true)
-        if dist < 2 then
-            PromptGroup:ShowGroup(_U("house"))
-            if firstprompt:HasCompleted() then
-                HousingManagementMenu()
-            end
-        elseif dist > 200 then
-            Wait(2000)
-        end
-    end
+    showManageOpt(HouseCoords.x, HouseCoords.y, HouseCoords.z)
 end)
 
 RegisterNetEvent('bcc-housing:AdminClientCatch', function(var) --admin check catch

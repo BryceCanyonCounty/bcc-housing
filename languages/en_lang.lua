@@ -114,5 +114,20 @@ Locales["en_lang"] = {
     promptEnterHotel = 'Enter Hotel',
     promptHotel = 'Hotel',
     hotelInvName = 'Inventory',
-    promptLeaveHotel = 'Leave Hotel'
+    promptLeaveHotel = 'Leave Hotel',
+
+    --- Housing Opts ---
+    nonTp = "Non-TP House",
+    nonTp_desc = "Create a normal house that you can walk into!",
+    Tp = "Tp House",
+    Tp_desc = "Create a teleport house that you will have to walk upto the coords, and use a prompt to be teleported into the interior!",
+    SelectInterior = "Select TP Interior",
+    SelectInterior_desc = "Select the interior for the teleport house",
+
+    Int1 = 'Housing Interior 1',
+    Int2 = 'Housing Interior 2',
+    enterTpHouse = 'Enter Tp House',
+    enterTpHouse_desc = 'Enter your tp house',
+    exitTpHouse = "Exit Tp House",
+    exitTpHouse_desc = "Leave your teleport house!"
 }

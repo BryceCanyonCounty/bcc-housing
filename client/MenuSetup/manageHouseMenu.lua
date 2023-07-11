@@ -1,3 +1,6 @@
+InTpHouse = false
+CurrentTpHouse = nil
+BreakHandleLoop = false
 function HousingManagementMenu()
     Inmenu = true
     TriggerEvent('bcc-housing:MenuClose')
@@ -5,6 +8,13 @@ function HousingManagementMenu()
     local elements = {
         { label = _U("houseInv"), value = 'openinv', desc = _U("houseInv_desc") },
     }
+    if TpHouse ~= nil then
+        if not InTpHouse then
+            table.insert(elements, { label = _U("enterTpHouse"), value = 'entertp', desc = _U("enterTpHouse_desc") })
+        else
+            table.insert(elements, { label = _U("exitTpHouse"), value = 'exittp', desc = _U("exitTpHouse_desc") })
+        end
+    end
     if Owner then
         table.insert(elements, { label = _U("giveAccess"), value = 'giveaccess', desc = _U("giveAccess_desc") })
         table.insert(elements, { label = _U("furniture"), value = 'furniture', desc = _U("furniture_desc") })
@@ -53,6 +63,45 @@ function HousingManagementMenu()
                 end)
             elseif data.current.value == 'checkledger' then
                 TriggerServerEvent('bcc-housing:CheckLedger', HouseId)
+            elseif data.current.value == 'entertp' then
+                local houseTable = nil
+                if tonumber(TpHouse) == 1 then
+                    houseTable = Config.TpInteriors.Interior1
+                    CurrentTpHouse = 1
+                elseif
+                tonumber(TpHouse) == 2 then
+                    houseTable = Config.TpInteriors.Interior2
+                    CurrentTpHouse = 2
+                end
+                MenuData.CloseAll()
+                Inmenu = false
+                BreakHandleLoop = true
+                Wait(50)
+                BreakHandleLoop = false
+                enterTpHouse(houseTable)
+            elseif data.current.value == "exittp" then
+                BreakHandleLoop = true
+                Wait(50)
+                BreakHandleLoop = false
+                MenuData.CloseAll()
+                SetEntityCoords(PlayerPedId(), HouseCoords.x, HouseCoords.y, HouseCoords.z)
+                FreezeEntityPosition(PlayerPedId(), true)
+                Wait(500)
+                FreezeEntityPosition(PlayerPedId(), false)
+                InTpHouse = false
+                showManageOpt(HouseCoords.x, HouseCoords.y, HouseCoords.z)
             end
         end)
+end
+
+function enterTpHouse(houseTable)
+    InTpHouse = true
+    local pped =  PlayerPedId()
+    VORPcore.instancePlayers(tonumber(GetPlayerServerId(PlayerId())) + TpHouseInstance)
+    SetEntityCoords(pped, houseTable.exitCoords.x, houseTable.exitCoords.y, houseTable.exitCoords.z)
+
+    FreezeEntityPosition(pped, true) --done to prevent falling through ground
+    Wait(1000)
+    FreezeEntityPosition(pped, false)
+    showManageOpt(houseTable.exitCoords.x, houseTable.exitCoords.y, houseTable.exitCoords.z)
 end
