@@ -194,6 +194,7 @@ function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
                     TriggerServerEvent('bcc-housing:BuyFurn', cost, entId, furnitureCreatedTable)
                 else
                     VORPcore.NotifyRightTip(_U("toFar"), 4000)
+                    DeleteObject(createdObject)
                 end
                 MenuData.CloseAll()
             else
@@ -205,7 +206,18 @@ end
 
 function closeToHosue(object) --make sure the obj is close to house before placing
     local coords = GetEntityCoords(object)
-    if GetDistanceBetweenCoords(tonumber(coords.x), tonumber(coords.y), tonumber(coords.z), tonumber(HouseCoords.x), tonumber(HouseCoords.y), tonumber(HouseCoords.z), false) <= tonumber(HouseRadius) then
+    local compCoords = HouseCoords
+    local radius = tonumber(HouseRadius)
+    if CurrentTpHouse ~= nil and InTpHouse then
+        if CurrentTpHouse == 1 then
+            compCoords = Config.TpInteriors.Interior1.exitCoords
+            radius = Config.TpInteriors.Interior1.furnRadius
+        elseif CurrentTpHouse == 2 then
+            compCoords = Config.TpInteriors.Interior2.exitCoords
+            radius = Config.TpInteriors.Interior2.furnRadius
+        end
+    end
+    if GetDistanceBetweenCoords(tonumber(coords.x), tonumber(coords.y), tonumber(coords.z), tonumber(compCoords.x), tonumber(compCoords.y), tonumber(compCoords.z), false) <= radius then
         return true
     else
         return false

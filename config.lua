@@ -2,7 +2,7 @@ Config = {}
 
 Config.defaultlang = 'en_lang' --set your language here
 
-Config.DevMode = false --False on live server
+Config.DevMode = true --False on live server
 
 Config.Setup = {
     MaxHousePerChar = 2, --Maximum allowed houses per character
@@ -206,4 +206,15 @@ Config.ALlowedJobs = { --these are jobs that will be able to make houses just li
     {
         jobname = '' --the job name
     }, --to add more just copy this table paste and change job name
+}
+
+Config.TpInteriors = {
+    Interior1 = {
+        exitCoords = {x = -1103.15, y = -2252.92, z = 50.65},
+        furnRadius = 10
+    },
+    Interior2 = {
+        exitCoords = {x = -63.74, y = 14.05, z = 76.6},
+        furnRadius = 10
+    }
 }

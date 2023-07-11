@@ -56,7 +56,7 @@ RegisterServerEvent("bcc-housing:getPlayersInfo", function(source)
 end)
 
 ---- House Creation DB Insert ----
-RegisterServerEvent('bcc-housing:CreationDBInsert', function(owner, radius, doors, houseCoords, invLimit, ownerSource, taxAmount)
+RegisterServerEvent('bcc-housing:CreationDBInsert', function(tpHouse, owner, radius, doors, houseCoords, invLimit, ownerSource, taxAmount)
   local _source = source
   local taxes
   if tonumber(taxAmount) > 0 then
@@ -65,10 +65,15 @@ RegisterServerEvent('bcc-housing:CreationDBInsert', function(owner, radius, door
     taxes = 0
   end
   local character = VORPcore.getUser(_source).getUsedCharacter
-  local param = { ['charidentifier'] = owner, ['radius'] = radius, ["doors"] = json.encode(doors), ['houseCoords'] = json.encode(houseCoords), ['invlimit'] = invLimit, ['taxes'] = taxes }
+  local param = nil
+  if not tpHouse then
+    param = { ['charidentifier'] = owner, ['radius'] = radius, ["doors"] = json.encode(doors), ['houseCoords'] = json.encode(houseCoords), ['invlimit'] = invLimit, ['taxes'] = taxes, ['tpInt'] = 0, ['tpInstance'] = 0 }
+  else
+    param = { ['charidentifier'] = owner, ['radius'] = radius, ['doors'] = 'none', ['houseCoords'] = json.encode(houseCoords), ['invlimit'] = invLimit, ['taxes'] = taxes, ['tpInt'] = tpHouse, ['tpInstance'] = 52324 + _source }
+  end
   local result = MySQL.query.await("SELECT * FROM bcchousing WHERE charidentifier=@charidentifier", param)
   if #result < Config.Setup.MaxHousePerChar then
-    exports.oxmysql:execute("INSERT INTO bcchousing ( `charidentifier`,`house_radius_limit`,`doors`,`house_coords`,`invlimit`,`tax_amount` ) VALUES ( @charidentifier,@radius,@doors,@houseCoords,@invlimit,@taxes )", param)
+    exports.oxmysql:execute("INSERT INTO bcchousing ( `charidentifier`,`house_radius_limit`,`doors`,`house_coords`,`invlimit`,`tax_amount`,`tpInt`,`tpInstance` ) VALUES ( @charidentifier,@radius,@doors,@houseCoords,@invlimit,@taxes,@tpInt,@tpInstance )", param)
     discord:sendMessage(_U("houseCreatedWebhook") .. tostring(character.charIdentifier), _U("houseCreatedWebhookGivenToo") .. tostring(owner))
     Wait(1500)
     if ownerSource ~= nil then
@@ -379,6 +384,7 @@ RegisterServerEvent('bcc-housing:HotelDbRegistry', function() --registering each
       TriggerClientEvent('bcc-housing:HousingTableUpdate',  _source, v)
     end
   end
+  Wait(1000)
   local result2 = MySQL.query.await("SELECT * FROM bcchousinghotels WHERE charidentifier=@charidentifier", param)
   if result2[1].hotels ~= 'none' then
     local hotelsTable = json.decode(result2[1].hotels)

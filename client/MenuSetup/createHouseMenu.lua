@@ -1,5 +1,5 @@
 ---- Variables ----
-local ownerId, houseRadius, doors, houseCoords, InvLimit, ownerSource, taxAmount = nil, nil, {}, nil, nil, nil, nil
+local ownerId, houseRadius, doors, houseCoords, InvLimit, ownerSource, taxAmount, tpInt = nil, nil, {}, nil, nil, nil, nil, nil
 Inmenu = false
 
 AddEventHandler('bcc-housing:MenuClose', function()
@@ -15,19 +15,49 @@ AddEventHandler('bcc-housing:MenuClose', function()
 end)
 
 ------ Main House Creation ------
-function CreateHouseMenu()
+function TpOptMenu()
+    Inmenu = true
+    TriggerEvent('bcc-housing:MenuClose')
+    MenuData.CloseAll()
+    local elements = {
+        { label = _U("nonTp"), value = 'nontp', desc = _U("nonTp_desc") },
+        { label = _U("Tp"), value = 'tp', desc = _U("Tp_desc") },
+    }
+    MenuData.Open('default', GetCurrentResourceName(), 'menuapi',
+        {
+            title = _U("creationMenuName"),
+            align = 'top-left',
+            elements = elements,
+        },
+        function(data)
+            if data.current == 'backup' then
+                _G[data.trigger]()
+            end
+            if data.current.value == 'nontp' then
+                CreateHouseMenu(false)
+            elseif data.current.value == 'tp' then
+                IntChoice()
+            end
+        end)
+end
+
+
+function CreateHouseMenu(tp)
     Inmenu = true
     TriggerEvent('bcc-housing:MenuClose')
     MenuData.CloseAll()
     local elements = {
         { label = _U("setOwner"), value = 'setowner', desc = _U("setOwner_desc") },
         { label = _U("setRadius"), value = 'setradius', desc = _U("setRadius_desc") },
-        { label = _U("doorCreation"), value = 'doorcreation', desc = _U("doorCreation_desc") },
         { label = _U("houseCoords"), value = 'setHouseCoords', desc = _U("houseCoords_desc") },
         { label = _U("setInvLimit"), value = 'setInvLimit', desc = _U("setInvLimit_desc") },
         { label = _U("taxAmount"), value = 'settaxamount', desc = _U("taxAmount_desc") },
-        { label = _U("Confirm"), value = 'confirm', desc = "" },
     }
+    if not tp and tp ~= nil then --nil check is needed
+        table.insert(elements, { label = _U("doorCreation"), value = 'doorcreation', desc = _U("doorCreation_desc") })
+    end
+    table.insert(elements, { label = _U("Confirm"), value = 'confirm', desc = "" }) --placed here to always keep option at the bottom
+
 
     MenuData.Open('default', GetCurrentResourceName(), 'menuapi',
         {
@@ -117,7 +147,11 @@ function CreateHouseMenu()
                 end)
             elseif data.current.value == 'confirm' then
                 MenuData.CloseAll()
-                TriggerServerEvent('bcc-housing:CreationDBInsert', ownerId, houseRadius, doors, houseCoords, InvLimit, ownerSource, taxAmount)
+                local tpHouse = false
+                if tpInt ~= nil then
+                    tpHouse = tpInt
+                end
+                TriggerServerEvent('bcc-housing:CreationDBInsert', tpHouse, ownerId, houseRadius, doors, houseCoords, InvLimit, ownerSource, taxAmount)
                 doors, ownerId, houseCoords, houseRadius, ownerSource = nil, nil, nil, nil, nil
                 VORPcore.NotifyRightTip(_U("houseCreated"), 4000)
             end
@@ -214,6 +248,35 @@ function PlayerList(lastmenu)
                     VORPcore.NotifyRightTip(_U("givenAccess"), 4000)
                     TriggerServerEvent('bcc-housing:NewPlayerGivenAccess', data.current.info.staticid, HouseId, data.current.info.serverId)
                 end
+            end
+        end)
+end
+
+------ Main House Creation ------
+function IntChoice()
+    Inmenu = true
+    TriggerEvent('bcc-housing:MenuClose')
+    MenuData.CloseAll()
+    local elements = {
+        { label = _U("Int1"), value = 'int1', desc = "" },
+        { label = _U("Int2"), value = 'int2', desc = "" },
+    }
+    MenuData.Open('default', GetCurrentResourceName(), 'menuapi',
+        {
+            title = _U("creationMenuName"),
+            align = 'top-left',
+            elements = elements,
+        },
+        function(data)
+            if data.current == 'backup' then
+                _G[data.trigger]()
+            end
+            if data.current.value == 'int1' then
+                tpInt = 1
+                CreateHouseMenu(true)
+            elseif data.current.value == 'int2' then
+                tpInt = 2
+                CreateHouseMenu(true)
             end
         end)
 end
