@@ -208,6 +208,7 @@ Config.ALlowedJobs = { --these are jobs that will be able to make houses just li
     }, --to add more just copy this table paste and change job name
 }
 
+---- You can not add more interiors do not touch the coordinates only edit the furnRadius if you need to -----
 Config.TpInteriors = {
     Interior1 = {
         exitCoords = {x = -1103.15, y = -2252.92, z = 50.65},
