@@ -7,19 +7,20 @@ lua54 "yes"
 shared_scripts {
   "config.lua",
   "locale.lua",
-  'languages/*.lua',
+  'languages/*.lua'
 }
 
 server_scripts {
   "@oxmysql/lib/MySQL.lua",
   "/server/server.lua",
+  '/server/adminManagment.lua'
 }
 
 client_scripts {
   "/client/functions.lua",
   "/client/MainHousing.lua",
   "/client/MenuSetup/*.lua",
-  '/client/furnitureSpawning.lua',
+  '/client/furnitureSpawning.lua'
 }
 
 dependency {
@@ -33,4 +34,4 @@ dependency {
   'bcc-doorlocks'
 }
 
-version '1.0.1'
+version '1.0.2'
