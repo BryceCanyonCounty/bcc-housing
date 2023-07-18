@@ -26,6 +26,10 @@ function GetPlayers()
   return playersData
 end
 
+function GetHouses()
+
+end
+
 function showManageOpt(x, y, z)
   local PromptGroup = VORPutils.Prompts:SetupPromptGroup()
   local firstprompt = PromptGroup:RegisterPrompt(_U("openOwnerManage"), 0x760A9C6F, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })

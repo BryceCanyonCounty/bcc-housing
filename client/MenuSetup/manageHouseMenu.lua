@@ -1,6 +1,4 @@
-InTpHouse = false
-CurrentTpHouse = nil
-BreakHandleLoop = false
+InTpHouse, CurrentTpHouse, BreakHandleLoop = false, nil, false
 function HousingManagementMenu()
     Inmenu = true
     TriggerEvent('bcc-housing:MenuClose')
@@ -32,64 +30,76 @@ function HousingManagementMenu()
             if data.current == 'backup' then
                 _G[data.trigger]()
             end
-            if data.current.value == 'giveaccess' then
-                PlayerList('HousingManagementMenu')
-            elseif data.current.value == 'openinv' then
-                TriggerServerEvent('bcc-house:OpenHouseInv', HouseId)
-            elseif data.current.value == 'furniture' then
-                FurnitureMenu()
-            elseif data.current.value == 'ledger' then
-                local myInput = {
-                    type = "enableinput",                                               -- don't touch
-                    inputType = "input",                                                -- input type
-                    button = _U("Confirm"),                                             -- button name
-                    placeholder = _U("ledgerAmountToInsert"),                               -- placeholder name
-                    style = "block",                                                    -- don't touch
-                    attributes = {
-                        inputHeader = "",                                               -- header
-                        type = "number",                                                -- inputype text, number,date,textarea ETC
-                        pattern = "[0-9]",                                              --  only numbers "[0-9]" | for letters only "[A-Za-z]+"
-                        title = _U("InvalidInput"),                                     -- if input doesnt match show this message
-                        style = "border-radius: 10px; background-color: ; border:none;" -- style
+            local selectedOption = {
+                ['giveaccess'] = function()
+                    PlayerList('HousingManagementMenu')
+                end,
+                ['openinv'] = function()
+                    TriggerServerEvent('bcc-house:OpenHouseInv', HouseId)
+                end,
+                ['furniture'] = function()
+                    FurnitureMenu()
+                end,
+                ['ledger'] = function()
+                    local myInput = {
+                        type = "enableinput",                                               -- don't touch
+                        inputType = "input",                                                -- input type
+                        button = _U("Confirm"),                                             -- button name
+                        placeholder = _U("ledgerAmountToInsert"),                               -- placeholder name
+                        style = "block",                                                    -- don't touch
+                        attributes = {
+                            inputHeader = "",                                               -- header
+                            type = "number",                                                -- inputype text, number,date,textarea ETC
+                            pattern = "[0-9]",                                              --  only numbers "[0-9]" | for letters only "[A-Za-z]+"
+                            title = _U("InvalidInput"),                                     -- if input doesnt match show this message
+                            style = "border-radius: 10px; background-color: ; border:none;" -- style
+                        }
                     }
-                }
-                TriggerEvent("vorpinputs:advancedInput", json.encode(myInput), function(result)
-                    if tonumber(result) > 0 then
-                        TriggerServerEvent('bcc-housing:LedgerHandling', tonumber(result), HouseId)
-                        MenuData.CloseAll()
-                    else
-                        VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+                    TriggerEvent("vorpinputs:advancedInput", json.encode(myInput), function(result)
+                        if tonumber(result) > 0 then
+                            TriggerServerEvent('bcc-housing:LedgerHandling', tonumber(result), HouseId)
+                            MenuData.CloseAll()
+                        else
+                            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+                        end
+                    end)
+                end,
+                ['checkledger'] = function()
+                    TriggerServerEvent('bcc-housing:CheckLedger', HouseId)
+                end,
+                ['entertp'] = function()
+                    local houseTable = nil
+                    if tonumber(TpHouse) == 1 then
+                        houseTable = Config.TpInteriors.Interior1
+                        CurrentTpHouse = 1
+                    elseif
+                    tonumber(TpHouse) == 2 then
+                        houseTable = Config.TpInteriors.Interior2
+                        CurrentTpHouse = 2
                     end
-                end)
-            elseif data.current.value == 'checkledger' then
-                TriggerServerEvent('bcc-housing:CheckLedger', HouseId)
-            elseif data.current.value == 'entertp' then
-                local houseTable = nil
-                if tonumber(TpHouse) == 1 then
-                    houseTable = Config.TpInteriors.Interior1
-                    CurrentTpHouse = 1
-                elseif
-                tonumber(TpHouse) == 2 then
-                    houseTable = Config.TpInteriors.Interior2
-                    CurrentTpHouse = 2
+                    MenuData.CloseAll()
+                    Inmenu = false
+                    BreakHandleLoop = true
+                    Wait(50)
+                    BreakHandleLoop = false
+                    enterTpHouse(houseTable)
+                end,
+                ['exittp'] = function()
+                    BreakHandleLoop = true
+                    Wait(50)
+                    BreakHandleLoop = false
+                    MenuData.CloseAll()
+                    SetEntityCoords(PlayerPedId(), HouseCoords.x, HouseCoords.y, HouseCoords.z)
+                    FreezeEntityPosition(PlayerPedId(), true)
+                    Wait(500)
+                    FreezeEntityPosition(PlayerPedId(), false)
+                    InTpHouse = false
+                    showManageOpt(HouseCoords.x, HouseCoords.y, HouseCoords.z)
                 end
-                MenuData.CloseAll()
-                Inmenu = false
-                BreakHandleLoop = true
-                Wait(50)
-                BreakHandleLoop = false
-                enterTpHouse(houseTable)
-            elseif data.current.value == "exittp" then
-                BreakHandleLoop = true
-                Wait(50)
-                BreakHandleLoop = false
-                MenuData.CloseAll()
-                SetEntityCoords(PlayerPedId(), HouseCoords.x, HouseCoords.y, HouseCoords.z)
-                FreezeEntityPosition(PlayerPedId(), true)
-                Wait(500)
-                FreezeEntityPosition(PlayerPedId(), false)
-                InTpHouse = false
-                showManageOpt(HouseCoords.x, HouseCoords.y, HouseCoords.z)
+            }
+
+            if selectedOption[data.current.value] then
+                selectedOption[data.current.value]()
             end
         end)
 end

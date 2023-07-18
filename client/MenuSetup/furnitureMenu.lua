@@ -25,27 +25,42 @@ function FurnitureMenu()
             if data.current == 'backup' then
                 _G[data.trigger]()
             end
-            if data.current.value == 'chairs' then
-                IndFurnitureTypeMenu('chairs')
-            elseif data.current.value == 'benches' then
-                IndFurnitureTypeMenu('benches')
-            elseif data.current.value == 'tables' then
-                IndFurnitureTypeMenu('tables')
-            elseif data.current.value == 'beds' then
-                IndFurnitureTypeMenu('beds')
-            elseif data.current.value == 'lights' then
-                IndFurnitureTypeMenu('lights')
-            elseif data.current.value == 'post' then
-                IndFurnitureTypeMenu('post')
-            elseif data.current.value == 'couch' then
-                IndFurnitureTypeMenu('couch')
-            elseif data.current.value == 'seat' then
-                IndFurnitureTypeMenu('seat')
-            elseif data.current.value == 'shelf' then
-                IndFurnitureTypeMenu('shelf')
-            elseif data.current.value == 'sellownerfurn' then
-                TriggerServerEvent('bcc-housing:GetOwnerFurniture', HouseId)
-                MenuData.CloseAll()
+            local selectedOption = {
+                ['chairs'] = function()
+                    IndFurnitureTypeMenu('chairs')
+                end,
+                ['benches'] = function()
+                    IndFurnitureTypeMenu('benches')
+                end,
+                ['tables'] = function()
+                    IndFurnitureTypeMenu('tables')
+                end,
+                ['beds'] = function()
+                    IndFurnitureTypeMenu('beds')
+                end,
+                ['lights'] = function()
+                    IndFurnitureTypeMenu('lights')
+                end,
+                ['post'] = function()
+                    IndFurnitureTypeMenu('post')
+                end,
+                ['couch'] = function()
+                    IndFurnitureTypeMenu('couch')
+                end,
+                ['seat'] = function()
+                    IndFurnitureTypeMenu('seat')
+                end,
+                ['shelf'] = function()
+                    IndFurnitureTypeMenu('shelf')
+                end,
+                ['sellownerfurn'] = function()
+                    TriggerServerEvent('bcc-housing:GetOwnerFurniture', HouseId)
+                    MenuData.CloseAll()
+                end
+            }
+
+            if selectedOption[data.current.value] then
+                selectedOption[data.current.value]()
             end
         end)
 end
@@ -53,25 +68,40 @@ end
 function IndFurnitureTypeMenu(type)
     local elements, furnConfigTable = {}, nil
     MenuData.CloseAll()
-    if type == 'chairs' then
-        furnConfigTable = Config.Furniture.Chairs
-    elseif type == 'benches' then
-        furnConfigTable = Config.Furniture.Benches
-    elseif type == 'tables' then
-        furnConfigTable = Config.Furniture.Tables
-    elseif type == 'beds' then
-        furnConfigTable = Config.Furniture.Beds
-    elseif type == 'lights' then
-        furnConfigTable = Config.Furniture.Lights
-    elseif type == 'post' then
-        furnConfigTable = Config.Furniture.Post
-    elseif type == 'couch' then
-        furnConfigTable = Config.Furniture.Couch
-    elseif type == 'seat' then
-        furnConfigTable = Config.Furniture.Seat
-    elseif type == 'shelf' then
-        furnConfigTable = Config.Furniture.Shelf
+    local selectedFurnType = {
+        ['chairs'] = function()
+            furnConfigTable = Config.Furniture.Chairs
+        end,
+        ['benches'] = function()
+            furnConfigTable = Config.Furniture.Benches
+        end,
+        ['tables'] = function()
+            furnConfigTable = Config.Furniture.Tables
+        end,
+        ['beds'] = function()
+            furnConfigTable = Config.Furniture.Beds
+        end,
+        ['lights'] = function()
+            furnConfigTable = Config.Furniture.Lights
+        end,
+        ['post'] = function()
+            furnConfigTable = Config.Furniture.Post
+        end,
+        ['couch'] = function()
+            furnConfigTable = Config.Furniture.Couch
+        end,
+        ['seat'] = function()
+            furnConfigTable = Config.Furniture.Seat
+        end,
+        ['shelf'] = function()
+            furnConfigTable = Config.Furniture.Shelf
+        end
+    }
+
+    if selectedFurnType[type] then
+        selectedFurnType[type]()
     end
+
     for k, v in pairs(furnConfigTable) do
         elements[#elements + 1] = {
             label = v.displayName,
@@ -139,64 +169,82 @@ function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
                 DeleteObject(createdObject)
                 _G[data.trigger]()
             end
-            if data.current.value == 'forward' then
-                local co = GetEntityCoords(createdObject)
-                SetEntityCoords(createdObject, co.x, co.y + amountToMove, co.z)
-            elseif data.current.value == 'backward' then
-                local co = GetEntityCoords(createdObject)
-                SetEntityCoords(createdObject, co.x, co.y - amountToMove, co.z)
-            elseif data.current.value == 'left' then
-                local co = GetEntityCoords(createdObject)
-                SetEntityCoords(createdObject, co.x - amountToMove, co.y, co.z)
-            elseif data.current.value == 'right' then
-                local co = GetEntityCoords(createdObject)
-                SetEntityCoords(createdObject, co.x + amountToMove, co.y, co.z)
-            elseif data.current.value == 'up' then
-                local co = GetEntityCoords(createdObject)
-                SetEntityCoords(createdObject, co.x, co.y, co.z + amountToMove)
-            elseif data.current.value == 'down' then
-                local co = GetEntityCoords(createdObject)
-                SetEntityCoords(createdObject, co.x, co.y, co.z - amountToMove)
-            elseif data.current.value == 'rotatepitch' then
-                local cr = GetEntityRotation(createdObject)
-                local pitch, roll, yaw = table.unpack(cr)
-                SetEntityRotation(createdObject, pitch + amountToMove, roll, yaw)
-            elseif data.current.value == 'rotatebackward' then
-                local cr = GetEntityRotation(createdObject)
-                local pitch, roll, yaw = table.unpack(cr)
-                SetEntityRotation(createdObject, pitch - amountToMove, roll, yaw)
-            elseif data.current.value == 'rotateright' then
-                local cr = GetEntityRotation(createdObject)
-                local pitch, roll, yaw = table.unpack(cr)
-                SetEntityRotation(createdObject, pitch, roll + amountToMove, yaw)
-            elseif data.current.value == 'rotateleft' then
-                local cr = GetEntityRotation(createdObject)
-                local pitch, roll, yaw = table.unpack(cr)
-                SetEntityRotation(createdObject, pitch, roll - amountToMove, yaw)
-            elseif data.current.value == 'rotateyaw' then
-                local cr = GetEntityRotation(createdObject)
-                local pitch, roll, yaw = table.unpack(cr)
-                SetEntityRotation(createdObject, pitch, roll, yaw + amountToMove)
-            elseif data.current.value == 'rotateyawleft' then
-                local cr = GetEntityRotation(createdObject)
-                local pitch, roll, yaw = table.unpack(cr)
-                SetEntityRotation(createdObject, pitch, roll, yaw - amountToMove)
-            elseif data.current.value == 'confirm' then
-                local close = closeToHosue(createdObject)
-                if close then
+            local selectedOption = {
+                ['forward'] = function()
                     local co = GetEntityCoords(createdObject)
+                    SetEntityCoords(createdObject, co.x, co.y + amountToMove, co.z)
+                end,
+                ['backward'] = function()
+                    local co = GetEntityCoords(createdObject)
+                    SetEntityCoords(createdObject, co.x, co.y - amountToMove, co.z)
+                end,
+                ['left'] = function()
+                    local co = GetEntityCoords(createdObject)
+                    SetEntityCoords(createdObject, co.x - amountToMove, co.y, co.z)
+                end,
+                ['right'] = function()
+                    local co = GetEntityCoords(createdObject)
+                    SetEntityCoords(createdObject, co.x + amountToMove, co.y, co.z)
+                end,
+                ['up'] = function()
+                    local co = GetEntityCoords(createdObject)
+                    SetEntityCoords(createdObject, co.x, co.y, co.z + amountToMove)
+                end,
+                ['down'] = function()
+                    local co = GetEntityCoords(createdObject)
+                    SetEntityCoords(createdObject, co.x, co.y, co.z - amountToMove)
+                end,
+                ['rotatepitch'] = function()
                     local cr = GetEntityRotation(createdObject)
-                    FreezeEntityPosition(createdObject)
-                    local furnitureCreatedTable = { model = model, coords = co, rotation = cr, displayName = displayName, sellprice = sellPrice }
-                    SetEntityCollision(createdObject, true, true)
-                    local entId = NetworkGetNetworkIdFromEntity(createdObject)
-                    furnObj = createdObject
-                    TriggerServerEvent('bcc-housing:BuyFurn', cost, entId, furnitureCreatedTable)
-                else
-                    VORPcore.NotifyRightTip(_U("toFar"), 4000)
-                    DeleteObject(createdObject)
+                    local pitch, roll, yaw = table.unpack(cr)
+                    SetEntityRotation(createdObject, pitch + amountToMove, roll, yaw)
+                end,
+                ['rotatebackward'] = function()
+                    local cr = GetEntityRotation(createdObject)
+                    local pitch, roll, yaw = table.unpack(cr)
+                    SetEntityRotation(createdObject, pitch - amountToMove, roll, yaw)
+                end,
+                ['rotateright'] = function()
+                    local cr = GetEntityRotation(createdObject)
+                    local pitch, roll, yaw = table.unpack(cr)
+                    SetEntityRotation(createdObject, pitch, roll + amountToMove, yaw)
+                end,
+                ['rotateleft'] = function()
+                    local cr = GetEntityRotation(createdObject)
+                    local pitch, roll, yaw = table.unpack(cr)
+                    SetEntityRotation(createdObject, pitch, roll - amountToMove, yaw)
+                end,
+                ['rotateyaw'] = function()
+                    local cr = GetEntityRotation(createdObject)
+                    local pitch, roll, yaw = table.unpack(cr)
+                    SetEntityRotation(createdObject, pitch, roll, yaw + amountToMove)
+                end,
+                ['rotateyawleft'] = function()
+                    local cr = GetEntityRotation(createdObject)
+                    local pitch, roll, yaw = table.unpack(cr)
+                    SetEntityRotation(createdObject, pitch, roll, yaw - amountToMove)
+                end,
+                ['confirm'] = function()
+                    local close = closeToHosue(createdObject)
+                    if close then
+                        local co = GetEntityCoords(createdObject)
+                        local cr = GetEntityRotation(createdObject)
+                        FreezeEntityPosition(createdObject)
+                        local furnitureCreatedTable = { model = model, coords = co, rotation = cr, displayName = displayName, sellprice = sellPrice }
+                        SetEntityCollision(createdObject, true, true)
+                        local entId = NetworkGetNetworkIdFromEntity(createdObject)
+                        furnObj = createdObject
+                        TriggerServerEvent('bcc-housing:BuyFurn', cost, entId, furnitureCreatedTable)
+                    else
+                        VORPcore.NotifyRightTip(_U("toFar"), 4000)
+                        DeleteObject(createdObject)
+                    end
+                    MenuData.CloseAll()
                 end
-                MenuData.CloseAll()
+            }
+
+            if selectedOption[data.current.value] then
+                selectedOption[data.current.value]()
             else
                 amountToMove = data.current.value
             end

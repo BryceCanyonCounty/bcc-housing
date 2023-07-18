@@ -10,9 +10,8 @@ local discord = BccUtils.Discord.setup(Config.WebhookLink, 'bcc-housing', 'https
 
 ------ Commands Admin Check --------
 RegisterServerEvent('bcc-housing:AdminCheck', function()
-  local _source = source
+  local _source, admin = source, false
   local character = VORPcore.getUser(_source).getUsedCharacter
-  local admin = false
   for k, v in pairs(Config.AdminSteamIds) do
     if character.identifier == v.steamid then
       admin = true
@@ -30,8 +29,7 @@ end)
 
 --get players info list
 PlayersTable = {}
-RegisterServerEvent('bcc-housing:GetPlayers')
-AddEventHandler('bcc-housing:GetPlayers', function()
+RegisterServerEvent('bcc-housing:GetPlayers', function()
   local _source, data = source, {}
 
   for _, player in ipairs(PlayersTable) do
@@ -199,7 +197,7 @@ RegisterServerEvent('bcc-housing:FurniturePlacedCheck', function(houseid, deleti
 
   local result = MySQL.query.await("SELECT * FROM bcchousing WHERE houseid=@houseid", param)
   if result[1] then
-    if result[1].player_source_spawnedfurn == 'none' and close == true then
+    if result[1].player_source_spawnedfurn == 'none' and close then
       if result[1].furniture ~= 'none' then
         local furn = json.decode(result[1].furniture)
         TriggerClientEvent('bcc-housing:SpawnFurnitureEvent', _source, furn)

@@ -3,13 +3,11 @@ local ownerId, houseRadius, doors, houseCoords, InvLimit, ownerSource, taxAmount
 Inmenu = false
 
 AddEventHandler('bcc-housing:MenuClose', function()
-    while true do
+    while Inmenu do
         Wait(5)
         if IsControlJustReleased(0, 0x156F7119) then
-            if Inmenu then
-                Inmenu = false
-                MenuData.CloseAll() break
-            end
+            Inmenu = false
+            MenuData.CloseAll() break
         end
     end
 end)
@@ -69,91 +67,75 @@ function CreateHouseMenu(tp)
             if data.current == 'backup' then
                 _G[data.trigger]()
             end
-            if data.current.value == 'setowner' then
-                PlayerList('CreateHouseMenu')
-            elseif data.current.value == 'setradius' then
-                local myInput = {
-                    type = "enableinput",                                               -- don't touch
-                    inputType = "input",                                                -- input type
-                    button = _U("Confirm"),                                             -- button name
-                    placeholder = _U("setRadius"),                               -- placeholder name
-                    style = "block",                                                    -- don't touch
-                    attributes = {
-                        inputHeader = "",                                               -- header
-                        type = "number",                                                -- inputype text, number,date,textarea ETC
-                        pattern = "[0-9]",                                              --  only numbers "[0-9]" | for letters only "[A-Za-z]+"
-                        title = _U("InvalidInput"),                                     -- if input doesnt match show this message
-                        style = "border-radius: 10px; background-color: ; border:none;" -- style
-                    }
+            local myInput = { --input var used for all the options below since they are all number inputs
+                type = "enableinput",                                               -- don't touch
+                inputType = "input",                                                -- input type
+                button = _U("Confirm"),                                             -- button name
+                placeholder = _U("insertAmount"),                               -- placeholder name
+                style = "block",                                                    -- don't touch
+                attributes = {
+                    inputHeader = "",                                               -- header
+                    type = "number",                                                -- inputype text, number,date,textarea ETC
+                    pattern = "[0-9]",                                              --  only numbers "[0-9]" | for letters only "[A-Za-z]+"
+                    title = _U("InvalidInput"),                                     -- if input doesnt match show this message
+                    style = "border-radius: 10px; background-color: ; border:none;" -- style
                 }
-                TriggerEvent("vorpinputs:advancedInput", json.encode(myInput), function(result)
-                    if tonumber(result) > 0 then
-                        houseRadius = tonumber(result)
-                        VORPcore.NotifyRightTip(_U("radiusSet"), 4000)
-                    else
-                        VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+            }
+            local selectedOption = {
+                ['setowner'] = function()
+                    PlayerList('CreateHouseMenu', tp)
+                end,
+                ['setradius'] = function()
+                    TriggerEvent("vorpinputs:advancedInput", json.encode(myInput), function(result)
+                        if tonumber(result) > 0 then
+                            houseRadius = tonumber(result)
+                            VORPcore.NotifyRightTip(_U("radiusSet"), 4000)
+                        else
+                            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+                        end
+                    end)
+                end,
+                ['doorcreation'] = function()
+                    doorCreationMenu()
+                end,
+                ['setHouseCoords'] = function()
+                    houseCoords = GetEntityCoords(PlayerPedId())
+                    VORPcore.NotifyRightTip(_U("houseCoordsSet"), 4000)
+                end,
+                ['setInvLimit'] = function()
+                    TriggerEvent("vorpinputs:advancedInput", json.encode(myInput), function(result)
+                        if tonumber(result) > 0 then
+                            InvLimit = tonumber(result)
+                            VORPcore.NotifyRightTip(_U("invLimitSet"), 4000)
+                        else
+                            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+                        end
+                    end)
+                end,
+                ['settaxamount'] = function()
+                    TriggerEvent("vorpinputs:advancedInput", json.encode(myInput), function(result)
+                        if tonumber(result) > 0 then
+                            taxAmount = tonumber(result)
+                            VORPcore.NotifyRightTip(_U("taxAmountSet"), 4000)
+                        else
+                            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+                        end
+                    end)
+                end,
+                ['confirm'] = function()
+                    MenuData.CloseAll()
+                    local tpHouse = false
+                    if tpInt ~= nil then
+                        tpHouse = tpInt
                     end
-                end)
-            elseif data.current.value == 'doorcreation' then
-                doorCreationMenu()
-            elseif data.current.value == 'setHouseCoords' then
-                houseCoords = GetEntityCoords(PlayerPedId())
-                VORPcore.NotifyRightTip(_U("houseCoordsSet"), 4000)
-            elseif data.current.value == 'setInvLimit' then
-                local myInput = {
-                    type = "enableinput",                                               -- don't touch
-                    inputType = "input",                                                -- input type
-                    button = _U("Confirm"),                                             -- button name
-                    placeholder = _U("setInvLimit"),                               -- placeholder name
-                    style = "block",                                                    -- don't touch
-                    attributes = {
-                        inputHeader = "",                                               -- header
-                        type = "number",                                                -- inputype text, number,date,textarea ETC
-                        pattern = "[0-9]",                                              --  only numbers "[0-9]" | for letters only "[A-Za-z]+"
-                        title = _U("InvalidInput"),                                     -- if input doesnt match show this message
-                        style = "border-radius: 10px; background-color: ; border:none;" -- style
-                    }
-                }
-                TriggerEvent("vorpinputs:advancedInput", json.encode(myInput), function(result)
-                    if tonumber(result) > 0 then
-                        InvLimit = tonumber(result)
-                        VORPcore.NotifyRightTip(_U("invLimitSet"), 4000)
-                    else
-                        VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
-                    end
-                end)
-            elseif data.current.value == 'settaxamount' then
-                local myInput = {
-                    type = "enableinput",                                               -- don't touch
-                    inputType = "input",                                                -- input type
-                    button = _U("Confirm"),                                             -- button name
-                    placeholder = _U("taxAmount"),                               -- placeholder name
-                    style = "block",                                                    -- don't touch
-                    attributes = {
-                        inputHeader = "",                                               -- header
-                        type = "number",                                                -- inputype text, number,date,textarea ETC
-                        pattern = "[0-9]",                                              --  only numbers "[0-9]" | for letters only "[A-Za-z]+"
-                        title = _U("InvalidInput"),                                     -- if input doesnt match show this message
-                        style = "border-radius: 10px; background-color: ; border:none;" -- style
-                    }
-                }
-                TriggerEvent("vorpinputs:advancedInput", json.encode(myInput), function(result)
-                    if tonumber(result) > 0 then
-                        taxAmount = tonumber(result)
-                        VORPcore.NotifyRightTip(_U("taxAmountSet"), 4000)
-                    else
-                        VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
-                    end
-                end)
-            elseif data.current.value == 'confirm' then
-                MenuData.CloseAll()
-                local tpHouse = false
-                if tpInt ~= nil then
-                    tpHouse = tpInt
+                    TriggerServerEvent('bcc-housing:CreationDBInsert', tpHouse, ownerId, houseRadius, doors, houseCoords, InvLimit, ownerSource, taxAmount)
+                    doors, ownerId, houseCoords, houseRadius, ownerSource = nil, nil, nil, nil, nil
+                    VORPcore.NotifyRightTip(_U("houseCreated"), 4000)
                 end
-                TriggerServerEvent('bcc-housing:CreationDBInsert', tpHouse, ownerId, houseRadius, doors, houseCoords, InvLimit, ownerSource, taxAmount)
-                doors, ownerId, houseCoords, houseRadius, ownerSource = nil, nil, nil, nil, nil
-                VORPcore.NotifyRightTip(_U("houseCreated"), 4000)
+            }
+
+            if selectedOption[data.current.value] then
+                selectedOption[data.current.value]()
             end
         end)
 end
@@ -205,7 +187,7 @@ function doorCreationMenu()
 end
 
 --------- Show the player list credit to vorp admin for this
-function PlayerList(lastmenu)
+function PlayerList(lastmenu, tpHouse)
     MenuData.CloseAll()
     Inmenu = false
     local elements = {}
@@ -243,7 +225,7 @@ function PlayerList(lastmenu)
                     ownerSource = data.current.info.serverId
                     VORPcore.NotifyRightTip(_U("OwnerSet"), 4000)
                     MenuData.CloseAll()
-                    CreateHouseMenu()
+                    CreateHouseMenu(tpHouse)
                 elseif lastmenu == 'HousingManagementMenu' then
                     VORPcore.NotifyRightTip(_U("givenAccess"), 4000)
                     TriggerServerEvent('bcc-housing:NewPlayerGivenAccess', data.current.info.staticid, HouseId, data.current.info.serverId)

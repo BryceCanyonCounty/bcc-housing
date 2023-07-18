@@ -14,7 +14,7 @@ Config.TaxResetDay = 24 --This MUST be the day after TaxDay set above!!! (do not
 Config.WebhookLink = '' --insert your webhook link here if you want webhooks
 
 Config.CreateHouseCommand = 'createHouse' --the name of the command to create a house
-
+Config.AdminManagementMenuCommand = 'manageAllHouses' --the name of the command for admins to manage all houses
 
 Config.Hotels = {
     {
