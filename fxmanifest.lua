@@ -28,7 +28,6 @@ dependency {
   'vorp_inventory',
   'vorp_utils',
   'vorp_inputs',
-  'menuapi',
   'vorp_character',
   'bcc-utils',
   'bcc-doorlocks'
