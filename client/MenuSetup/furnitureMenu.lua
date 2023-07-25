@@ -65,8 +65,10 @@ function FurnitureMenu()
         end)
 end
 
+local menuCheck = false
 function IndFurnitureTypeMenu(type)
     local elements, furnConfigTable = {}, nil
+    menuCheck = false
     MenuData.CloseAll()
     local selectedFurnType = {
         ['chairs'] = function()
@@ -125,13 +127,16 @@ function IndFurnitureTypeMenu(type)
                 _G[data.trigger]()
             end
             if data.current.value then
-                PlaceFurnitureIntoWorldMenu(data.current.info.propModel, data.current.info.costToBuy, data.current.info.displayName, data.current.info.sellFor)
+                if not menuCheck then
+                    PlaceFurnitureIntoWorldMenu(data.current.info.propModel, data.current.info.costToBuy, data.current.info.displayName, data.current.info.sellFor)
+                end
             end
         end)
 end
 
 local furnObj = nil
 function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
+    menuCheck = true
     local plc, amountToMove = GetEntityCoords(PlayerPedId()), 0
     local createdObject = CreateObject(model, plc.x, plc.y + 2, plc.z, true, true)
     SetEntityCollision(createdObject, false, true)
@@ -227,11 +232,11 @@ function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
                 ['confirm'] = function()
                     local close = closeToHosue(createdObject)
                     if close then
+                        SetEntityCollision(createdObject, true, true)
+                        FreezeEntityPosition(createdObject)
                         local co = GetEntityCoords(createdObject)
                         local cr = GetEntityRotation(createdObject)
-                        FreezeEntityPosition(createdObject)
                         local furnitureCreatedTable = { model = model, coords = co, rotation = cr, displayName = displayName, sellprice = sellPrice }
-                        SetEntityCollision(createdObject, true, true)
                         local entId = NetworkGetNetworkIdFromEntity(createdObject)
                         furnObj = createdObject
                         TriggerServerEvent('bcc-housing:BuyFurn', cost, entId, furnitureCreatedTable)
@@ -239,6 +244,7 @@ function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
                         VORPcore.NotifyRightTip(_U("toFar"), 4000)
                         DeleteObject(createdObject)
                     end
+                    menuCheck = false
                     MenuData.CloseAll()
                 end
             }
