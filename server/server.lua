@@ -212,12 +212,13 @@ RegisterServerEvent('bcc-housing:FurniturePlacedCheck', function(houseid, deleti
 end)
 
 RegisterServerEvent('bcc-housing:StoreFurnForDeletion', function(entId, houseid) --this is used to store the entity id of each piece of furniture in the table for when it is deleted
-  if storedFurn[source] == nil then
-    storedFurn[source] = {}
-    local param = { ['houseid'] = houseid, ['source'] = tostring(source) }
+  local _source = source
+  if storedFurn[_source] == nil then
+    storedFurn[_source] = {}
+    local param = { ['houseid'] = houseid, ['source'] = tostring(_source) }
     exports.oxmysql:execute("UPDATE bcchousing SET player_source_spawnedfurn=@source", param)
   end
-  table.insert(storedFurn[source], entId)
+  table.insert(storedFurn[_source], entId)
 end)
 
 AddEventHandler('playerDropped', function() --when you leave checks if you had furn spawned in and if so it deletes it
@@ -281,35 +282,20 @@ end)
 RegisterServerEvent('bcc-housing:FurnSoldRemoveFromTable', function(furnTable, houseid, wholeFurnTable, wholeFurnTableKey) --selling furn handler
   local _source = source
   local character = VORPcore.getUser(_source).getUsedCharacter
-  local param = { ['houseid'] = houseid, ['source'] = tostring(_source) }
-  local result = MySQL.query.await("SELECT * FROM bcchousing WHERE houseid=@houseid", param)
 
-  for k, v in pairs(storedFurn[tonumber(result[1].player_source_spawnedfurn)]) do
-    local netEntId = NetworkGetEntityFromNetworkId(v)
-    local storedFurnCoord = GetEntityCoords(netEntId)
-    local firstVec = vector3(tonumber(storedFurnCoord.x), tonumber(storedFurnCoord.y), tonumber(storedFurnCoord.z))
-    local secondVec = vector3(tonumber(furnTable.coords.x), tonumber(furnTable.coords.y), tonumber(furnTable.coords.z))
-    local dist = #(firstVec - secondVec)
-
-    if dist < 0.5 then --used as a way to check if the loop is on the correct piece of furniture
-      table.remove(storedFurn[tonumber(result[1].player_source_spawnedfurn)], k)
-      table.remove(wholeFurnTable, tonumber(wholeFurnTableKey))
-      DeleteEntity(netEntId)
-
-      local newDbTable
-      if #wholeFurnTable > 0 then
-        newDbTable = json.encode(wholeFurnTable)
-      else
-        newDbTable = 'none'
-      end
-      local newParam = { ['houseid'] = houseid, ['newFurnTable'] = newDbTable }
-      exports.oxmysql:execute("UPDATE bcchousing SET furniture=@newFurnTable WHERE houseid=@houseid", newParam)
-      VORPcore.NotifyRightTip(_source, _U("furnSold"), 4000)
-      character.addCurrency(0, tonumber(furnTable.sellprice))
-      discord:sendMessage(_U("furnWebHookSold") .. character.charIdentifier, _U("furnWebHookSoldModel") .. tostring(furnTable.model) .. _U("furnWebHookSoldPrice") .. tostring(furnTable.sellprice))
-      TriggerClientEvent('bcc-housing:ClientCloseAllMenus', _source) break
-    end
+  table.remove(wholeFurnTable, tonumber(wholeFurnTableKey))
+  local newDbTable
+  if #wholeFurnTable > 0 then
+    newDbTable = json.encode(wholeFurnTable)
+  else
+    newDbTable = 'none'
   end
+    local newParam = { ['houseid'] = houseid, ['newFurnTable'] = newDbTable }
+    exports.oxmysql:execute("UPDATE bcchousing SET furniture=@newFurnTable WHERE houseid=@houseid", newParam)
+    VORPcore.NotifyRightTip(_source, _U("furnSold"), 4000)
+    character.addCurrency(0, tonumber(furnTable.sellprice))
+    discord:sendMessage(_U("furnWebHookSold") .. character.charIdentifier, _U("furnWebHookSoldModel") .. tostring(furnTable.model) .. _U("furnWebHookSoldPrice") .. tostring(furnTable.sellprice))
+    TriggerClientEvent('bcc-housing:ClientCloseAllMenus', _source)
 end)
 
 CreateThread(function() --Tax handling
