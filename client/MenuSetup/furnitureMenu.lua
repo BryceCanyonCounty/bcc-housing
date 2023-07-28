@@ -235,8 +235,9 @@ function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
                         SetEntityCollision(createdObject, true, true)
                         FreezeEntityPosition(createdObject)
                         local co = GetEntityCoords(createdObject)
+                        local coords = { x = co.x, y = co.y, z = co.z, h = GetEntityHeading(createdObject) }
                         local cr = GetEntityRotation(createdObject)
-                        local furnitureCreatedTable = { model = model, coords = co, rotation = cr, displayName = displayName, sellprice = sellPrice }
+                        local furnitureCreatedTable = { model = model, coords = coords, rotation = cr, displayName = displayName, sellprice = sellPrice }
                         local entId = NetworkGetNetworkIdFromEntity(createdObject)
                         furnObj = createdObject
                         TriggerServerEvent('bcc-housing:BuyFurn', cost, entId, furnitureCreatedTable)
@@ -319,6 +320,16 @@ RegisterNetEvent('bcc-housing:SellOwnedFurnMenu', function(furnTable)
                 _G[data.trigger]()
             end
             if data.current.value then
+                for k, v in pairs(CreatedFurniture) do
+                    local storedFurnCoord = GetEntityCoords(v)
+                    local firstVec = vector3(tonumber(storedFurnCoord.x), tonumber(storedFurnCoord.y), tonumber(storedFurnCoord.z))
+                    local secondVec = vector3(tonumber(data.current.info.coords.x), tonumber(data.current.info.coords.y), tonumber(data.current.info.coords.z))
+                    local dist = #(firstVec - secondVec)
+                    if dist < 0.5 then --used as a way to check if the loop is on the correct piece of furniture
+                      table.remove(CreatedFurniture, k)
+                      DeleteEntity(v)
+                    end
+                end
                 TriggerServerEvent('bcc-housing:FurnSoldRemoveFromTable', data.current.info, HouseId, furnTable, data.current.info2)
             end
         end)

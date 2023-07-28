@@ -154,7 +154,6 @@ Config.Furniture = {
         { propModel = 'p_couch05x', displayName = 'Leathersofa', costToBuy = 80, sellFor = 60 },
     },
     Beds = {
-        { propModel = 'p_bedlog01x', displayName = 'bed frame', costToBuy = 80, sellFor = 60 },
         { propModel = 'p_bed04x', displayName = 'wooden bed', costToBuy = 80, sellFor = 60 },
         { propModel = 'p_bed05x', displayName = 'wooden bed 2', costToBuy = 80, sellFor = 60 },
         { propModel = 'p_bed17x', displayName = 'wooden bed 3', costToBuy = 80, sellFor = 60 },

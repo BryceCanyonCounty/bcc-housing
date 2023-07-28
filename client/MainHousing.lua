@@ -25,7 +25,6 @@ CreateThread(function() --Devmode area
             TriggerServerEvent("bcc-housing:getPlayersInfo", player) --credit vorp_admin
             TriggerServerEvent('bcc-housing:AdminCheck')
             TriggerServerEvent('bcc-housing:HotelDbRegistry')
-        
             TriggerServerEvent('bcc-housing:CheckIfHasHouse')
         end)
     end
