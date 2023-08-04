@@ -56,10 +56,11 @@ function HousingManagementMenu()
                         }
                     }
                     TriggerEvent("vorpinputs:advancedInput", json.encode(myInput), function(result)
-                        if tonumber(result) > 0 then
+                        if result ~= nil and type(result) == "number" and tonumber(result) > 0 then
                             TriggerServerEvent('bcc-housing:LedgerHandling', tonumber(result), HouseId)
                             MenuData.CloseAll()
                         else
+                            MenuData.CloseAll()
                             VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
                         end
                     end)
