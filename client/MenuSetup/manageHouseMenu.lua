@@ -1,8 +1,7 @@
 InTpHouse, CurrentTpHouse, BreakHandleLoop = false, nil, false
 function HousingManagementMenu()
     Inmenu = true
-    TriggerEvent('bcc-housing:MenuClose')
-    MenuData.CloseAll()
+    VORPMenu.CloseAll()
     local elements = {
         { label = _U("houseInv"), value = 'openinv', desc = _U("houseInv_desc") },
     }
@@ -20,13 +19,13 @@ function HousingManagementMenu()
         table.insert(elements, { label = _U("checkledger"), value = 'checkledger', desc = _U("checkledger_desc") })
     end
 
-    MenuData.Open('default', GetCurrentResourceName(), 'menuapi',
+    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
         {
             title = _U("creationMenuName"),
             align = 'top-left',
             elements = elements,
         },
-        function(data)
+        function(data, menu)
             if data.current == 'backup' then
                 _G[data.trigger]()
             end
@@ -58,9 +57,9 @@ function HousingManagementMenu()
                     TriggerEvent("vorpinputs:advancedInput", json.encode(myInput), function(result)
                         if result ~= nil and type(result) == "number" and tonumber(result) > 0 then
                             TriggerServerEvent('bcc-housing:LedgerHandling', tonumber(result), HouseId)
-                            MenuData.CloseAll()
+                            VORPMenu.CloseAll()
                         else
-                            MenuData.CloseAll()
+                            VORPMenu.CloseAll()
                             VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
                         end
                     end)
@@ -78,7 +77,7 @@ function HousingManagementMenu()
                         houseTable = Config.TpInteriors.Interior2
                         CurrentTpHouse = 2
                     end
-                    MenuData.CloseAll()
+                    VORPMenu.CloseAll()
                     Inmenu = false
                     BreakHandleLoop = true
                     Wait(50)
@@ -89,7 +88,7 @@ function HousingManagementMenu()
                     BreakHandleLoop = true
                     Wait(50)
                     BreakHandleLoop = false
-                    MenuData.CloseAll()
+                    VORPMenu.CloseAll()
                     SetEntityCoords(PlayerPedId(), HouseCoords.x, HouseCoords.y, HouseCoords.z)
                     FreezeEntityPosition(PlayerPedId(), true)
                     Wait(500)
@@ -102,6 +101,9 @@ function HousingManagementMenu()
             if selectedOption[data.current.value] then
                 selectedOption[data.current.value]()
             end
+        end,
+        function(data, menu)
+            menu.close()
         end)
 end
 

@@ -2,32 +2,21 @@
 local ownerId, houseRadius, doors, houseCoords, InvLimit, ownerSource, taxAmount, tpInt = nil, nil, {}, nil, nil, nil, nil, nil
 Inmenu = false
 
-AddEventHandler('bcc-housing:MenuClose', function()
-    while Inmenu do
-        Wait(5)
-        if IsControlJustReleased(0, 0x156F7119) then
-            Inmenu = false
-            MenuData.CloseAll() break
-        end
-    end
-end)
-
 ------ Main House Creation ------
 function TpOptMenu()
     Inmenu = true
-    TriggerEvent('bcc-housing:MenuClose')
-    MenuData.CloseAll()
+    VORPMenu.CloseAll()
     local elements = {
         { label = _U("nonTp"), value = 'nontp', desc = _U("nonTp_desc") },
         { label = _U("Tp"), value = 'tp', desc = _U("Tp_desc") },
     }
-    MenuData.Open('default', GetCurrentResourceName(), 'menuapi',
+    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
         {
             title = _U("creationMenuName"),
             align = 'top-left',
             elements = elements,
         },
-        function(data)
+        function(data, menu)
             if data.current == 'backup' then
                 _G[data.trigger]()
             end
@@ -36,14 +25,16 @@ function TpOptMenu()
             elseif data.current.value == 'tp' then
                 IntChoice()
             end
+        end,
+        function(data, menu)
+            menu.close()
         end)
 end
 
 
 function CreateHouseMenu(tp)
     Inmenu = true
-    TriggerEvent('bcc-housing:MenuClose')
-    MenuData.CloseAll()
+    VORPMenu.CloseAll()
     local elements = {
         { label = _U("setOwner"), value = 'setowner', desc = _U("setOwner_desc") },
         { label = _U("setRadius"), value = 'setradius', desc = _U("setRadius_desc") },
@@ -57,13 +48,13 @@ function CreateHouseMenu(tp)
     table.insert(elements, { label = _U("Confirm"), value = 'confirm', desc = "" }) --placed here to always keep option at the bottom
 
 
-    MenuData.Open('default', GetCurrentResourceName(), 'menuapi',
+    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
         {
             title = _U("creationMenuName"),
             align = 'top-left',
             elements = elements,
         },
-        function(data)
+        function(data, menu)
             if data.current == 'backup' then
                 _G[data.trigger]()
             end
@@ -123,7 +114,7 @@ function CreateHouseMenu(tp)
                     end)
                 end,
                 ['confirm'] = function()
-                    MenuData.CloseAll()
+                    VORPMenu.CloseAll()
                     local tpHouse = false
                     if tpInt ~= nil then
                         tpHouse = tpInt
@@ -137,6 +128,9 @@ function CreateHouseMenu(tp)
             if selectedOption[data.current.value] then
                 selectedOption[data.current.value]()
             end
+        end,
+        function(data, menu)
+            menu.close()
         end)
 end
 
@@ -144,8 +138,7 @@ end
 function doorCreationMenu()
     Inmenu = false
     local doorMenuElements = {}
-
-    MenuData.CloseAll()
+    VORPMenu.CloseAll()
 
     if #doorMenuElements == 0 or nil then
         table.insert(doorMenuElements, { label = _U("createDoor"), value = 'doorcreation', desc = "" })
@@ -159,7 +152,7 @@ function doorCreationMenu()
         }
     end
 
-    MenuData.Open('default', GetCurrentResourceName(), 'menuapi',
+    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
         {
             title      = _U("creationMenuName"),
             subtext    = _U("createdDoorList"),
@@ -168,27 +161,30 @@ function doorCreationMenu()
             lastmenu   = 'CreateHouseMenu',
             itemHeight = "4vh",
         },
-        function(data)
+        function(data, menu)
             if data.current == 'backup' then
                 _G[data.trigger]()
             end
             if data.current.value == 'doorcreation' then
-                MenuData.CloseAll()
+                VORPMenu.CloseAll()
                 local door = exports['bcc-doorlocks']:createDoor()
                 table.insert(doors, door)
                 while true do
                     Wait(10)
-                    if #MenuData.GetOpenedMenus() <= 0 then
+                    if #VORPMenu.GetOpenedMenus() <= 0 then
                         doorCreationMenu() break
                     end
                 end
             end
+        end,
+        function(data, menu)
+            menu.close()
         end)
 end
 
 --------- Show the player list credit to vorp admin for this
 function PlayerList(lastmenu, tpHouse)
-    MenuData.CloseAll()
+    VORPMenu.CloseAll()
     Inmenu = false
     local elements = {}
     local players = GetPlayers()
@@ -206,7 +202,7 @@ function PlayerList(lastmenu, tpHouse)
         }
     end
 
-    MenuData.Open('default', GetCurrentResourceName(), 'menuapi',
+    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
         {
             title      = _U("creationMenuName"),
             subtext    = _U("StaticId_desc"),
@@ -215,7 +211,7 @@ function PlayerList(lastmenu, tpHouse)
             lastmenu   = lastmenu,
             itemHeight = "4vh",
         },
-        function(data)
+        function(data, menu)
             if data.current == 'backup' then
                 _G[data.trigger]()
             end
@@ -224,32 +220,34 @@ function PlayerList(lastmenu, tpHouse)
                     ownerId = data.current.info.staticid
                     ownerSource = data.current.info.serverId
                     VORPcore.NotifyRightTip(_U("OwnerSet"), 4000)
-                    MenuData.CloseAll()
+                    VORPMenu.CloseAll()
                     CreateHouseMenu(tpHouse)
                 elseif lastmenu == 'HousingManagementMenu' then
                     VORPcore.NotifyRightTip(_U("givenAccess"), 4000)
                     TriggerServerEvent('bcc-housing:NewPlayerGivenAccess', data.current.info.staticid, HouseId, data.current.info.serverId)
                 end
             end
+        end,
+        function(data, menu)
+            menu.close()
         end)
 end
 
 ------ Main House Creation ------
 function IntChoice()
     Inmenu = true
-    TriggerEvent('bcc-housing:MenuClose')
-    MenuData.CloseAll()
+    VORPMenu.CloseAll()
     local elements = {
         { label = _U("Int1"), value = 'int1', desc = "" },
         { label = _U("Int2"), value = 'int2', desc = "" },
     }
-    MenuData.Open('default', GetCurrentResourceName(), 'menuapi',
+    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
         {
             title = _U("creationMenuName"),
             align = 'top-left',
             elements = elements,
         },
-        function(data)
+        function(data, menu)
             if data.current == 'backup' then
                 _G[data.trigger]()
             end
@@ -260,6 +258,9 @@ function IntChoice()
                 tpInt = 2
                 CreateHouseMenu(true)
             end
+        end,
+        function(data, menu)
+            menu.close()
         end)
 end
 
