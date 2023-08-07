@@ -1,6 +1,6 @@
 function FurnitureMenu()
     Inmenu = false
-    MenuData.CloseAll()
+    VORPMenu.CloseAll()
     local elements = {
         { label = _U("chairs"), value = 'chairs', desc = _U("chairs_desc") },
         { label = _U("benches"), value = 'benches', desc = _U("benches_desc") },
@@ -14,14 +14,14 @@ function FurnitureMenu()
         { label = _U("sellOwnerFurn"), value = 'sellownerfurn', desc = _U("sellOwnerFurn_desc") }
     }
 
-    MenuData.Open('default', GetCurrentResourceName(), 'menuapi',
+    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
         {
             title = _U("creationMenuName"),
             align = 'top-left',
             elements = elements,
             lastmenu   = 'HousingManagementMenu'
         },
-        function(data)
+        function(data, menu)
             if data.current == 'backup' then
                 _G[data.trigger]()
             end
@@ -55,13 +55,16 @@ function FurnitureMenu()
                 end,
                 ['sellownerfurn'] = function()
                     TriggerServerEvent('bcc-housing:GetOwnerFurniture', HouseId)
-                    MenuData.CloseAll()
+                    VORPMenu.CloseAll()
                 end
             }
 
             if selectedOption[data.current.value] then
                 selectedOption[data.current.value]()
             end
+        end,
+        function(data, menu)
+            menu.close()
         end)
 end
 
@@ -69,7 +72,7 @@ local menuCheck = false
 function IndFurnitureTypeMenu(type)
     local elements, furnConfigTable = {}, nil
     menuCheck = false
-    MenuData.CloseAll()
+    VORPMenu.CloseAll()
     local selectedFurnType = {
         ['chairs'] = function()
             furnConfigTable = Config.Furniture.Chairs
@@ -113,7 +116,7 @@ function IndFurnitureTypeMenu(type)
         }
     end
 
-    MenuData.Open('default', GetCurrentResourceName(), 'menuapi',
+    VORPMenu.Open('default', GetCurrentResourceName(), 'menuapi',
         {
             title      = _U("creationMenuName"),
             subtext    = _U("StaticId_desc"),
@@ -122,7 +125,7 @@ function IndFurnitureTypeMenu(type)
             lastmenu   = 'FurnitureMenu',
             itemHeight = "4vh",
         },
-        function(data)
+        function(data, menu)
             if data.current == 'backup' then
                 _G[data.trigger]()
             end
@@ -131,6 +134,10 @@ function IndFurnitureTypeMenu(type)
                     PlaceFurnitureIntoWorldMenu(data.current.info.propModel, data.current.info.costToBuy, data.current.info.displayName, data.current.info.sellFor)
                 end
             end
+        end,
+        function(data, menu)
+            menu.close()
+            FurnitureMenu()
         end)
 end
 
@@ -142,7 +149,7 @@ function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
     SetEntityCollision(createdObject, false, true)
     TriggerEvent('bcc-housing:CheckIfInRadius', createdObject)
 
-    MenuData.CloseAll()
+    VORPMenu.CloseAll()
     local elements = {
         { label = _U("amountToMove"), value = 0, desc = _U("amountToMove_desc"), type = 'slider', min = 0, max = 5, hop = 0.1 }, --Thanks to jannings for this line of code
         { label = _U("forward"), value = 'forward', desc = _U("forward_desc") },
@@ -160,7 +167,7 @@ function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
         { label = _U("Confirm"), value = 'confirm', desc = "" }
     }
 
-    MenuData.Open('default', GetCurrentResourceName(), 'menuapi',
+    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
         {
             title      = _U("creationMenuName"),
             subtext    = _U("StaticId_desc"),
@@ -169,7 +176,7 @@ function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
             lastmenu   = 'FurnitureMenu',
             itemHeight = "4vh",
         },
-        function(data)
+        function(data, menu)
             if data.current == 'backup' then
                 DeleteObject(createdObject)
                 _G[data.trigger]()
@@ -246,7 +253,7 @@ function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
                         DeleteObject(createdObject)
                     end
                     menuCheck = false
-                    MenuData.CloseAll()
+                    VORPMenu.CloseAll()
                 end
             }
 
@@ -255,8 +262,11 @@ function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
             else
                 amountToMove = data.current.value
             end
+        end,
+        function(data, menu)
+            menu.close()
+            FurnitureMenu()
         end)
-
 end
 
 function closeToHosue(object) --make sure the obj is close to house before placing
@@ -293,7 +303,7 @@ RegisterNetEvent('bcc-housing:ClientFurnBoughtFail', function()
 end)
 
 RegisterNetEvent('bcc-housing:SellOwnedFurnMenu', function(furnTable)
-    MenuData.CloseAll()
+    VORPMenu.CloseAll()
     local elements = {}
 
     for k, v in pairs(furnTable) do
@@ -306,7 +316,7 @@ RegisterNetEvent('bcc-housing:SellOwnedFurnMenu', function(furnTable)
         }
     end
 
-    MenuData.Open('default', GetCurrentResourceName(), 'menuapi',
+    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
         {
             title      = _U("sellOwnerFurn"),
             subtext    = "",
@@ -315,7 +325,7 @@ RegisterNetEvent('bcc-housing:SellOwnedFurnMenu', function(furnTable)
             lastmenu   = 'FurnitureMenu',
             itemHeight = "4vh",
         },
-        function(data)
+        function(data, menu)
             if data.current == 'backup' then
                 _G[data.trigger]()
             end
@@ -332,6 +342,10 @@ RegisterNetEvent('bcc-housing:SellOwnedFurnMenu', function(furnTable)
                 end
                 TriggerServerEvent('bcc-housing:FurnSoldRemoveFromTable', data.current.info, HouseId, furnTable, data.current.info2)
             end
+        end,
+        function(data, menu)
+            menu.close()
+            FurnitureMenu()
         end)
 end)
 

@@ -6,9 +6,8 @@ RegisterCommand(Config.AdminManagementMenuCommand, function()
 end)
 
 RegisterNetEvent('bcc-housing:AdminManagementMenu', function(allHouses)
-    MenuData.CloseAll()
+    VORPMenu.CloseAll()
     Inmenu = true
-    TriggerEvent('bcc-housing:MenuClose')
     local elements = {}
 
     for k, houseInfo in pairs(allHouses) do
@@ -20,7 +19,7 @@ RegisterNetEvent('bcc-housing:AdminManagementMenu', function(allHouses)
         }
     end
 
-    MenuData.Open('default', GetCurrentResourceName(), 'menuapi',
+    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
         {
             title      = _U("adminManagmentMenu"),
             subtext    = "",
@@ -33,7 +32,7 @@ RegisterNetEvent('bcc-housing:AdminManagementMenu', function(allHouses)
                 _G[data.trigger]()
             end
             if data.current.value then
-                MenuData.CloseAll()
+                VORPMenu.CloseAll()
                 AdminManagementMenuHouseChose(data.current.info)
             end
         end)
@@ -46,13 +45,13 @@ function AdminManagementMenuHouseChose(houseTable)
         { label = _U("changeHouseInvLimit"), value = 'changeinvlimit', desc = _U("changeHouseInvLimit_desc") },
         { label = _U("changeHouseTaxes"), value = 'changetaxes', desc = _U("changeHouseTaxes_desc") }
     }
-    MenuData.Open('default', GetCurrentResourceName(), 'menuapi',
+    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
         {
             title = _U("adminManagmentMenu"),
             align = 'top-left',
             elements = elements
         },
-        function(data)
+        function(data, menu)
             if data.current == 'backup' then
                 _G[data.trigger]()
             end
@@ -74,7 +73,7 @@ function AdminManagementMenuHouseChose(houseTable)
                 ['delhouse'] = function()
                     TriggerServerEvent('bcc-house:AdminManagementDelHouse', houseTable.houseid)
                     VORPcore.NotifyRightTip(_U("housesDeleted"), 4000)
-                    MenuData.CloseAll()
+                    menu.close()
                 end,
                 ['changeradius'] = function()
                     TriggerEvent("vorpinputs:advancedInput", json.encode(myInput), function(result)
@@ -111,5 +110,8 @@ function AdminManagementMenuHouseChose(houseTable)
             if selectedOption[data.current.value] then
                 selectedOption[data.current.value]()
             end
+        end,
+        function(data, menu)
+            menu.close()
         end)
 end
