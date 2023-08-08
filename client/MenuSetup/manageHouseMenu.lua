@@ -55,7 +55,7 @@ function HousingManagementMenu()
                         }
                     }
                     TriggerEvent("vorpinputs:advancedInput", json.encode(myInput), function(result)
-                        if result ~= nil and type(result) == "number" and tonumber(result) > 0 then
+                        if tonumber(result) > 0 then
                             TriggerServerEvent('bcc-housing:LedgerHandling', tonumber(result), HouseId)
                             VORPMenu.CloseAll()
                         else
