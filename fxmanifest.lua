@@ -23,6 +23,11 @@ client_scripts {
   '/client/furnitureSpawning.lua'
 }
 
+files {
+  "stream/Siddin3.ymap",
+  "stream/Siddin4.ymap",
+}
+
 dependency {
   'vorp_core',
   'vorp_inventory',
