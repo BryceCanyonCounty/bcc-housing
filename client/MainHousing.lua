@@ -138,8 +138,3 @@ end)
 RegisterNetEvent('bcc-housing:HousingTableUpdate', function(houseId) --event to update the housing table
     table.insert(OwnedHotels, houseId)
 end)
-
---[[
-    --Sacred Comment
-    8========D
-]]
