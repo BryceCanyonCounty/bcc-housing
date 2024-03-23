@@ -1,7 +1,6 @@
 fx_version "adamant"
 games {"rdr3"}
 rdr3_warning "I acknowledge that this is a prerelease build of RedM, and I am aware my resources *will* become incompatible once RedM ships."
-
 lua54 "yes"
 
 shared_scripts {
@@ -12,8 +11,11 @@ shared_scripts {
 
 server_scripts {
   "@oxmysql/lib/MySQL.lua",
-  "/server/server.lua",
-  '/server/adminManagment.lua'
+  'server/helpers/functions.lua',
+  'server/services/dbupdater.lua',
+  'server/helpers/*.lua',
+  'server/services/*.lua',
+  "/server/main.lua"
 }
 
 client_scripts {
@@ -38,4 +40,6 @@ dependency {
   'bcc-doorlocks'
 }
 
-version '1.0.3'
+-- u can set doors but if u set one with an id first it will break so u have to set one without an id first then add id doors
+
+version '1.0.4'

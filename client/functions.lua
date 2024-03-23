@@ -1,8 +1,5 @@
 ----- Pulling Essentials -----
-VORPcore = {}
-TriggerEvent("getCore", function(core)
-  VORPcore = core
-end)
+VORPcore = exports.vorp_core:GetCore()
 VORPutils = {}
 TriggerEvent("getUtils", function(utils)
   VORPutils = utils

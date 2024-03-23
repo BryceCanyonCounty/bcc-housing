@@ -1,0 +1,72 @@
+----- Hotel Area ----
+RegisterServerEvent('bcc-housing:HotelDbRegistry', function() --registering each player
+    local _source = source
+    local character = VORPcore.getUser(_source).getUsedCharacter
+    local param = { ['charidentifier'] = character.charIdentifier }
+    local result = MySQL.query.await("SELECT * FROM bcchousinghotels WHERE charidentifier=@charidentifier", param)
+    if #result == 0 then
+        exports.oxmysql:execute("INSERT INTO bcchousinghotels ( `charidentifier` ) VALUES ( @charidentifier )", param)
+    else
+        for k, v in pairs(result) do
+            TriggerClientEvent('bcc-housing:HousingTableUpdate', _source, v)
+        end
+    end
+    Wait(1000)
+    local result2 = MySQL.query.await("SELECT * FROM bcchousinghotels WHERE charidentifier=@charidentifier", param)
+    if result2[1].hotels ~= 'none' then
+        local hotelsTable = json.decode(result2[1].hotels)
+        if #hotelsTable > 0 then
+            for k, v in pairs(hotelsTable) do
+                TriggerClientEvent('bcc-housing:HousingTableUpdate', _source, v)
+            end
+        end
+    end
+    TriggerClientEvent('bcc-housing:MainHotelHandler', _source)
+end)
+
+RegisterServerEvent('bcc-housing:HotelBought', function(hotelTable)
+    local _source = source
+    local character = VORPcore.getUser(_source).getUsedCharacter
+    local param = { ['charidentifier'] = character.charIdentifier }
+    local result = MySQL.query.await("SELECT * FROM bcchousinghotels WHERE charidentifier=@charidentifier", param)
+    local ownedHotels = result[1].hotels
+    local tableToInsert = nil
+    if ownedHotels == 'none' then
+        if character.money >= hotelTable.cost then
+            character.removeCurrency(0, hotelTable.cost)
+            tableToInsert = json.encode({ hotelTable.hotelId })
+        else
+            VORPcore.NotifyRightTip(_source, _U("noMoney"), 4000)
+        end
+    else
+        local ownedHotels2 = json.decode(ownedHotels)
+        if character.money >= hotelTable.cost then
+            table.insert(ownedHotels2, hotelTable.hotelId)
+            character.removeCurrency(0, hotelTable.cost)
+            tableToInsert = json.encode(ownedHotels2)
+        else
+            VORPcore.NotifyRightTip(_source, _U("noMoney"), 4000)
+        end
+    end
+    if tableToInsert ~= nil then
+        local param2 = { ['charidentifier'] = character.charIdentifier, ['hotelsTable'] = tableToInsert }
+        exports.oxmysql:execute("UPDATE bcchousinghotels SET hotels=@hotelsTable WHERE charidentifier=@charidentifier",
+            param2)
+        for k, v in pairs(json.decode(tableToInsert)) do
+            TriggerClientEvent('bcc-housing:HousingTableUpdate', _source, v)
+        end
+    end
+end)
+
+CreateThread(function()   --registering all inventories
+    for k, v in pairs(Config.Hotels) do
+        VORPInv.removeInventory('bcc-housinginv:' .. v.hotelId)
+        Wait(50)
+        VORPInv.registerInventory('bcc-housinginv:' .. v.hotelId, _U("hotelInvName"), v.invSpace, true, false, true)
+    end
+end)
+
+RegisterServerEvent('bcc-housing:HotelInvOpen', function(hotelId)
+    local _source = source
+    VORPInv.OpenInv(_source, 'bcc-housinginv:' .. hotelId)
+end)
