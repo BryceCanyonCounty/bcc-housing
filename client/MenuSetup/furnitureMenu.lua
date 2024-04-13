@@ -350,5 +350,5 @@ RegisterNetEvent('bcc-housing:SellOwnedFurnMenu', function(furnTable)
 end)
 
 RegisterNetEvent('bcc-housing:ClientCloseAllMenus', function()
-    MenuData.CloseAll()
+    VORPMenu.CloseAll()
 end)
