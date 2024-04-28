@@ -33,8 +33,6 @@ files {
 dependency {
   'vorp_core',
   'vorp_inventory',
-  'vorp_utils',
-  'vorp_inputs',
   'vorp_character',
   'bcc-utils',
   'bcc-doorlocks'

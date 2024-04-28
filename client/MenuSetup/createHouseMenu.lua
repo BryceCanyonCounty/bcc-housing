@@ -1,269 +1,483 @@
----- Variables ----
-local ownerId, houseRadius, doors, houseCoords, InvLimit, ownerSource, taxAmount, tpInt = nil, nil, {}, nil, nil, nil, nil, nil
-Inmenu = false
+-- Global variables to store house data
+local globalHouseData = {
+    owner = nil,
+    ownerSource = nil,
+    radius = nil,
+    houseCoords = nil,
+    invLimit = nil,
+    taxAmount = nil,
+    doors = {}, -- Assuming doors data is gathered somewhere
+    tpInt = nil
+}
 
------- Main House Creation ------
-function TpOptMenu()
-    Inmenu = true
-    VORPMenu.CloseAll()
-    local elements = {
-        { label = _U("nonTp"), value = 'nontp', desc = _U("nonTp_desc") },
-        { label = _U("Tp"), value = 'tp', desc = _U("Tp_desc") },
-    }
-    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
-        {
-            title = _U("creationMenuName"),
-            align = 'top-left',
-            elements = elements,
-        },
-        function(data, menu)
-            if data.current == 'backup' then
-                _G[data.trigger]()
-            end
-            if data.current.value == 'nontp' then
-                CreateHouseMenu(false)
-            elseif data.current.value == 'tp' then
-                IntChoice()
-            end
-        end,
-        function(data, menu)
-            menu.close()
-        end)
-end
-
-
-function CreateHouseMenu(tp)
-    Inmenu = true
-    VORPMenu.CloseAll()
-    local elements = {
-        { label = _U("setOwner"), value = 'setowner', desc = _U("setOwner_desc") },
-        { label = _U("setRadius"), value = 'setradius', desc = _U("setRadius_desc") },
-        { label = _U("houseCoords"), value = 'setHouseCoords', desc = _U("houseCoords_desc") },
-        { label = _U("setInvLimit"), value = 'setInvLimit', desc = _U("setInvLimit_desc") },
-        { label = _U("taxAmount"), value = 'settaxamount', desc = _U("taxAmount_desc") },
-    }
-    if not tp and tp ~= nil then --nil check is needed
-        table.insert(elements, { label = _U("doorCreation"), value = 'doorcreation', desc = _U("doorCreation_desc") })
-    end
-    table.insert(elements, { label = _U("Confirm"), value = 'confirm', desc = "" }) --placed here to always keep option at the bottom
-
-
-    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
-        {
-            title = _U("creationMenuName"),
-            align = 'top-left',
-            elements = elements,
-        },
-        function(data, menu)
-            if data.current == 'backup' then
-                _G[data.trigger]()
-            end
-            local myInput = { --input var used for all the options below since they are all number inputs
-                type = "enableinput",                                               -- don't touch
-                inputType = "input",                                                -- input type
-                button = _U("Confirm"),                                             -- button name
-                placeholder = _U("insertAmount"),                               -- placeholder name
-                style = "block",                                                    -- don't touch
-                attributes = {
-                    inputHeader = "",                                               -- header
-                    type = "number",                                                -- inputype text, number,date,textarea ETC
-                    pattern = "[0-9]",                                              --  only numbers "[0-9]" | for letters only "[A-Za-z]+"
-                    title = _U("InvalidInput"),                                     -- if input doesnt match show this message
-                    style = "border-radius: 10px; background-color: ; border:none;" -- style
-                }
-            }
-            local selectedOption = {
-                ['setowner'] = function()
-                    PlayerList('CreateHouseMenu', tp)
-                end,
-                ['setradius'] = function()
-                    TriggerEvent("vorpinputs:advancedInput", json.encode(myInput), function(result)
-                        if tonumber(result) > 0 then
-                            houseRadius = tonumber(result)
-                            VORPcore.NotifyRightTip(_U("radiusSet"), 4000)
-                        else
-                            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
-                        end
-                    end)
-                end,
-                ['doorcreation'] = function()
-                    doorCreationMenu()
-                end,
-                ['setHouseCoords'] = function()
-                    houseCoords = GetEntityCoords(PlayerPedId())
-                    VORPcore.NotifyRightTip(_U("houseCoordsSet"), 4000)
-                end,
-                ['setInvLimit'] = function()
-                    TriggerEvent("vorpinputs:advancedInput", json.encode(myInput), function(result)
-                        if tonumber(result) > 0 then
-                            InvLimit = tonumber(result)
-                            VORPcore.NotifyRightTip(_U("invLimitSet"), 4000)
-                        else
-                            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
-                        end
-                    end)
-                end,
-                ['settaxamount'] = function()
-                    TriggerEvent("vorpinputs:advancedInput", json.encode(myInput), function(result)
-                        if tonumber(result) > 0 then
-                            taxAmount = tonumber(result)
-                            VORPcore.NotifyRightTip(_U("taxAmountSet"), 4000)
-                        else
-                            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
-                        end
-                    end)
-                end,
-                ['confirm'] = function()
-                    VORPMenu.CloseAll()
-                    local tpHouse = false
-                    if tpInt ~= nil then
-                        tpHouse = tpInt
-                    end
-                    TriggerServerEvent('bcc-housing:CreationDBInsert', tpHouse, ownerId, houseRadius, doors, houseCoords, InvLimit, ownerSource, taxAmount)
-                    doors, ownerId, houseCoords, houseRadius, ownerSource = nil, nil, nil, nil, nil
-                    VORPcore.NotifyRightTip(_U("houseCreated"), 4000)
-                end
-            }
-
-            if selectedOption[data.current.value] then
-                selectedOption[data.current.value]()
-            end
-        end,
-        function(data, menu)
-            menu.close()
-        end)
-end
-
---------- Show the player list credit to vorp admin for this
-function doorCreationMenu()
-    Inmenu = false
-    local doorMenuElements = {}
-    VORPMenu.CloseAll()
-
-    if #doorMenuElements == 0 or nil then
-        table.insert(doorMenuElements, { label = _U("createDoor"), value = 'doorcreation', desc = "" })
-    end
-    for k, v in pairs(doors) do
-        doorMenuElements[#doorMenuElements + 1] = {
-            label = _U("doorId") .. v,
-            value = "door" .. k,
-            desc = "" .. "<span style=color:MediumSeaGreen;> ",
-            info = v
-        }
-    end
-
-    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
-        {
-            title      = _U("creationMenuName"),
-            subtext    = _U("createdDoorList"),
-            align      = 'top-left',
-            elements   = doorMenuElements,
-            lastmenu   = 'CreateHouseMenu',
-            itemHeight = "4vh",
-        },
-        function(data, menu)
-            if data.current == 'backup' then
-                _G[data.trigger]()
-            end
-            if data.current.value == 'doorcreation' then
-                VORPMenu.CloseAll()
-                local door = exports['bcc-doorlocks']:createDoor()
-                table.insert(doors, door)
-                while true do
-                    Wait(10)
-                    if #VORPMenu.GetOpenedMenus() <= 0 then
-                        doorCreationMenu() break
-                    end
-                end
-            end
-        end,
-        function(data, menu)
-            menu.close()
-        end)
-end
-
---------- Show the player list credit to vorp admin for this
-function PlayerList(lastmenu, tpHouse)
-    VORPMenu.CloseAll()
-    Inmenu = false
-    local elements = {}
+function PlayerListMenu(tpHouse)
+    BCCHousingMenu:Close()
     local players = GetPlayers()
-
     table.sort(players, function(a, b)
         return a.serverId < b.serverId
     end)
+    -- Create a new page in the Feather Menu for player listing
+    local playerListMenupage = BCCHousingMenu:RegisterPage("bcc-housing:playerListMenupage")
 
-    for k, playersInfo in pairs(players) do
-        elements[#elements + 1] = {
-            label = playersInfo.PlayerName .. "<br> " .. _U("CharacterStaticId") .. ' ' .. playersInfo.staticid,
-            value = "players" .. k,
-            desc = _U("StaticId") .. "<span style=color:MediumSeaGreen;> ",
-            info = playersInfo
-        }
+    playerListMenupage:RegisterElement("header", {
+        value = _U("StaticId_desc"),
+        slot = "header",
+        style = {}
+    })
+
+    for k, v in pairs(players) do
+        playerListMenupage:RegisterElement("button", {
+            label = v.PlayerName,
+            style = {}
+        }, function() -- Within your player selection button callback
+            globalHouseData.owner = v.staticid
+            globalHouseData.ownerSource = v.serverId
+
+            -- Print owner and ownerSource to the console for debugging
+            print("Owner set to:", globalHouseData.owner, "Owner Source set to:", globalHouseData.ownerSource)
+
+            VORPcore.NotifyRightTip(_U("OwnerSet"), 4000)
+            CreateHouseMenu(tpHouse) -- Assuming this function will use globalHouseData
+        end)
     end
 
-    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
-        {
-            title      = _U("creationMenuName"),
-            subtext    = _U("StaticId_desc"),
-            align      = 'top-left',
-            elements   = elements,
-            lastmenu   = lastmenu,
-            itemHeight = "4vh",
-        },
-        function(data, menu)
-            if data.current == 'backup' then
-                _G[data.trigger]()
-            end
-            if data.current.value then
-                if lastmenu == 'CreateHouseMenu' then
-                    ownerId = data.current.info.staticid
-                    ownerSource = data.current.info.serverId
-                    VORPcore.NotifyRightTip(_U("OwnerSet"), 4000)
-                    VORPMenu.CloseAll()
-                    CreateHouseMenu(tpHouse)
-                elseif lastmenu == 'HousingManagementMenu' then
-                    VORPcore.NotifyRightTip(_U("givenAccess"), 4000)
-                    TriggerServerEvent('bcc-housing:NewPlayerGivenAccess', data.current.info.staticid, HouseId, data.current.info.serverId)
-                end
-            end
-        end,
-        function(data, menu)
-            menu.close()
-        end)
+    playerListMenupage:RegisterElement("button", {
+        label = _U("backButton"),
+        style = {}
+    }, function()
+        CreateHouseMenu(tpHouse)
+    end)
+
+    BCCHousingMenu:Open({
+        startupPage = playerListMenupage
+    })
 end
 
------- Main House Creation ------
+function doorCreationMenu()
+    if BCCHousingMenu then
+        BCCHousingMenu:Close() -- Ensure no other menus are open
+    end
+
+    local doorCreationMenuPage = BCCHousingMenu:RegisterPage('door_creation_page')
+
+    -- Add a header for creating doors
+    doorCreationMenuPage:RegisterElement('header', {
+        value = _U("createdDoorList"),
+        slot = "header",
+        style = {}
+    })
+
+    -- Add a button for creating a new door
+    doorCreationMenuPage:RegisterElement('button', {
+        label = _U("createDoor")
+    }, function()
+        local door = exports['bcc-doorlocks']:createDoor()
+        if not globalHouseData.doors then
+            globalHouseData.doors = {}
+        end
+        table.insert(globalHouseData.doors, door)
+        doorCreationMenu() -- Refresh the menu to show new door
+    end)
+
+    -- List existing doors
+    for k, door in ipairs(globalHouseData.doors or {}) do
+        doorCreationMenuPage:RegisterElement('button', {
+            label = _U("doorId") .. door.id -- Assuming each door has a unique 'id'
+        }, function()
+            print("Selected door with ID:", door.id)
+        end)
+    end
+
+    -- Register a back button
+    doorCreationMenuPage:RegisterElement('button', {
+        label = _U("backButton"),
+        style = {}
+    }, function()
+        CreateHouseMenu(false) --Ensure tpHouse is properly maintained throughout the navigation
+    end)
+
+    -- Open the door creation menu
+    BCCHousingMenu:Open({
+        startupPage = doorCreationMenuPage
+    })
+end
+
 function IntChoice()
-    Inmenu = true
-    VORPMenu.CloseAll()
-    local elements = {
-        { label = _U("Int1"), value = 'int1', desc = "" },
-        { label = _U("Int2"), value = 'int2', desc = "" },
-    }
-    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
-        {
-            title = _U("creationMenuName"),
-            align = 'top-left',
-            elements = elements,
-        },
-        function(data, menu)
-            if data.current == 'backup' then
-                _G[data.trigger]()
-            end
-            if data.current.value == 'int1' then
-                tpInt = 1
-                CreateHouseMenu(true)
-            elseif data.current.value == 'int2' then
-                tpInt = 2
-                CreateHouseMenu(true)
-            end
-        end,
-        function(data, menu)
-            menu.close()
-        end)
+    BCCHousingMenu:Close() -- Ensure no other menus are open
+
+    -- Initialize the interior choice menu page
+    local interiorChoiceMenuPage = BCCHousingMenu:RegisterPage('interior_choice_page')
+
+    interiorChoiceMenuPage:RegisterElement('header', {
+        value = _U("Tp"),
+        slot = "header",
+        style = {}
+    })
+
+    -- Add a button for choosing Interior 1
+    interiorChoiceMenuPage:RegisterElement('button', {
+        label = _U("Int1")
+    }, function()
+        tpInt = 1             -- Assuming tpInt is a variable that stores the chosen interior type
+        CreateHouseMenu(true) -- Assuming this function initializes the house creation process
+    end)
+
+    -- Add a button for choosing Interior 2
+    interiorChoiceMenuPage:RegisterElement('button', {
+        label = _U("Int2")
+    }, function()
+        tpInt = 2
+        CreateHouseMenu(true)
+    end)
+
+    -- Register a back button on the menu
+    interiorChoiceMenuPage:RegisterElement('button', {
+        label = _U("backButton"),
+        style = {}
+    }, function()
+        HouseManagementMenu()
+    end)
+
+    -- Open the interior choice menu
+    BCCHousingMenu:Open({
+        startupPage = interiorChoiceMenuPage
+    })
 end
 
-RegisterNetEvent('bcc-housing:ClientRecHouseLoad', function(recOwnerSource) --Used to load houses after given one or given access so you dont have to relog to gain access
-    TriggerServerEvent('bcc-housing:CheckIfHasHouse', recOwnerSource)
-end)
+function HouseManagementMenu(allHouses)
+    if BCCHousingMenu then
+        BCCHousingMenu:Close() -- Ensure no other menus are open
+    end
+
+    -- Initialize the teleport options menu page
+    local HouseManagementList = BCCHousingMenu:RegisterPage("tp_options_page")
+
+    -- Add a header for teleport options
+    HouseManagementList:RegisterElement('header', {
+        value = _U("adminManagmentMenu"),
+        slot = "header",
+        style = {}
+    })
+
+    -- Add a button for the non-teleport option
+    HouseManagementList:RegisterElement('button', {
+        label = _U("nonTp"),
+        style = {}
+    }, function()
+        CreateHouseMenu(false)
+    end)
+
+    -- Add a button for the teleport option
+    HouseManagementList:RegisterElement('button', {
+        label = _U("Tp"),
+        style = {}
+    }, function()
+        IntChoice()
+    end)
+
+    HouseManagementList:RegisterElement('button', {
+        label = "Manage All Houses",
+        style = {}
+    }, function()
+        TriggerServerEvent('bcc-housing:AdminGetAllHouses')
+    end)
+
+    -- Open the teleport options menu
+    BCCHousingMenu:Open({
+        startupPage = HouseManagementList
+    })
+end
+
+function CreateHouseMenu(tp)
+    tp = tp or false -- Default to false if tp isn't provided
+    print("Adjusted tp in CreateHouseMenu:", tp)
+    -- Close any existing menus, assuming BCCHousingMenu is your FeatherMenu instance
+    BCCHousingMenu:Close()
+
+    -- Register the main page for housing creation
+    local createHouseMenu = BCCHousingMenu:RegisterPage("bcc-housing-create-menu")
+
+    -- Add a header to the menu
+    createHouseMenu:RegisterElement('header', {
+        value = _U("nonTp"),
+        slot = 'header',
+        style = {}
+    })
+
+    createHouseMenu:RegisterElement('button', {
+        label = _U("setOwner"),
+        style = {}
+    }, function()
+        PlayerListMenu(tp)
+    end)
+
+    createHouseMenu:RegisterElement('button', {
+        label = _U("setRadius"),
+        style = {}
+    }, function()
+        setRadius()
+    end)
+
+    createHouseMenu:RegisterElement('button', {
+        label = _U("houseCoords"),
+        style = {}
+    }, function()
+        globalHouseData.houseCoords = GetEntityCoords(PlayerPedId())
+        print("house coords set to:", globalHouseData.houseCoords)
+        VORPcore.NotifyRightTip(_U("houseCoordsSet"), 4000)
+    end)
+
+    createHouseMenu:RegisterElement('button', {
+        label = _U("setInvLimit"),
+        style = {}
+    }, function()
+        setInvLimit(tpHouse)
+    end)
+
+    createHouseMenu:RegisterElement('button', {
+        label = _U("taxAmount"),
+        style = {}
+    }, function()
+        setTaxAmount()
+    end)
+
+    if tp ~= true then -- This treats nil as false
+        createHouseMenu:RegisterElement('button', {
+            label = _U("doorCreation"),
+            style = {}
+        }, function()
+            doorCreationMenu()
+        end)
+    end
+
+    createHouseMenu:RegisterElement('button', {
+        label = _U("Confirm"),
+        style = {}
+    }, function()
+        confirmCreation(globalHouseData)
+    end)
+
+    -- Register a back button on the menu
+    createHouseMenu:RegisterElement('button', {
+        label = _U("backButton"),
+        style = {}
+    }, function()
+        HouseManagementMenu()
+    end)
+
+    -- Open the menu with the configured page
+    BCCHousingMenu:Open({
+        startupPage = createHouseMenu
+    })
+end
+
+---Set House Radius function
+function setRadius()
+    if BCCHousingMenu then
+        BCCHousingMenu:Close() -- Ensure no other menus are open
+    end
+
+    -- Initialize the teleport options menu page
+    local setRadiusPage = BCCHousingMenu:RegisterPage("set_radius_page")
+
+    -- Add a header for teleport options
+    setRadiusPage:RegisterElement('header', {
+        value = _U("setRadius"),
+        slot = "header",
+        style = {}
+    })
+
+    -- Input for entering the radius
+    setRadiusPage:RegisterElement('input', {
+        label = _U("insertAmount"),
+        placeholder = _U("setRadius"),
+        inputType = 'number',
+        slot = 'content',
+        style = {}
+    }, function(data)
+        -- Check the input value for validity
+        if data.value and tonumber(data.value) and tonumber(data.value) > 0 then
+            globalHouseData.radius = tonumber(data.value) -- Correctly assign to globalHouseData
+            print("Radius set to:", globalHouseData.radius)
+        else
+            globalHouseData.radius = nil -- Ensure radius is nil if input is invalid
+            print("Invalid input for amount.")
+        end
+    end)
+
+    -- Confirm button to process and confirm the radius setting
+    setRadiusPage:RegisterElement('button', {
+        label = _U("Confirm"),
+        style = {},
+    }, function()
+        if globalHouseData.radius then
+            VORPcore.NotifyRightTip(_U("radiusSet"), 4000)
+            CreateHouseMenu(tpHouse) -- Optionally return to the house creation menu
+        else
+            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+        end
+    end)
+
+    -- Register a back button
+    setRadiusPage:RegisterElement('button', {
+        label = _U("backButton"),
+        style = {}
+    }, function()
+        CreateHouseMenu(tpHouse)
+    end)
+
+    -- Open the menu with the newly created page
+    BCCHousingMenu:Open({
+        startupPage = setRadiusPage
+    })
+end
+
+---Set Tax Amount function
+function setTaxAmount()
+    if BCCHousingMenu then
+        BCCHousingMenu:Close() -- Ensure no other menus are open
+    end
+
+    -- Initialize the tax amount settings menu page
+    local setTaxAmountPage = BCCHousingMenu:RegisterPage("set_tax_amount_page")
+
+    -- Add a header for tax amount settings
+    setTaxAmountPage:RegisterElement('header', {
+        value = _U("creationMenuName"),
+        slot = "header",
+        style = {}
+    })
+
+    -- Input for entering the tax amount
+    setTaxAmountPage:RegisterElement('input', {
+        label = _U("insertAmount"),
+        placeholder = _U("insertAmount"),
+        inputType = 'number',
+        slot = 'content',
+        style = {}
+    }, function(data)
+        -- Validate the input from the user
+        if data.value and tonumber(data.value) and tonumber(data.value) > 0 then
+            globalHouseData.taxAmount = tonumber(data.value) -- Correctly update globalHouseData for tax amount
+            print("Tax amount set to:", globalHouseData.taxAmount)
+        else
+            globalHouseData.taxAmount = nil -- Reset if invalid input
+            print("Invalid input for tax amount.")
+        end
+    end)
+
+    -- Confirm button to process and confirm the tax amount setting
+    setTaxAmountPage:RegisterElement('button', {
+        label = _U("Confirm"),
+        style = {},
+    }, function()
+        if globalHouseData.taxAmount then
+            VORPcore.NotifyRightTip(_U("taxAmountSet"), 4000)
+            CreateHouseMenu(tpHouse) -- Optionally navigate back to the house creation menu
+        else
+            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+        end
+    end)
+
+    -- Register a back button
+    setTaxAmountPage:RegisterElement('button', {
+        label = _U("backButton"),
+        style = {}
+    }, function()
+        CreateHouseMenu(tpHouse)
+    end)
+
+    -- Open the menu with the newly created page
+    BCCHousingMenu:Open({
+        startupPage = setTaxAmountPage
+    })
+end
+
+function setInvLimit(houseId)
+    if BCCHousingMenu then
+        BCCHousingMenu:Close() -- Ensure no other menus are open
+    end
+
+    local inventoryLimitPage = BCCHousingMenu:RegisterPage('inventory_limit_page')
+
+    -- Header for the inventory limit page
+    inventoryLimitPage:RegisterElement('header', {
+        value = _U('setInvLimit'),
+        slot = 'header',
+        style = {}
+    })
+
+    -- Input for entering the inventory limit
+    inventoryLimitPage:RegisterElement('input', {
+        label = _U('setInvLimit'),
+        placeholder = _U("insertAmount"),
+        inputType = 'number',
+        slot = 'content',
+        style = {}
+    }, function(data)
+        -- Validate the input from the user
+        if data.value and tonumber(data.value) and tonumber(data.value) > 0 then
+            globalHouseData.invLimit = tonumber(data.value)
+            print("Inventory limit set to:", globalHouseData.invLimit)
+        else
+            globalHouseData.invLimit = nil
+            print("Invalid input for inventory limit.")
+        end
+    end)
+
+    -- Confirm button to process the inventory limit
+    inventoryLimitPage:RegisterElement('button', {
+        label = _U('Confirm'),
+        style = {},
+    }, function()
+        if globalHouseData.invLimit then
+            TriggerServerEvent('bcc-housing:SetInventoryLimit', globalHouseData.invLimit, houseId)
+            CreateHouseMenu(tpHouse) -- Optionally navigate back to the house creation menu
+            VORPcore.NotifyRightTip(_U("invLimitSet"), 4000)
+        else
+            print("Error: Inventory limit not set or invalid.")
+            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+        end
+    end)
+
+    -- Register a back button
+    inventoryLimitPage:RegisterElement('button', {
+        label = _U("backButton"),
+        style = {}
+    }, function()
+        CreateHouseMenu(tpHouse) -- Optionally go back to the main menu of house creation
+    end)
+
+    -- Open the menu with the newly created page
+    BCCHousingMenu:Open({
+        startupPage = inventoryLimitPage
+    })
+end
+
+-- Confirm House Creation function
+function confirmCreation(globalHouseData)
+    if not globalHouseData then
+        print("Error: Data object is nil")
+        return
+    end
+    if not globalHouseData.owner or not globalHouseData.radius or not globalHouseData.doors or not globalHouseData.houseCoords or not globalHouseData.invLimit or not globalHouseData.ownerSource or not globalHouseData.taxAmount then
+        print("Error: One or more required fields are missing in the data object")
+        return
+    end
+    local tpHouse = false
+    if tpInt ~= nil then
+        tpHouse = tpInt
+    end
+    -- Assuming data contains all necessary information
+    TriggerServerEvent('bcc-housing:CreationDBInsert', tpHouse, globalHouseData.owner, globalHouseData.radius,
+        globalHouseData.doors, globalHouseData.houseCoords, globalHouseData.invLimit, globalHouseData.ownerSource,
+        globalHouseData.taxAmount)
+    -- Debug to confirm data contents
+    print("Sending data to server:", tpHouse, globalHouseData.owner, globalHouseData.radius, globalHouseData.doors,
+        globalHouseData.houseCoords, globalHouseData.invLimit, globalHouseData.ownerSource, globalHouseData.taxAmount)
+end
+
+RegisterNetEvent('bcc-housing:ClientRecHouseLoad',
+    function(recOwnerSource) --Used to load houses after given one or given access so you dont have to relog to gain access
+        TriggerServerEvent('bcc-housing:CheckIfHasHouse', recOwnerSource)
+    end)

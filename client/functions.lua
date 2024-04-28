@@ -1,13 +1,26 @@
 ----- Pulling Essentials -----
 VORPcore = exports.vorp_core:GetCore()
-VORPutils = {}
-TriggerEvent("getUtils", function(utils)
-  VORPutils = utils
-end)
-VORPMenu = {}
-TriggerEvent("vorp_menu:getData", function(cb)
-  VORPMenu = cb
-end)
+
+FeatherMenu =  exports['feather-menu'].initiate()
+BccUtils = exports['bcc-utils'].initiate()
+
+BCCHousingMenu = FeatherMenu:RegisterMenu('bcc:housing:mainmenu', {
+    top = '40%',
+    left = '20%',
+    ['720width'] = '500px',
+    ['1080width'] = '600px',
+    ['2kwidth'] = '700px',
+    ['4kwidth'] = '900px',
+    style = {},
+    contentslot = {
+        style = {
+            ['height'] = '300px',
+            ['min-height'] = '300px'
+        }
+    },
+    draggable = true
+})
+
 BccUtils = exports['bcc-utils'].initiate()
 MiniGame = exports['bcc-minigames'].initiate()
 
@@ -25,7 +38,7 @@ function GetPlayers()
 end
 
 function showManageOpt(x, y, z)
-  local PromptGroup = VORPutils.Prompts:SetupPromptGroup()
+  local PromptGroup = BccUtils.Prompts:SetupPromptGroup()
   local firstprompt = PromptGroup:RegisterPrompt(_U("openOwnerManage"), 0x760A9C6F, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
   while true do
     Wait(5)
@@ -35,7 +48,8 @@ function showManageOpt(x, y, z)
     if dist < 2 then
       PromptGroup:ShowGroup(_U("house"))
       if firstprompt:HasCompleted() then
-        HousingManagementMenu()
+        --HousingManagementMenu()
+        TriggerEvent('bcc-housing:openmenu')  -- Function to open the housing management menu
       end
     elseif dist > 200 then
       Wait(2000)
