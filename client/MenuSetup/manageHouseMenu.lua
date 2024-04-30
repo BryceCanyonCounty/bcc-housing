@@ -17,8 +17,7 @@ AddEventHandler('bcc-housing:MenuClose', function()
     end)
 end)
 
-
-AddEventHandler('bcc-housing:openmenu', function()
+AddEventHandler('bcc-housing:openmenu', function(tp)
     TriggerEvent('bcc-housing:MenuClose')
     BCCHousingMenu:Close()
     -- Register the main page for Housing
@@ -28,6 +27,7 @@ AddEventHandler('bcc-housing:openmenu', function()
         slot = 'header',
         style = {}
     })
+
     housingMainMenu:RegisterElement('line', {
         slot = "header",
         style = {}
@@ -62,7 +62,8 @@ AddEventHandler('bcc-housing:openmenu', function()
         label = _U("giveAccess"),
         style = {}
     }, function()
-        PlayerList('HousingManagementMenu')
+        -- To open from the house management or access giving menu
+        PlayerListMenu(tp, afterGivingAccess, "giveAccess")
     end)
 
     housingMainMenu:RegisterElement('button', {
@@ -83,7 +84,6 @@ AddEventHandler('bcc-housing:openmenu', function()
         label = _U("ledger"),
         style = {}
     }, function()
-        -- Assuming `HouseId` is globally available or you fetch it somehow before this call.
         if HouseId then
             TriggerEvent('bcc-housing:addLedger', HouseId)
         else
@@ -126,7 +126,7 @@ end
 RegisterNetEvent('bcc-housing:addLedger')
 AddEventHandler('bcc-housing:addLedger', function(houseId)
     local AddLedgerPage = BCCHousingMenu:RegisterPage('add_ledger_page')
-    local amountToInsert = nil  -- Variable to store the amount to insert
+    local amountToInsert = nil -- Variable to store the amount to insert
 
     -- Header for the ledger page
     AddLedgerPage:RegisterElement('header', {
@@ -156,7 +156,7 @@ AddEventHandler('bcc-housing:addLedger', function(houseId)
     }, function()
         if amountToInsert then
             TriggerServerEvent('bcc-housing:LedgerHandling', amountToInsert, houseId)
-            BCCHousingMenu:Close()  -- Close the menu after submitting
+            BCCHousingMenu:Close() -- Close the menu after submitting
         else
             print("Error: Amount not set or invalid.")
         end

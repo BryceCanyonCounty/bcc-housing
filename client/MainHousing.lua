@@ -19,16 +19,16 @@ AddEventHandler('vorp:SelectedCharacter', function()
 end)
 
 CreateThread(function() --Devmode area
-    --if Config.DevMode then
-    --RegisterCommand('HousingDev', function()
-    local player = GetPlayerServerId(tonumber(PlayerId()))           --credit vorp_admin
-    Wait(200)
-    TriggerServerEvent("bcc-housing:getPlayersInfo", player)         --credit vorp_admin
-    TriggerServerEvent('bcc-housing:AdminCheck')
-    TriggerServerEvent('bcc-housing:HotelDbRegistry')
-    TriggerServerEvent('bcc-housing:CheckIfHasHouse')
-    --end)
-    --end
+    if Config.DevMode then
+        RegisterCommand('HousingDev', function()
+            local player = GetPlayerServerId(tonumber(PlayerId())) --credit vorp_admin
+            Wait(200)
+            TriggerServerEvent("bcc-housing:getPlayersInfo", player) --credit vorp_admin
+            TriggerServerEvent('bcc-housing:AdminCheck')
+            TriggerServerEvent('bcc-housing:HotelDbRegistry')
+            TriggerServerEvent('bcc-housing:CheckIfHasHouse')
+        end)
+    end
 end)
 
 HouseBlips = {}                                                                    --stored for deletion on restart

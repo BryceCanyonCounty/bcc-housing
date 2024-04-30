@@ -1,14 +1,14 @@
 Config = {
     defaultlang = 'en_lang',                      --set your language here
     adminGroup = 'admin',                         --set your admin group here
-    DevMode = true,                               --False on live server
+    DevMode = false,                              --False on live server
     Setup = {
         MaxHousePerChar = 2,                      --Maximum allowed houses per character
     },
     TaxDay = 23,                                  --This is the number day of each month that taxes will be collected on
     TaxResetDay = 24,                             --This MUST be the day after TaxDay set above!!! (do not change either of these dates if the current date is one of the 2 for ex if its the 22 or 23rd day do not change these dates it will break the code)
     WebhookLink = '',                             --insert your webhook link here if you want webhooks
-    AdminManagementMenuCommand = 'HousingManger', --the name of the command for admins to manage all houses
+    AdminManagementMenuCommand = 'HousingManager', --the name of the command for admins to manage all houses
     Hotels = {
         {
             hotelId = 1,                                      --Make sure this is a unique number for each hotel (once set do not change it will break!)

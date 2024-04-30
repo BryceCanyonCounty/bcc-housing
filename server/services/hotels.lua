@@ -60,13 +60,13 @@ end)
 
 CreateThread(function()   --registering all inventories
     for k, v in pairs(Config.Hotels) do
-        VORPInv.removeInventory('bcc-housinginv:' .. v.hotelId)
-        Wait(50)
-        VORPInv.registerInventory('bcc-housinginv:' .. v.hotelId, _U("hotelInvName"), v.invSpace, true, false, true)
+        --VORPInv.removeInventory('bcc-housinginv:' .. v.hotelId)
+        --Wait(50)
+        VorpInv.registerInventory('bcc-housinginv:' .. v.hotelId, _U("hotelInvName"), v.invSpace, true, false, true)
     end
 end)
 
 RegisterServerEvent('bcc-housing:HotelInvOpen', function(hotelId)
     local _source = source
-    VORPInv.OpenInv(_source, 'bcc-housinginv:' .. hotelId)
+    VorpInv.OpenInv(_source, 'bcc-housinginv:' .. hotelId)
 end)

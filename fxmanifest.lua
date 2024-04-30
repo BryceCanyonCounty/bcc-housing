@@ -9,20 +9,20 @@ shared_scripts {
   'languages/*.lua'
 }
 
+client_scripts {
+  "client/functions.lua",
+  "client/MainHousing.lua",
+  "client/MenuSetup/*.lua",
+  'client/furnitureSpawning.lua'
+}
+
 server_scripts {
   "@oxmysql/lib/MySQL.lua",
   'server/helpers/functions.lua',
   'server/services/dbupdater.lua',
   'server/helpers/*.lua',
   'server/services/*.lua',
-  "/server/main.lua"
-}
-
-client_scripts {
-  "/client/functions.lua",
-  "/client/MainHousing.lua",
-  "/client/MenuSetup/*.lua",
-  '/client/furnitureSpawning.lua'
+  "server/main.lua"
 }
 
 files {
@@ -35,7 +35,8 @@ dependency {
   'vorp_inventory',
   'vorp_character',
   'bcc-utils',
-  'bcc-doorlocks'
+  'bcc-doorlocks',
+  'feather-menu'
 }
 
 -- u can set doors but if u set one with an id first it will break so u have to set one without an id first then add id doors

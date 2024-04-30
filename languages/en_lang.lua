@@ -11,9 +11,10 @@ Locales["en_lang"] = {
     CharacterStaticId = 'Character Static ID',
     ownerHouseId = 'Owner House Id ',
     selectThisHouse = "Select this house?",
-    adminManagmentMenu = "Admin House Mangment",
+    adminManagmentMenu = "Admin House Management",
     StaticId = 'Select This Player?',
     StaticId_desc = 'Player List',
+    SelectOwner = 'Select from this list of players.',
     setRadius = 'Set Radius',
     setRadius_desc = 'Set Radius? This will be the maximum distance the house owner will be able to set furniture etc.',
     InvalidInput = 'Invalid Input',
@@ -128,13 +129,13 @@ Locales["en_lang"] = {
     promptLeaveHotel = 'Leave Hotel',
 
     --- Housing Opts ---
-    nonTp = "Non-TP House",
+    nonTp = "Create Non-TP House",
     nonTp_desc = "Create a normal house that you can walk into!",
-    Tp = "Tp House",
+    Tp = "Create Tp House",
     Tp_desc = "Create a teleport house that you will have to walk upto the coords, and use a prompt to be teleported into the interior!",
     SelectInterior = "Select TP Interior",
     SelectInterior_desc = "Select the interior for the teleport house",
-
+    HousingOptionDescr = 'Select desired option from this list',
     Int1 = 'Housing Interior 1',
     Int2 = 'Housing Interior 2',
     enterTpHouse = 'Enter Tp House',
@@ -150,5 +151,6 @@ Locales["en_lang"] = {
     changeHouseInvLimit_desc = 'Change this houses allowed inventory space.',
     changeHouseTaxes = 'Change House Taxes?',
     changeHouseTaxes_desc = 'Change the amount of taxes the house has to pay.',
-    housesDeleted = 'House deleted!'
+    housesDeleted = 'House deleted!',
+    backButton = 'Back'
 }

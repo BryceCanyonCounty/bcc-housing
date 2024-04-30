@@ -9,30 +9,21 @@ function FurnitureMenu()
         style = {}
     })
 
-    -- Define the furniture items with their actions
-    local furnitureItems = {
-        { label = _U("chairs"),        desc = _U("chairs_desc"),        action = 'Chairs' },
-        { label = _U("benches"),       desc = _U("benches_desc"),       action = 'Benches' },
-        { label = _U("tables"),        desc = _U("tables_desc"),        action = 'Tables' },
-        { label = _U("beds"),          desc = _U("beds_desc"),          action = 'Beds' },
-        { label = _U("lights"),        desc = _U("lights_desc"),        action = 'Lights' },
-        { label = _U("post"),          desc = _U("post_desc"),          action = 'Post' },
-        { label = _U("couch"),         desc = _U("couch_desc"),         action = 'Couch' },
-        { label = _U("seat"),          desc = _U("seat_desc"),          action = 'Seat' },
-        { label = _U("shelf"),         desc = _U("shelf_desc"),         action = 'Shelf' },
-        { label = _U("sellOwnerFurn"), desc = _U("sellOwnerFurn_desc"), action = 'Sellownerfurn' }
-    }
+    -- Register a back button to return to the previous menu
+    furnitureMainMenu:RegisterElement('button', {
+        label = "Buy furniture",
+        style = {}
+    }, function()
+        buyFurnitureMenu()
+    end)
 
-    -- Register elements for each furniture item
-    for _, item in ipairs(furnitureItems) do
-        furnitureMainMenu:RegisterElement('button', {
-            label = item.label,
-            style = {},
-        }, function()
-            -- Call to open the specific furniture type menu
-            IndFurnitureTypeMenu(item.action)
-        end)
-    end
+    -- Register a back button to return to the previous menu
+    furnitureMainMenu:RegisterElement('button', {
+        label = "Sell furniture",
+        style = {}
+    }, function()
+        SellOwnedFurnitureMenu()
+    end)
 
     -- Register a back button to return to the previous menu
     furnitureMainMenu:RegisterElement('button', {
@@ -48,10 +39,85 @@ function FurnitureMenu()
     })
 end
 
+function buyFurnitureMenu()
+    BCCHousingMenu:Close() -- Ensures any previously opened menu is closed
+    local buyFurnitureMenu = BCCHousingMenu:RegisterPage("bcc-housing-furniture-menu")
+
+    -- Header for the furniture menu
+    buyFurnitureMenu:RegisterElement('header', {
+        value = _U("creationMenuName"),
+        slot = 'header',
+        style = {}
+    })
+
+    -- Define the furniture items with their actions
+    local furnitureItems = { {
+        label = _U("chairs"),
+        desc = _U("chairs_desc"),
+        action = 'Chairs'
+    }, {
+        label = _U("benches"),
+        desc = _U("benches_desc"),
+        action = 'Benches'
+    }, {
+        label = _U("tables"),
+        desc = _U("tables_desc"),
+        action = 'Tables'
+    }, {
+        label = _U("beds"),
+        desc = _U("beds_desc"),
+        action = 'Beds'
+    }, {
+        label = _U("lights"),
+        desc = _U("lights_desc"),
+        action = 'Lights'
+    }, {
+        label = _U("post"),
+        desc = _U("post_desc"),
+        action = 'Post'
+    }, {
+        label = _U("couch"),
+        desc = _U("couch_desc"),
+        action = 'Couch'
+    }, {
+        label = _U("seat"),
+        desc = _U("seat_desc"),
+        action = 'Seat'
+    }, {
+        label = _U("shelf"),
+        desc = _U("shelf_desc"),
+        action = 'Shelf'
+    } }
+
+    -- Register elements for each furniture item
+    for _, item in ipairs(furnitureItems) do
+        buyFurnitureMenu:RegisterElement('button', {
+            label = item.label,
+            style = {}
+        }, function()
+            -- Call to open the specific furniture type menu
+            IndFurnitureTypeMenu(item.action)
+        end)
+    end
+
+    -- Register a back button to return to the previous menu
+    buyFurnitureMenu:RegisterElement('button', {
+        label = "Back",
+        style = {}
+    }, function()
+        FurnitureMenu()
+    end)
+
+    -- Open the menu with the configured main page
+    BCCHousingMenu:Open({
+        startupPage = buyFurnitureMenu
+    })
+end
+
 function IndFurnitureTypeMenu(type)
     BCCHousingMenu:Close() -- Close any existing Feather menus
-    local furnConfigTable = Config.Furniture[type]
 
+    local furnConfigTable = Config.Furniture[type]
     if not furnConfigTable then
         print("Error: Invalid furniture type '" .. type .. "'. Available types are:")
         for key in pairs(Config.Furniture) do
@@ -61,34 +127,28 @@ function IndFurnitureTypeMenu(type)
     end
 
     local furnitureTypeMenu = BCCHousingMenu:RegisterPage("bcc-housing-furniture-type-menu")
-
-    -- Add a header to show which type of furniture is being selected
     furnitureTypeMenu:RegisterElement('header', {
         value = _U("creationMenuName") .. " - " .. _U(type),
         slot = 'header',
         style = {}
     })
 
-    -- Register elements for each furniture item available in the chosen category
     for k, v in pairs(furnConfigTable) do
         furnitureTypeMenu:RegisterElement('button', {
             label = v.displayName .. " - " .. _U("cost") .. tostring(v.costToBuy),
-            style = {},
+            style = {}
         }, function()
-            -- Call a function to handle placing the furniture into the world
             PlaceFurnitureIntoWorldMenu(v.propModel, v.costToBuy, v.displayName, v.sellFor)
         end)
     end
 
-    -- Register a back button on the menu that routes back to the main furniture menu
     furnitureTypeMenu:RegisterElement('button', {
         label = "Back",
         style = {}
     }, function()
-        FurnitureMenu() -- Assumes FurnitureMenu is the function to return to the main furniture menu
+        FurnitureMenu()
     end)
 
-    -- Open the furniture type menu with the configured page
     BCCHousingMenu:Open({
         startupPage = furnitureTypeMenu
     })
@@ -96,16 +156,19 @@ end
 
 function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
     menuCheck = true
-    local plc = GetEntityCoords(PlayerPedId())
-    local createdObject = CreateObject(model, plc.x, plc.y + 2, plc.z, true, true)
+    local playerPed = PlayerPedId()
+    local placementCoords = GetEntityCoords(playerPed)
+    local createdObject = CreateObject(model, placementCoords.x, placementCoords.y + 2, placementCoords.z, true, true,
+        true)
     SetEntityCollision(createdObject, false, true)
     TriggerEvent('bcc-housing:CheckIfInRadius', createdObject)
 
+    local amountToMove = 0.1 -- default movement precision
+
     local furniturePlacementMenu = BCCHousingMenu:RegisterPage('furniture_placement_menu')
-    local amountToMove = 0
 
     furniturePlacementMenu:RegisterElement('header', {
-        value = _U("PlaceFurnitureTitle"),
+        value = "Place Furniture",
         slot = 'header',
         style = {}
     })
@@ -127,7 +190,7 @@ function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
     for _, direction in ipairs(directions) do
         furniturePlacementMenu:RegisterElement('button', {
             label = _U(direction),
-            style = {},
+            style = {}
         }, function()
             MoveFurniture(createdObject, direction, amountToMove)
         end)
@@ -136,11 +199,18 @@ function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
     -- Confirm placement
     furniturePlacementMenu:RegisterElement('button', {
         label = _U("Confirm"),
-        style = {},
+        style = {}
     }, function()
+        SetEntityCollision(createdObject, true, true)
         if ConfirmFurniturePlacement(createdObject, model, cost, displayName, sellPrice) then
+            FreezeEntityPosition(createdObject, true)
             BCCHousingMenu:Close()
-            furnitureObj = createdObject
+            -- Successful placement handling
+            TriggerServerEvent('bcc-housing:SaveFurnitureData', {
+                model = model,
+                coords = GetEntityCoords(createdObject),
+                heading = GetEntityHeading(createdObject)
+            })
         else
             DeleteObject(createdObject)
             BCCHousingMenu:Close()
@@ -150,7 +220,7 @@ function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
 
     -- Register a back button
     furniturePlacementMenu:RegisterElement('button', {
-        label = _U("BackButton"),
+        label = _U("backButton"),
         style = {}
     }, function()
         DeleteObject(createdObject)
@@ -164,11 +234,32 @@ end
 
 function MoveFurniture(obj, direction, moveAmount)
     local coords = GetEntityCoords(obj)
-    if direction == 'forward' then
+    local rot = GetEntityRotation(obj, 2) -- Get rotation in degrees.
+
+    if direction == "forward" then
         SetEntityCoords(obj, coords.x, coords.y + moveAmount, coords.z)
-    elseif direction == 'backward' then
+    elseif direction == "backward" then
         SetEntityCoords(obj, coords.x, coords.y - moveAmount, coords.z)
-        -- Add other direction handling here
+    elseif direction == "left" then
+        SetEntityCoords(obj, coords.x - moveAmount, coords.y, coords.z)
+    elseif direction == "right" then
+        SetEntityCoords(obj, coords.x + moveAmount, coords.y, coords.z)
+    elseif direction == "up" then
+        SetEntityCoords(obj, coords.x, coords.y, coords.z + moveAmount)
+    elseif direction == "down" then
+        SetEntityCoords(obj, coords.x, coords.y, coords.z - moveAmount)
+    elseif direction == "rotatepitch" then
+        SetEntityRotation(obj, rot.x + moveAmount, rot.y, rot.z, 2, true)
+    elseif direction == "rotatebackward" then
+        SetEntityRotation(obj, rot.x - moveAmount, rot.y, rot.z, 2, true)
+    elseif direction == "rotateright" then
+        SetEntityRotation(obj, rot.x, rot.y + moveAmount, rot.z, 2, true)
+    elseif direction == "rotateleft" then
+        SetEntityRotation(obj, rot.x, rot.y - moveAmount, rot.z, 2, true)
+    elseif direction == "rotateYaw" then
+        SetEntityRotation(obj, rot.x, rot.y, rot.z + moveAmount, 2, true)
+    elseif direction == "rotateYawLeft" then
+        SetEntityRotation(obj, rot.x, rot.y, rot.z - moveAmount, 2, true)
     end
 end
 
@@ -189,7 +280,7 @@ function ConfirmFurniturePlacement(obj, model, cost, displayName, sellPrice)
     return false
 end
 
-function closeToHosue(object) --make sure the obj is close to house before placing
+function closeToHouse(object) -- make sure the obj is close to house before placing
     local coords = GetEntityCoords(object)
     local compCoords = HouseCoords
     local radius = tonumber(HouseRadius)
@@ -202,73 +293,104 @@ function closeToHosue(object) --make sure the obj is close to house before placi
             radius = Config.TpInteriors.Interior2.furnRadius
         end
     end
-    if GetDistanceBetweenCoords(tonumber(coords.x), tonumber(coords.y), tonumber(coords.z), tonumber(compCoords.x), tonumber(compCoords.y), tonumber(compCoords.z), false) <= radius then
+    if GetDistanceBetweenCoords(tonumber(coords.x), tonumber(coords.y), tonumber(coords.z), tonumber(compCoords.x),
+            tonumber(compCoords.y), tonumber(compCoords.z), false) <= radius then
         return true
     else
         return false
     end
 end
 
-RegisterNetEvent('bcc-housing:ClientFurnBought',
-    function(furnitureCreatedTable, entId)                                              --event to store the furn after it has been paid for
-        TriggerServerEvent('bcc-housing:InsertFurnitureIntoDB', furnitureCreatedTable, HouseId)
-        TriggerServerEvent('bcc-housing:StoreFurnForDeletion', entId, HouseId)
-        table.insert(CreatedFurniture, furnObj)
-        furnObj = nil
-        VORPcore.NotifyRightTip(_U("furnPlaced"), 4000)
-    end)
+RegisterNetEvent('bcc-housing:ClientFurnBought', function(furnitureCreatedTable, entId)
+    TriggerServerEvent('bcc-housing:InsertFurnitureIntoDB', furnitureCreatedTable, HouseId)
+    TriggerServerEvent('bcc-housing:StoreFurnForDeletion', entId, HouseId)
+    table.insert(CreatedFurniture, furnObj)
+    furnObj = nil
+    VORPcore.NotifyRightTip(_U("furnPlaced"), 4000)
+end)
 
 RegisterNetEvent('bcc-housing:ClientFurnBoughtFail', function()
     DeleteObject(furnObj)
     furnObj = nil
 end)
 
-RegisterNetEvent('bcc-housing:SellOwnedFurnMenu', function(furnTable)
-    BCCHousingMenu:Close() -- Close any existing Feather menus
+-- Function to trigger server event
+function GetOwnedFurniture(houseId)
+    print("Requesting furniture for house ID:", houseId) -- Debug print
+    TriggerServerEvent('bcc-housing:GetOwnerFurniture', houseId)
+end
+
+-- Helper function to handle the sale of furniture (implement as needed)
+function SellFurniture(furniture)
+    print("Selling furniture:", furniture.model)
+    -- You can add server event here to handle the backend sale process
+    TriggerServerEvent('bcc-housing:SellFurniture', furniture)
+end
+
+function SellOwnedFurnitureMenu(furnTable)
+    -- Close any previously opened menus
+    BCCHousingMenu:Close()
+
+    -- Initialize the sell furniture menu page
     local sellFurnMenu = BCCHousingMenu:RegisterPage("bcc-housing-sell-furniture-menu")
 
-    -- Add a header to the menu for clarity
+    -- Add a header for clarity
     sellFurnMenu:RegisterElement('header', {
         value = _U("sellOwnerFurn"),
         slot = 'header',
         style = {}
     })
 
-    -- Register a button for each furniture item in the provided table
-    for k, v in pairs(furnTable) do
-        sellFurnMenu:RegisterElement('button', {
-            label = v.displayName .. " - " .. _U("sellFor") .. tostring(v.sellprice),
-            style = {},
-        }, function()
-            -- Logic to handle selling furniture
-            for idx, entity in pairs(CreatedFurniture) do
-                local storedFurnCoord = GetEntityCoords(entity)
-                local firstVec = vector3(storedFurnCoord.x, storedFurnCoord.y, storedFurnCoord.z)
-                local secondVec = vector3(v.coords.x, v.coords.y, v.coords.z)
-                if #(firstVec - secondVec) < 0.5 then
-                    table.remove(CreatedFurniture, idx)
-                    DeleteEntity(entity)
-                    break
+    -- Check if the furniture table is not nil and has items
+    if furnTable and #furnTable > 0 then
+        for k, v in pairs(furnTable) do
+            sellFurnMenu:RegisterElement('button', {
+                label = v.displayName .. " - " .. _U("sellFor") .. tostring(v.sellprice),
+                style = {}
+            }, function()
+                -- Logic to handle selling furniture
+                local sold = false
+                for idx, entity in ipairs(CreatedFurniture) do
+                    local storedFurnCoord = GetEntityCoords(entity)
+                    local dist = Vdist(storedFurnCoord.x, storedFurnCoord.y, storedFurnCoord.z, v.coords.x, v.coords.y,
+                        v.coords.z)
+                    if dist < 1.0 then -- Check if the distance is less than 1 meter
+                        DeleteEntity(entity)
+                        table.remove(CreatedFurniture, idx)
+                        TriggerServerEvent('bcc-housing:FurnSoldRemoveFromTable', v, HouseId, furnTable, k)
+                        VORPcore.NotifyRightTip(_U("furnSold"), 4000)
+                        sold = true
+                        break
+                    end
                 end
-            end
-            TriggerServerEvent('bcc-housing:FurnSoldRemoveFromTable', v, HouseId, furnTable, k)
-        end)
+                if not sold then
+                    VORPcore.NotifyRightTip(_U("furnNotSold"), 4000) -- Notify if the furniture was not found or could not be sold
+                end
+            end)
+        end
+    else
+        TextDisplay = sellFurnMenu:RegisterElement('textdisplay', {
+            value = "No furniture Available",
+            style = {}
+        })
     end
 
-    -- Register a back button on the menu that routes back to the main furniture menu
+    -- Add a back button to return to the main furniture menu
     sellFurnMenu:RegisterElement('button', {
         label = "Back",
         style = {}
     }, function()
-        FurnitureMenu() -- Assumes FurnitureMenu is the function to return to the main furniture menu
+        FurnitureMenu()
     end)
 
-    -- Open the furniture selling menu with the configured page
+    -- Open the menu with the configured page
     BCCHousingMenu:Open({
         startupPage = sellFurnMenu
     })
-end)
+end
+
+--
 
 RegisterNetEvent('bcc-housing:ClientCloseAllMenus', function()
-    MenuData.CloseAll()
+    BCCHousingMenu:Close()
 end)
