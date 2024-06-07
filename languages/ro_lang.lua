@@ -14,6 +14,7 @@ Locales["ro_lang"] = {
 	adminManagmentMenu = "Administrare Case Admin",
 	StaticId = 'Selecteaza acest Jucator?',
 	StaticId_desc = 'Lista Jucatori',
+    SelectOwner = 'Select from this list of players.',
 	setRadius = 'Seteaza Raza',
 	setRadius_desc = 'Seteaza Raza? Aceasta va fi distanta maxima la care proprietarul casei va putea sa seteze mobilierul etc.',
 	InvalidInput = 'Intrare Nevalida',
@@ -150,5 +151,6 @@ Locales["ro_lang"] = {
 	changeHouseInvLimit_desc = 'Schimba spatiul de inventar permis al acestei case.',
 	changeHouseTaxes = 'Schimba Taxele Casei?',
 	changeHouseTaxes_desc = 'Schimba suma taxelor pe care casa trebuie sa le plateasca.',
-	housesDeleted = 'Casa stearsa!'
+	housesDeleted = 'Casa stearsa!',
+	backButton = 'Back'
 }

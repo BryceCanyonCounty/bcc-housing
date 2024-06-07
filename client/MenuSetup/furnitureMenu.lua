@@ -1,275 +1,286 @@
 function FurnitureMenu()
-    Inmenu = false
-    VORPMenu.CloseAll()
-    local elements = {
-        { label = _U("chairs"), value = 'chairs', desc = _U("chairs_desc") },
-        { label = _U("benches"), value = 'benches', desc = _U("benches_desc") },
-        { label = _U("tables"), value = 'tables', desc = _U("tables_desc") },
-        { label = _U("beds"), value = 'beds', desc = _U("beds_desc") },
-        { label = _U("lights"), value = 'lights', desc = _U("lights_desc") },
-        { label = _U("post"), value = 'post', desc = _U("post_desc") },
-        { label = _U("couch"), value = 'couch', desc = _U("couch_desc") },
-        { label = _U("seat"), value = 'seat', desc = _U("seat_desc") },
-        { label = _U("shelf"), value = 'shelf', desc = _U("shelf_desc") },
-        { label = _U("sellOwnerFurn"), value = 'sellownerfurn', desc = _U("sellOwnerFurn_desc") }
-    }
+    BCCHousingMenu:Close() -- Ensures any previously opened menu is closed
+    local furnitureMainMenu = BCCHousingMenu:RegisterPage("bcc-housing-furniture-menu")
 
-    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
-        {
-            title = _U("creationMenuName"),
-            align = 'top-left',
-            elements = elements,
-            lastmenu   = 'HousingManagementMenu'
-        },
-        function(data, menu)
-            if data.current == 'backup' then
-                _G[data.trigger]()
-            end
-            local selectedOption = {
-                ['chairs'] = function()
-                    IndFurnitureTypeMenu('chairs')
-                end,
-                ['benches'] = function()
-                    IndFurnitureTypeMenu('benches')
-                end,
-                ['tables'] = function()
-                    IndFurnitureTypeMenu('tables')
-                end,
-                ['beds'] = function()
-                    IndFurnitureTypeMenu('beds')
-                end,
-                ['lights'] = function()
-                    IndFurnitureTypeMenu('lights')
-                end,
-                ['post'] = function()
-                    IndFurnitureTypeMenu('post')
-                end,
-                ['couch'] = function()
-                    IndFurnitureTypeMenu('couch')
-                end,
-                ['seat'] = function()
-                    IndFurnitureTypeMenu('seat')
-                end,
-                ['shelf'] = function()
-                    IndFurnitureTypeMenu('shelf')
-                end,
-                ['sellownerfurn'] = function()
-                    TriggerServerEvent('bcc-housing:GetOwnerFurniture', HouseId)
-                    VORPMenu.CloseAll()
-                end
-            }
+    -- Header for the furniture menu
+    furnitureMainMenu:RegisterElement('header', {
+        value = _U("creationMenuName"),
+        slot = 'header',
+        style = {}
+    })
 
-            if selectedOption[data.current.value] then
-                selectedOption[data.current.value]()
-            end
-        end,
-        function(data, menu)
-            menu.close()
-        end)
+    -- Register a back button to return to the previous menu
+    furnitureMainMenu:RegisterElement('button', {
+        label = "Buy furniture",
+        style = {}
+    }, function()
+        buyFurnitureMenu()
+    end)
+
+    -- Register a back button to return to the previous menu
+    furnitureMainMenu:RegisterElement('button', {
+        label = "Sell furniture",
+        style = {}
+    }, function()
+        SellOwnedFurnitureMenu()
+    end)
+
+    -- Register a back button to return to the previous menu
+    furnitureMainMenu:RegisterElement('button', {
+        label = "Back",
+        style = {}
+    }, function()
+        TriggerEvent('bcc-housing:openmenu')
+    end)
+
+    -- Open the menu with the configured main page
+    BCCHousingMenu:Open({
+        startupPage = furnitureMainMenu
+    })
 end
 
-local menuCheck = false
-function IndFurnitureTypeMenu(type)
-    local elements, furnConfigTable = {}, nil
-    menuCheck = false
-    VORPMenu.CloseAll()
-    local selectedFurnType = {
-        ['chairs'] = function()
-            furnConfigTable = Config.Furniture.Chairs
-        end,
-        ['benches'] = function()
-            furnConfigTable = Config.Furniture.Benches
-        end,
-        ['tables'] = function()
-            furnConfigTable = Config.Furniture.Tables
-        end,
-        ['beds'] = function()
-            furnConfigTable = Config.Furniture.Beds
-        end,
-        ['lights'] = function()
-            furnConfigTable = Config.Furniture.Lights
-        end,
-        ['post'] = function()
-            furnConfigTable = Config.Furniture.Post
-        end,
-        ['couch'] = function()
-            furnConfigTable = Config.Furniture.Couch
-        end,
-        ['seat'] = function()
-            furnConfigTable = Config.Furniture.Seat
-        end,
-        ['shelf'] = function()
-            furnConfigTable = Config.Furniture.Shelf
-        end
-    }
+function buyFurnitureMenu()
+    BCCHousingMenu:Close() -- Ensures any previously opened menu is closed
+    local buyFurnitureMenu = BCCHousingMenu:RegisterPage("bcc-housing-furniture-menu")
 
-    if selectedFurnType[type] then
-        selectedFurnType[type]()
+    -- Header for the furniture menu
+    buyFurnitureMenu:RegisterElement('header', {
+        value = _U("creationMenuName"),
+        slot = 'header',
+        style = {}
+    })
+
+    -- Define the furniture items with their actions
+    local furnitureItems = { {
+        label = _U("chairs"),
+        desc = _U("chairs_desc"),
+        action = 'Chairs'
+    }, {
+        label = _U("benches"),
+        desc = _U("benches_desc"),
+        action = 'Benches'
+    }, {
+        label = _U("tables"),
+        desc = _U("tables_desc"),
+        action = 'Tables'
+    }, {
+        label = _U("beds"),
+        desc = _U("beds_desc"),
+        action = 'Beds'
+    }, {
+        label = _U("lights"),
+        desc = _U("lights_desc"),
+        action = 'Lights'
+    }, {
+        label = _U("post"),
+        desc = _U("post_desc"),
+        action = 'Post'
+    }, {
+        label = _U("couch"),
+        desc = _U("couch_desc"),
+        action = 'Couch'
+    }, {
+        label = _U("seat"),
+        desc = _U("seat_desc"),
+        action = 'Seat'
+    }, {
+        label = _U("shelf"),
+        desc = _U("shelf_desc"),
+        action = 'Shelf'
+    } }
+
+    -- Register elements for each furniture item
+    for _, item in ipairs(furnitureItems) do
+        buyFurnitureMenu:RegisterElement('button', {
+            label = item.label,
+            style = {}
+        }, function()
+            -- Call to open the specific furniture type menu
+            IndFurnitureTypeMenu(item.action)
+        end)
     end
+
+    -- Register a back button to return to the previous menu
+    buyFurnitureMenu:RegisterElement('button', {
+        label = "Back",
+        style = {}
+    }, function()
+        FurnitureMenu()
+    end)
+
+    -- Open the menu with the configured main page
+    BCCHousingMenu:Open({
+        startupPage = buyFurnitureMenu
+    })
+end
+
+function IndFurnitureTypeMenu(type)
+    BCCHousingMenu:Close() -- Close any existing Feather menus
+
+    local furnConfigTable = Config.Furniture[type]
+    if not furnConfigTable then
+        print("Error: Invalid furniture type '" .. type .. "'. Available types are:")
+        for key in pairs(Config.Furniture) do
+            print(" - " .. key)
+        end
+        return -- Exit the function if the type is invalid
+    end
+
+    local furnitureTypeMenu = BCCHousingMenu:RegisterPage("bcc-housing-furniture-type-menu")
+    furnitureTypeMenu:RegisterElement('header', {
+        value = _U("creationMenuName") .. " - " .. _U(type),
+        slot = 'header',
+        style = {}
+    })
 
     for k, v in pairs(furnConfigTable) do
-        elements[#elements + 1] = {
-            label = v.displayName,
-            value = "furnItem" .. k,
-            desc = _U("cost") .. tostring(v.costToBuy),
-            info = v
-        }
+        furnitureTypeMenu:RegisterElement('button', {
+            label = v.displayName .. " - " .. _U("cost") .. tostring(v.costToBuy),
+            style = {}
+        }, function()
+            PlaceFurnitureIntoWorldMenu(v.propModel, v.costToBuy, v.displayName, v.sellFor)
+        end)
     end
 
-    VORPMenu.Open('default', GetCurrentResourceName(), 'menuapi',
-        {
-            title      = _U("creationMenuName"),
-            subtext    = _U("StaticId_desc"),
-            align      = 'top-left',
-            elements   = elements,
-            lastmenu   = 'FurnitureMenu',
-            itemHeight = "4vh",
-        },
-        function(data, menu)
-            if data.current == 'backup' then
-                _G[data.trigger]()
-            end
-            if data.current.value then
-                if not menuCheck then
-                    PlaceFurnitureIntoWorldMenu(data.current.info.propModel, data.current.info.costToBuy, data.current.info.displayName, data.current.info.sellFor)
-                end
-            end
-        end,
-        function(data, menu)
-            menu.close()
-            FurnitureMenu()
-        end)
+    furnitureTypeMenu:RegisterElement('button', {
+        label = "Back",
+        style = {}
+    }, function()
+        FurnitureMenu()
+    end)
+
+    BCCHousingMenu:Open({
+        startupPage = furnitureTypeMenu
+    })
 end
 
-local furnObj = nil
 function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
     menuCheck = true
-    local plc, amountToMove = GetEntityCoords(PlayerPedId()), 0
-    local createdObject = CreateObject(model, plc.x, plc.y + 2, plc.z, true, true)
+    local playerPed = PlayerPedId()
+    local placementCoords = GetEntityCoords(playerPed)
+    local createdObject = CreateObject(model, placementCoords.x, placementCoords.y + 2, placementCoords.z, true, true,
+        true)
     SetEntityCollision(createdObject, false, true)
     TriggerEvent('bcc-housing:CheckIfInRadius', createdObject)
 
-    VORPMenu.CloseAll()
-    local elements = {
-        { label = _U("amountToMove"), value = 0, desc = _U("amountToMove_desc"), type = 'slider', min = 0, max = 5, hop = 0.1 }, --Thanks to jannings for this line of code
-        { label = _U("forward"), value = 'forward', desc = _U("forward_desc") },
-        { label = _U("backward"), value = 'backward', desc = _U("backward_desc") },
-        { label = _U("left"), value = 'left', desc = _U("left_desc") },
-        { label = _U("right"), value = 'right', desc = _U("right_desc") },
-        { label = _U("up"), value = 'up', desc = _U("up_desc") },
-        { label = _U("down"), value = 'down', desc = _U("down_desc") },
-        { label = _U("rotatepitch"), value = 'rotatepitch', desc = _U("rotatepitch_desc") },
-        { label = _U("rotatebackward"), value = 'rotatebackward', desc = _U("rotatebackward_desc") },
-        { label = _U("rotateright"), value = 'rotateright', desc = _U("rotateright_desc") },
-        { label = _U("rotateleft"), value = 'rotateleft', desc = _U("rotateleft_desc") },
-        { label = _U("rotateYaw"), value = 'rotateyaw', desc = _U("rotateYaw_desc") },
-        { label = _U("rotateYawLeft"), value = 'rotateyawleft', desc = _U("rotateYawLeft_desc") },
-        { label = _U("Confirm"), value = 'confirm', desc = "" }
-    }
+    local amountToMove = 0.1 -- default movement precision
 
-    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
-        {
-            title      = _U("creationMenuName"),
-            subtext    = _U("StaticId_desc"),
-            align      = 'top-left',
-            elements   = elements,
-            lastmenu   = 'FurnitureMenu',
-            itemHeight = "4vh",
-        },
-        function(data, menu)
-            if data.current == 'backup' then
-                DeleteObject(createdObject)
-                _G[data.trigger]()
-            end
-            local selectedOption = {
-                ['forward'] = function()
-                    local co = GetEntityCoords(createdObject)
-                    SetEntityCoords(createdObject, co.x, co.y + amountToMove, co.z)
-                end,
-                ['backward'] = function()
-                    local co = GetEntityCoords(createdObject)
-                    SetEntityCoords(createdObject, co.x, co.y - amountToMove, co.z)
-                end,
-                ['left'] = function()
-                    local co = GetEntityCoords(createdObject)
-                    SetEntityCoords(createdObject, co.x - amountToMove, co.y, co.z)
-                end,
-                ['right'] = function()
-                    local co = GetEntityCoords(createdObject)
-                    SetEntityCoords(createdObject, co.x + amountToMove, co.y, co.z)
-                end,
-                ['up'] = function()
-                    local co = GetEntityCoords(createdObject)
-                    SetEntityCoords(createdObject, co.x, co.y, co.z + amountToMove)
-                end,
-                ['down'] = function()
-                    local co = GetEntityCoords(createdObject)
-                    SetEntityCoords(createdObject, co.x, co.y, co.z - amountToMove)
-                end,
-                ['rotatepitch'] = function()
-                    local cr = GetEntityRotation(createdObject)
-                    local pitch, roll, yaw = table.unpack(cr)
-                    SetEntityRotation(createdObject, pitch + amountToMove, roll, yaw)
-                end,
-                ['rotatebackward'] = function()
-                    local cr = GetEntityRotation(createdObject)
-                    local pitch, roll, yaw = table.unpack(cr)
-                    SetEntityRotation(createdObject, pitch - amountToMove, roll, yaw)
-                end,
-                ['rotateright'] = function()
-                    local cr = GetEntityRotation(createdObject)
-                    local pitch, roll, yaw = table.unpack(cr)
-                    SetEntityRotation(createdObject, pitch, roll + amountToMove, yaw)
-                end,
-                ['rotateleft'] = function()
-                    local cr = GetEntityRotation(createdObject)
-                    local pitch, roll, yaw = table.unpack(cr)
-                    SetEntityRotation(createdObject, pitch, roll - amountToMove, yaw)
-                end,
-                ['rotateyaw'] = function()
-                    local cr = GetEntityRotation(createdObject)
-                    local pitch, roll, yaw = table.unpack(cr)
-                    SetEntityRotation(createdObject, pitch, roll, yaw + amountToMove)
-                end,
-                ['rotateyawleft'] = function()
-                    local cr = GetEntityRotation(createdObject)
-                    local pitch, roll, yaw = table.unpack(cr)
-                    SetEntityRotation(createdObject, pitch, roll, yaw - amountToMove)
-                end,
-                ['confirm'] = function()
-                    local close = closeToHosue(createdObject)
-                    if close then
-                        SetEntityCollision(createdObject, true, true)
-                        FreezeEntityPosition(createdObject)
-                        local co = GetEntityCoords(createdObject)
-                        local coords = { x = co.x, y = co.y, z = co.z, h = GetEntityHeading(createdObject) }
-                        local cr = GetEntityRotation(createdObject)
-                        local furnitureCreatedTable = { model = model, coords = coords, rotation = cr, displayName = displayName, sellprice = sellPrice }
-                        local entId = NetworkGetNetworkIdFromEntity(createdObject)
-                        furnObj = createdObject
-                        TriggerServerEvent('bcc-housing:BuyFurn', cost, entId, furnitureCreatedTable)
-                    else
-                        VORPcore.NotifyRightTip(_U("toFar"), 4000)
-                        DeleteObject(createdObject)
-                    end
-                    menuCheck = false
-                    VORPMenu.CloseAll()
-                end
-            }
+    local furniturePlacementMenu = BCCHousingMenu:RegisterPage('furniture_placement_menu')
 
-            if selectedOption[data.current.value] then
-                selectedOption[data.current.value]()
-            else
-                amountToMove = data.current.value
-            end
-        end,
-        function(data, menu)
-            menu.close()
-            FurnitureMenu()
+    furniturePlacementMenu:RegisterElement('header', {
+        value = "Place Furniture",
+        slot = 'header',
+        style = {}
+    })
+
+    -- Slider for adjustment precision
+    furniturePlacementMenu:RegisterElement('slider', {
+        label = _U("amountToMove"),
+        min = 0,
+        max = 5,
+        step = 0.1,
+        value = amountToMove
+    }, function(data)
+        amountToMove = data.value
+    end)
+
+    -- Movement controls
+    local directions = { 'forward', 'backward', 'left', 'right', 'up', 'down', 'rotatepitch', 'rotatebackward',
+        'rotateright', 'rotateleft', 'rotateYaw', 'rotateYawLeft' }
+    for _, direction in ipairs(directions) do
+        furniturePlacementMenu:RegisterElement('button', {
+            label = _U(direction),
+            style = {}
+        }, function()
+            MoveFurniture(createdObject, direction, amountToMove)
         end)
+    end
+
+    -- Confirm placement
+    furniturePlacementMenu:RegisterElement('button', {
+        label = _U("Confirm"),
+        style = {}
+    }, function()
+        SetEntityCollision(createdObject, true, true)
+        if ConfirmFurniturePlacement(createdObject, model, cost, displayName, sellPrice) then
+            FreezeEntityPosition(createdObject, true)
+            BCCHousingMenu:Close()
+            -- Successful placement handling
+            TriggerServerEvent('bcc-housing:SaveFurnitureData', {
+                model = model,
+                coords = GetEntityCoords(createdObject),
+                heading = GetEntityHeading(createdObject)
+            })
+        else
+            DeleteObject(createdObject)
+            BCCHousingMenu:Close()
+            VORPcore.NotifyRightTip(_U("toFar"), 4000)
+        end
+    end)
+
+    -- Register a back button
+    furniturePlacementMenu:RegisterElement('button', {
+        label = _U("backButton"),
+        style = {}
+    }, function()
+        DeleteObject(createdObject)
+        BCCHousingMenu:Close()
+    end)
+
+    BCCHousingMenu:Open({
+        startupPage = furniturePlacementMenu
+    })
 end
 
-function closeToHosue(object) --make sure the obj is close to house before placing
+function MoveFurniture(obj, direction, moveAmount)
+    local coords = GetEntityCoords(obj)
+    local rot = GetEntityRotation(obj, 2) -- Get rotation in degrees.
+
+    if direction == "forward" then
+        SetEntityCoords(obj, coords.x, coords.y + moveAmount, coords.z)
+    elseif direction == "backward" then
+        SetEntityCoords(obj, coords.x, coords.y - moveAmount, coords.z)
+    elseif direction == "left" then
+        SetEntityCoords(obj, coords.x - moveAmount, coords.y, coords.z)
+    elseif direction == "right" then
+        SetEntityCoords(obj, coords.x + moveAmount, coords.y, coords.z)
+    elseif direction == "up" then
+        SetEntityCoords(obj, coords.x, coords.y, coords.z + moveAmount)
+    elseif direction == "down" then
+        SetEntityCoords(obj, coords.x, coords.y, coords.z - moveAmount)
+    elseif direction == "rotatepitch" then
+        SetEntityRotation(obj, rot.x + moveAmount, rot.y, rot.z, 2, true)
+    elseif direction == "rotatebackward" then
+        SetEntityRotation(obj, rot.x - moveAmount, rot.y, rot.z, 2, true)
+    elseif direction == "rotateright" then
+        SetEntityRotation(obj, rot.x, rot.y + moveAmount, rot.z, 2, true)
+    elseif direction == "rotateleft" then
+        SetEntityRotation(obj, rot.x, rot.y - moveAmount, rot.z, 2, true)
+    elseif direction == "rotateYaw" then
+        SetEntityRotation(obj, rot.x, rot.y, rot.z + moveAmount, 2, true)
+    elseif direction == "rotateYawLeft" then
+        SetEntityRotation(obj, rot.x, rot.y, rot.z - moveAmount, 2, true)
+    end
+end
+
+function ConfirmFurniturePlacement(obj, model, cost, displayName, sellPrice)
+    local closeToHouse = closeToHouse(obj) -- Assuming closeToHouse is a function you have
+    if closeToHouse then
+        SetEntityCollision(obj, true, true)
+        FreezeEntityPosition(obj, true)
+        TriggerServerEvent('bcc-housing:BuyFurn', cost, NetworkGetNetworkIdFromEntity(obj), {
+            model = model,
+            coords = GetEntityCoords(obj),
+            rotation = GetEntityRotation(obj),
+            displayName = displayName,
+            sellprice = sellPrice
+        })
+        return true
+    end
+    return false
+end
+
+function closeToHouse(object) -- make sure the obj is close to house before placing
     local coords = GetEntityCoords(object)
     local compCoords = HouseCoords
     local radius = tonumber(HouseRadius)
@@ -282,14 +293,15 @@ function closeToHosue(object) --make sure the obj is close to house before placi
             radius = Config.TpInteriors.Interior2.furnRadius
         end
     end
-    if GetDistanceBetweenCoords(tonumber(coords.x), tonumber(coords.y), tonumber(coords.z), tonumber(compCoords.x), tonumber(compCoords.y), tonumber(compCoords.z), false) <= radius then
+    if GetDistanceBetweenCoords(tonumber(coords.x), tonumber(coords.y), tonumber(coords.z), tonumber(compCoords.x),
+            tonumber(compCoords.y), tonumber(compCoords.z), false) <= radius then
         return true
     else
         return false
     end
 end
 
-RegisterNetEvent('bcc-housing:ClientFurnBought', function(furnitureCreatedTable, entId) --event to store the furn after it has been paid for
+RegisterNetEvent('bcc-housing:ClientFurnBought', function(furnitureCreatedTable, entId)
     TriggerServerEvent('bcc-housing:InsertFurnitureIntoDB', furnitureCreatedTable, HouseId)
     TriggerServerEvent('bcc-housing:StoreFurnForDeletion', entId, HouseId)
     table.insert(CreatedFurniture, furnObj)
@@ -302,53 +314,83 @@ RegisterNetEvent('bcc-housing:ClientFurnBoughtFail', function()
     furnObj = nil
 end)
 
-RegisterNetEvent('bcc-housing:SellOwnedFurnMenu', function(furnTable)
-    VORPMenu.CloseAll()
-    local elements = {}
+-- Function to trigger server event
+function GetOwnedFurniture(houseId)
+    print("Requesting furniture for house ID:", houseId) -- Debug print
+    TriggerServerEvent('bcc-housing:GetOwnerFurniture', houseId)
+end
 
-    for k, v in pairs(furnTable) do
-        elements[#elements + 1] = {
-            label = v.displayName,
-            value = "sellfurn" .. k,
-            desc = _U("sellFor") .. tostring(v.sellprice),
-            info = v,
-            info2 = k
-        }
-    end
+-- Helper function to handle the sale of furniture (implement as needed)
+function SellFurniture(furniture)
+    print("Selling furniture:", furniture.model)
+    -- You can add server event here to handle the backend sale process
+    TriggerServerEvent('bcc-housing:SellFurniture', furniture)
+end
 
-    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
-        {
-            title      = _U("sellOwnerFurn"),
-            subtext    = "",
-            align      = 'top-left',
-            elements   = elements,
-            lastmenu   = 'FurnitureMenu',
-            itemHeight = "4vh",
-        },
-        function(data, menu)
-            if data.current == 'backup' then
-                _G[data.trigger]()
-            end
-            if data.current.value then
-                for k, v in pairs(CreatedFurniture) do
-                    local storedFurnCoord = GetEntityCoords(v)
-                    local firstVec = vector3(tonumber(storedFurnCoord.x), tonumber(storedFurnCoord.y), tonumber(storedFurnCoord.z))
-                    local secondVec = vector3(tonumber(data.current.info.coords.x), tonumber(data.current.info.coords.y), tonumber(data.current.info.coords.z))
-                    local dist = #(firstVec - secondVec)
-                    if dist < 0.5 then --used as a way to check if the loop is on the correct piece of furniture
-                      table.remove(CreatedFurniture, k)
-                      DeleteEntity(v)
+function SellOwnedFurnitureMenu(furnTable)
+    -- Close any previously opened menus
+    BCCHousingMenu:Close()
+
+    -- Initialize the sell furniture menu page
+    local sellFurnMenu = BCCHousingMenu:RegisterPage("bcc-housing-sell-furniture-menu")
+
+    -- Add a header for clarity
+    sellFurnMenu:RegisterElement('header', {
+        value = _U("sellOwnerFurn"),
+        slot = 'header',
+        style = {}
+    })
+
+    -- Check if the furniture table is not nil and has items
+    if furnTable and #furnTable > 0 then
+        for k, v in pairs(furnTable) do
+            sellFurnMenu:RegisterElement('button', {
+                label = v.displayName .. " - " .. _U("sellFor") .. tostring(v.sellprice),
+                style = {}
+            }, function()
+                -- Logic to handle selling furniture
+                local sold = false
+                for idx, entity in ipairs(CreatedFurniture) do
+                    local storedFurnCoord = GetEntityCoords(entity)
+                    local dist = Vdist(storedFurnCoord.x, storedFurnCoord.y, storedFurnCoord.z, v.coords.x, v.coords.y,
+                        v.coords.z)
+                    if dist < 1.0 then -- Check if the distance is less than 1 meter
+                        DeleteEntity(entity)
+                        table.remove(CreatedFurniture, idx)
+                        TriggerServerEvent('bcc-housing:FurnSoldRemoveFromTable', v, HouseId, furnTable, k)
+                        VORPcore.NotifyRightTip(_U("furnSold"), 4000)
+                        sold = true
+                        break
                     end
                 end
-                TriggerServerEvent('bcc-housing:FurnSoldRemoveFromTable', data.current.info, HouseId, furnTable, data.current.info2)
-            end
-        end,
-        function(data, menu)
-            menu.close()
-            FurnitureMenu()
-        end)
-end)
+                if not sold then
+                    VORPcore.NotifyRightTip(_U("furnNotSold"), 4000) -- Notify if the furniture was not found or could not be sold
+                end
+            end)
+        end
+    else
+        TextDisplay = sellFurnMenu:RegisterElement('textdisplay', {
+            value = "No furniture Available",
+            style = {}
+        })
+    end
+
+    -- Add a back button to return to the main furniture menu
+    sellFurnMenu:RegisterElement('button', {
+        label = "Back",
+        style = {}
+    }, function()
+        FurnitureMenu()
+    end)
+
+    -- Open the menu with the configured page
+    BCCHousingMenu:Open({
+        startupPage = sellFurnMenu
+    })
+end
+
+--
 
 RegisterNetEvent('bcc-housing:ClientCloseAllMenus', function()
-    VORPMenu.CloseAll()
+    BCCHousingMenu:Close()
 end)

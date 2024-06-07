@@ -21,7 +21,7 @@ AddEventHandler("onResourceStop", function(resource)
                 DeleteObject(v)
             end
             for k, v in pairs(HouseBlips) do
-                VORPutils.Blips:RemoveBlip(v.rawblip)
+                BccUtils.Blips:RemoveBlip(v.rawblip)
             end
         end
         TriggerServerEvent('bcc-housing:ServerSideRssStop')

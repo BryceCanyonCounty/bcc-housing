@@ -5,12 +5,10 @@
 # Requirements
 - vorp_core
 - vorp_inventory
-- vorp_utils
-- vorp_inputs
-- menuapi
 - vorp_character
 - bcc-utils
 - bcc-doorlocks
+- feather-menu
 
 # Features
 - Admin locked command to create houses!
@@ -27,7 +25,8 @@
 - Version checking to help you keep up to date!
 
 # How it works
-- Admins can make a house by entering the command, they will be greeted with a menu!
+- Admins can create and manage houses with only command "/HousingManager"
+- You can easly change the command in config 
 - The owner will be able to walk upto where his ranch is press "G" to open a menu to manage the house!
 
 # How to install

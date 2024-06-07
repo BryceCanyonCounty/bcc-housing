@@ -1,15 +1,16 @@
 --Insert Your Main Client Side Code Here
-HouseCoords, HouseRadius, HouseId, AdminAllowed, Owner, OwnedHotels, TpHouse, TpHouseInstance = nil, nil, nil, false, nil, {}, nil, nil
+HouseCoords, HouseRadius, HouseId, AdminAllowed, Owner, OwnedHotels, TpHouse, TpHouseInstance = nil, nil, nil, false, nil,
+    {}, nil, nil
 
-RegisterCommand(Config.CreateHouseCommand, function() --house creation command
+RegisterCommand(Config.AdminManagementMenuCommand, function() --house creation command
     if AdminAllowed then
-        TpOptMenu()
+        HouseManagementMenu()
     end
 end)
 
-RegisterNetEvent('vorp:SelectedCharacter') --init loading
+RegisterNetEvent('vorp:SelectedCharacter')                   --init loading
 AddEventHandler('vorp:SelectedCharacter', function()
-    local player = GetPlayerServerId(tonumber(PlayerId())) --credit vorp_admin
+    local player = GetPlayerServerId(tonumber(PlayerId()))   --credit vorp_admin
     Wait(200)
     TriggerServerEvent("bcc-housing:getPlayersInfo", player) --credit vorp_admin
     TriggerServerEvent('bcc-housing:AdminCheck')
@@ -30,23 +31,25 @@ CreateThread(function() --Devmode area
     end
 end)
 
-HouseBlips = {} --stored for deletion on restart
-RegisterNetEvent('bcc-housing:OwnsHouseClientHandler', function(houseTable, owner) --if you own or are allowed in a house handler
-    HouseCoords = json.decode(houseTable.house_coords)
-    HouseRadius = houseTable.house_radius_limit
-    HouseId = houseTable.houseid
-    Owner = owner
-    if houseTable.tpInt ~= 0 then
-        TpHouse = houseTable.tpInt
-        TpHouseInstance = houseTable.tpInstance
-    end
+HouseBlips = {}                                                                    --stored for deletion on restart
+RegisterNetEvent('bcc-housing:OwnsHouseClientHandler',
+    function(houseTable, owner)                                                    --if you own or are allowed in a house handler
+        HouseCoords = json.decode(houseTable.house_coords)
+        HouseRadius = houseTable.house_radius_limit
+        HouseId = houseTable.houseid
+        Owner = owner
+        if houseTable.tpInt ~= 0 then
+            TpHouse = houseTable.tpInt
+            TpHouseInstance = houseTable.tpInstance
+        end
 
-    -----ManageHouse Menu Setup ----
-    TriggerEvent('bcc-housing:FurnCheckHandler')
-    local  blip = VORPutils.Blips:SetBlip(_U("houseBlip"), 'blip_mp_base', 0.2, HouseCoords.x, HouseCoords.y, HouseCoords.z)
-    table.insert(HouseBlips, blip)
-    showManageOpt(HouseCoords.x, HouseCoords.y, HouseCoords.z)
-end)
+        -----ManageHouse Menu Setup ----
+        TriggerEvent('bcc-housing:FurnCheckHandler')
+        local blip = BccUtils.Blips:SetBlip(_U("houseBlip"), 'blip_mp_base', 0.2, HouseCoords.x, HouseCoords.y,
+            HouseCoords.z)
+        table.insert(HouseBlips, blip)
+        showManageOpt(HouseCoords.x, HouseCoords.y, HouseCoords.z)
+    end)
 
 RegisterNetEvent('bcc-housing:AdminClientCatch', function(var) --admin check catch
     if var then
@@ -71,17 +74,21 @@ end)
 
 --Hotel area --
 RegisterNetEvent('bcc-housing:MainHotelHandler', function()
-    local PromptGroup = VORPutils.Prompts:SetupPromptGroup()
-    local firstprompt = PromptGroup:RegisterPrompt(_U("promptBuy"), 0x760A9C6F, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+    local PromptGroup = BccUtils.Prompts:SetupPromptGroup()
+    local firstprompt = PromptGroup:RegisterPrompt(_U("promptBuy"), 0x760A9C6F, 1, 1, true, 'hold',
+        { timedeventhash = "MEDIUM_TIMED_EVENT" })
 
-    local PromptGroup2 = VORPutils.Prompts:SetupPromptGroup()
-    local firstprompt2 = PromptGroup2:RegisterPrompt(_U("promptEnterHotel"), 0x760A9C6F, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+    local PromptGroup2 = BccUtils.Prompts:SetupPromptGroup()
+    local firstprompt2 = PromptGroup2:RegisterPrompt(_U("promptEnterHotel"), 0x760A9C6F, 1, 1, true, 'hold',
+        { timedeventhash = "MEDIUM_TIMED_EVENT" })
 
-    local PromptGroup3 = VORPutils.Prompts:SetupPromptGroup()
-    local firstprompt3 = PromptGroup3:RegisterPrompt(_U("hotelInvName"), 0x760A9C6F, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+    local PromptGroup3 = BccUtils.Prompts:SetupPromptGroup()
+    local firstprompt3 = PromptGroup3:RegisterPrompt(_U("hotelInvName"), 0x760A9C6F, 1, 1, true, 'hold',
+        { timedeventhash = "MEDIUM_TIMED_EVENT" })
 
-    local PromptGroup4 = VORPutils.Prompts:SetupPromptGroup()
-    local firstprompt4 = PromptGroup4:RegisterPrompt(_U("promptLeaveHotel"), 0x760A9C6F, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+    local PromptGroup4 = BccUtils.Prompts:SetupPromptGroup()
+    local firstprompt4 = PromptGroup4:RegisterPrompt(_U("promptLeaveHotel"), 0x760A9C6F, 1, 1, true, 'hold',
+        { timedeventhash = "MEDIUM_TIMED_EVENT" })
 
     local inHotel, hotelInside, instanceNumber, coordsWhenEntered = false, nil, 0, nil
     while true do
@@ -100,7 +107,7 @@ RegisterNetEvent('bcc-housing:MainHotelHandler', function()
                                     coordsWhenEntered = plc
                                     SetEntityCoords(PlayerPedId(), -325.29, 765.23, 121.64)
                                     instanceNumber = math.random(1, 100000 + tonumber(GetPlayerServerId(PlayerPedId())))
-                                    VORPcore.instancePlayers(tonumber(GetPlayerServerId(PlayerId()))+ instanceNumber)
+                                    VORPcore.instancePlayers(tonumber(GetPlayerServerId(PlayerId())) + instanceNumber)
                                 end
                             else
                                 PromptGroup:ShowGroup(_U("promptGroupName") .. tostring(v.cost))

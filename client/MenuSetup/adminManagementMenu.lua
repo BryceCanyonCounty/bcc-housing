@@ -1,117 +1,406 @@
---------- Show the player list credit to vorp admin for this
-RegisterCommand(Config.AdminManagementMenuCommand, function()
-    if AdminAllowed then
-        TriggerServerEvent('bcc-housing:AdminGetAllHouses')
-    end
-end)
-
 RegisterNetEvent('bcc-housing:AdminManagementMenu', function(allHouses)
-    VORPMenu.CloseAll()
-    Inmenu = true
-    local elements = {}
-
-    for k, houseInfo in pairs(allHouses) do
-        elements[#elements + 1] = {
-            label = _U("ownerHouseId") ..  houseInfo.houseid,
-            value = "house" .. k,
-            desc = _U("selectThisHouse") .. "<span style=color:MediumSeaGreen;> ",
-            info = houseInfo
-        }
-    end
-
-    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
-        {
-            title      = _U("adminManagmentMenu"),
-            subtext    = "",
-            align      = 'top-left',
-            elements   = elements,
-            itemHeight = "4vh"
-        },
-        function(data)
-            if data.current == 'backup' then
-                _G[data.trigger]()
-            end
-            if data.current.value then
-                VORPMenu.CloseAll()
-                AdminManagementMenuHouseChose(data.current.info)
-            end
-        end)
+    AdminManagementMenu(allHouses)
 end)
 
-function AdminManagementMenuHouseChose(houseTable)
-    local elements = {
-        { label = _U("delHouse"), value = 'delhouse', desc = _U("delHouse_desc") },
-        { label = _U("changeHouseRadius"), value = 'changeradius', desc = _U("changeHouseRadius_desc") },
-        { label = _U("changeHouseInvLimit"), value = 'changeinvlimit', desc = _U("changeHouseInvLimit_desc") },
-        { label = _U("changeHouseTaxes"), value = 'changetaxes', desc = _U("changeHouseTaxes_desc") }
-    }
-    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
-        {
-            title = _U("adminManagmentMenu"),
-            align = 'top-left',
-            elements = elements
-        },
-        function(data, menu)
-            if data.current == 'backup' then
-                _G[data.trigger]()
-            end
-            local myInput = { --input var used for all the options below since they are all number inputs
-                type = "enableinput",                                               -- don't touch
-                inputType = "input",                                                -- input type
-                button = _U("Confirm"),                                             -- button name
-                placeholder = _U("insertAmount"),                               -- placeholder name
-                style = "block",                                                    -- don't touch
-                attributes = {
-                    inputHeader = "",                                               -- header
-                    type = "number",                                                -- inputype text, number,date,textarea ETC
-                    pattern = "[0-9]",                                              --  only numbers "[0-9]" | for letters only "[A-Za-z]+"
-                    title = _U("InvalidInput"),                                     -- if input doesnt match show this message
-                    style = "border-radius: 10px; background-color: ; border:none;" -- style
-                }
-            }
-            local selectedOption = {
-                ['delhouse'] = function()
-                    TriggerServerEvent('bcc-house:AdminManagementDelHouse', houseTable.houseid)
-                    VORPcore.NotifyRightTip(_U("housesDeleted"), 4000)
-                    menu.close()
-                end,
-                ['changeradius'] = function()
-                    TriggerEvent("vorpinputs:advancedInput", json.encode(myInput), function(result)
-                        if tonumber(result) > 0 then
-                            TriggerServerEvent('bcc-house:AdminManagementChangeHouseRadius', houseTable.houseid, tonumber(result))
-                            VORPcore.NotifyRightTip(_U("radiusSet"), 4000)
-                        else
-                            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
-                        end
-                    end)
-                end,
-                ['changeinvlimit'] = function()
-                    TriggerEvent("vorpinputs:advancedInput", json.encode(myInput), function(result)
-                        if tonumber(result) > 0 then
-                            TriggerServerEvent('bcc-house:AdminManagementChangeInvLimit', houseTable.houseid, tonumber(result))
-                            VORPcore.NotifyRightTip(_U("invLimitSet"), 4000)
-                        else
-                            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
-                        end
-                    end)
-                end,
-                ['changetaxes'] = function()
-                    TriggerEvent("vorpinputs:advancedInput", json.encode(myInput), function(result)
-                        if tonumber(result) > 0 then
-                            TriggerServerEvent('bcc-house:AdminManagementChangeTaxAmount', houseTable.houseid, tonumber(result))
-                            VORPcore.NotifyRightTip(_U("taxAmountSet"), 4000)
-                        else
-                            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
-                        end
-                    end)
-                end
-            }
+RegisterNetEvent('bcc-housing:GetHouseInfo', function(houseInfo)
+    AdminManagementMenuHouseChose(houseInfo)
+end)
 
-            if selectedOption[data.current.value] then
-                selectedOption[data.current.value]()
-            end
-        end,
-        function(data, menu)
-            menu.close()
+function AdminManagementMenu(allHouses)
+    if BCCHousingMenu then
+        BCCHousingMenu:Close() -- Ensure no other menus are open
+    end
+
+    local adminMenuPage = BCCHousingMenu:RegisterPage('admin_management_menu_page')
+
+    -- Add a header to the menu
+    adminMenuPage:RegisterElement('header', {
+        value = _U("adminManagmentMenu"),
+        slot = 'header',
+        style = {}
+    })
+
+    adminMenuPage:RegisterElement('line', {
+        slot = "header",
+        style = {}
+    })
+
+    -- Dynamically add house options to the menu
+    for k, houseInfo in pairs(allHouses) do
+        adminMenuPage:RegisterElement('button', {
+            label = "Owner ID: " .. houseInfo.charidentifier .. "  -  House Id : " .. houseInfo.houseid,
+            style = {}
+        }, function()
+            AdminManagementMenuHouseChose(houseInfo)
         end)
+    end
+
+    -- Register a back button
+    adminMenuPage:RegisterElement('button', {
+        label = _U("backButton"),
+        style = {}
+    }, function()
+        HouseManagementMenu() -- Assuming this method exists to go back to the previous menu
+    end)
+
+    adminMenuPage:RegisterElement('bottomline', {
+        -- slot = "header",
+        -- style = {}
+    })
+
+    -- Open the menu with the configured page
+    BCCHousingMenu:Open({
+        startupPage = adminMenuPage
+    })
+end
+
+function AdminManagementMenuHouseChose(houseInfo)
+    if BCCHousingMenu then
+        BCCHousingMenu:Close() -- Ensure no other menus are open
+    end
+
+    local houseOptionsPage = BCCHousingMenu:RegisterPage('house_options_page')
+
+    -- Add a header for house options
+    houseOptionsPage:RegisterElement('header', {
+        value = _U("selectThisHouse"),
+        slot = "header",
+        style = {}
+    })
+
+    houseOptionsPage:RegisterElement('line', {
+        slot = "header",
+        style = {}
+    })
+
+    -- Delete House button
+    houseOptionsPage:RegisterElement('button', {
+        label = _U("delHouse"),
+        style = {}
+    }, function()
+        deleteHouse(houseInfo)
+    end)
+
+    --Change House Radius button
+    houseOptionsPage:RegisterElement('button', {
+        label = _U("changeHouseRadius"),
+        style = {}
+    }, function()
+        changeHouseRadius(houseInfo)
+    end)
+
+    --Change House Inventory button
+    houseOptionsPage:RegisterElement('button', {
+        label = _U("changeHouseInvLimit"),
+        style = {}
+    }, function()
+        changeHouseInventory(houseInfo)
+    end)
+
+    --Change House Taxes button
+    houseOptionsPage:RegisterElement('button', {
+        label = _U("changeHouseTaxes"),
+        style = {}
+    }, function()
+        changeHouseTaxes(houseInfo)
+    end)
+
+    -- Register a back button
+    houseOptionsPage:RegisterElement('button', {
+        label = _U("backButton"),
+        style = {}
+    }, function()
+        TriggerServerEvent('bcc-housing:AdminGetAllHouses') -- This should reopen the admin menu listing all houses
+    end)
+
+    houseOptionsPage:RegisterElement('bottomline', {
+        -- slot = "header",
+        -- style = {}
+    })
+
+    -- Open the house options menu
+    BCCHousingMenu:Open({
+        startupPage = houseOptionsPage
+    })
+end
+
+function deleteHouse(houseInfo)
+    if not houseInfo then
+        print("Error: houseInfo is nil")
+        return -- Exit the function if houseInfo is nil
+    end
+
+    if BCCHousingMenu then
+        BCCHousingMenu:Close() -- Ensure no other menus are open
+    end
+
+    -- Initialize the teleport options menu page
+    local deleteHousePage = BCCHousingMenu:RegisterPage("delete_house_page") -- Ensure the page name is unique and descriptive
+
+
+    -- Add a header for deletion confirmation
+    deleteHousePage:RegisterElement('header', {
+        value = "Delete House",
+        slot = "header",
+        style = {}
+    })
+
+    deleteHousePage:RegisterElement('line', {
+        slot = "header",
+        style = {}
+    })
+
+    -- Add a subheader asking for confirmation
+    deleteHousePage:RegisterElement('subheader', {
+        value = "Are you sure you want to delete this house?",
+        slot = "header",
+        style = {}
+    })
+
+    -- Yes button for deletion
+    deleteHousePage:RegisterElement('button', {
+        label = "Yes",
+        style = {}
+    }, function()
+        TriggerServerEvent('bcc-house:AdminManagementDelHouse', houseInfo.houseid)
+        BCCHousingMenu:Close() -- Close the menu after the action
+    end)
+
+    -- No button to cancel deletion
+    deleteHousePage:RegisterElement('button', {
+        label = "No",
+        style = {}
+    }, function()
+        AdminManagementMenuHouseChose(houseInfo) -- Potentially return to the previous house-specific menu
+    end)
+
+    deleteHousePage:RegisterElement('bottomline', {
+        -- slot = "header",
+        -- style = {}
+    })
+
+    TextDisplay = deleteHousePage:RegisterElement('textdisplay', {
+        value = _U("delHouse_desc"),
+        style = {}
+    })
+
+    -- Open the menu with the newly created page
+    BCCHousingMenu:Open({
+        startupPage = deleteHousePage
+    })
+end
+
+function changeHouseRadius(houseInfo)
+    if BCCHousingMenu then
+        BCCHousingMenu:Close() -- Ensure no other menus are open
+    end
+
+    local changeRadiusPage = BCCHousingMenu:RegisterPage("set_radius_page")
+    changeRadiusPage:RegisterElement('header', {
+        value = _U("setRadius"),
+        slot = "header",
+        style = {}
+    })
+
+    local radiusValue = nil -- Define a variable to hold the radius outside the callbacks
+
+    changeRadiusPage:RegisterElement('line', {
+        slot = "header",
+        style = {}
+    })
+
+    changeRadiusPage:RegisterElement('input', {
+        label = _U("insertAmount"),
+        placeholder = _U("setRadius"),
+        inputType = 'number',
+        slot = 'content',
+        style = {}
+    }, function(data)
+        if data.value and tonumber(data.value) > 0 then
+            radiusValue = tonumber(data.value) -- Store the radius value
+            --VORPcore.NotifyRightTip(_U("radiusSet"), 4000)
+        else
+            radiusValue = nil -- Ensure radius is nil if input is invalid
+            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+        end
+    end)
+
+    changeRadiusPage:RegisterElement('button', {
+        label = _U("Confirm"),
+        style = {},
+    }, function()
+        if radiusValue then -- Check the stored radius value
+            TriggerServerEvent('bcc-house:AdminManagementChangeHouseRadius', houseInfo.houseid, radiusValue)
+            --VORPcore.NotifyRightTip(_U("radiusSet"), 4000)
+            AdminManagementMenuHouseChose(houseInfo) -- Optionally go back to house options
+        else
+            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+        end
+    end)
+
+    changeRadiusPage:RegisterElement('button', {
+        label = _U("backButton"),
+        style = {}
+    }, function()
+        AdminManagementMenuHouseChose(houseInfo) -- Go back to house options
+    end)
+
+    changeRadiusPage:RegisterElement('bottomline', {
+        -- slot = "header",
+        -- style = {}
+    })
+
+    TextDisplay = changeRadiusPage:RegisterElement('textdisplay', {
+        value = _U("changeHouseRadius_desc"),
+        style = {}
+    })
+
+    BCCHousingMenu:Open({
+        startupPage = changeRadiusPage
+    })
+end
+
+function changeHouseTaxes(houseInfo)
+    if BCCHousingMenu then
+        BCCHousingMenu:Close() -- Ensure no other menus are open
+    end
+
+    local changeHouseTaxesPage = BCCHousingMenu:RegisterPage("set_tax_amount_page")
+
+    changeHouseTaxesPage:RegisterElement('header', {
+        value = _U("taxAmount"),
+        slot = "header",
+        style = {}
+    })
+
+    changeHouseTaxesPage:RegisterElement('line', {
+        slot = "header",
+        style = {}
+    })
+
+    local taxAmount = nil -- Define a variable to hold the tax amount outside the callbacks
+
+    changeHouseTaxesPage:RegisterElement('input', {
+        label = _U("insertAmount"),
+        placeholder = _U("insertAmount"),
+        inputType = 'number',
+        slot = 'content',
+        style = {}
+    }, function(data)
+        if data.value and tonumber(data.value) and tonumber(data.value) > 0 then
+            taxAmount = tonumber(data.value) -- Store the tax amount value
+            --VORPcore.NotifyRightTip(_U("taxAmountReady"), 4000)
+        else
+            taxAmount = nil -- Ensure tax amount is nil if input is invalid
+            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+        end
+    end)
+
+    changeHouseTaxesPage:RegisterElement('button', {
+        label = _U("Confirm"),
+        style = {},
+    }, function()
+        if taxAmount then -- Check the stored tax amount value
+            TriggerServerEvent('bcc-house:AdminManagementChangeTaxAmount', houseInfo.houseid, taxAmount)
+            --VORPcore.NotifyRightTip(_U("taxAmountSet"), 4000)
+            AdminManagementMenuHouseChose(houseInfo) -- Optionally go back to house options
+        else
+            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+        end
+    end)
+
+    changeHouseTaxesPage:RegisterElement('button', {
+        label = _U("backButton"),
+        style = {}
+    }, function()
+        AdminManagementMenuHouseChose(houseInfo) -- Go back to house options
+    end)
+
+    changeHouseTaxesPage:RegisterElement('bottomline', {
+        -- slot = "header",
+        -- style = {}
+    })
+
+    TextDisplay = changeHouseTaxesPage:RegisterElement('textdisplay', {
+        value = _U("changeHouseTaxes_desc"),
+        style = {}
+    })
+
+    BCCHousingMenu:Open({
+        startupPage = changeHouseTaxesPage
+    })
+end
+
+function changeHouseInventory(houseInfo)
+    if BCCHousingMenu then
+        BCCHousingMenu:Close() -- Ensure no other menus are open
+    end
+
+    local changeHouseInventoryPage = BCCHousingMenu:RegisterPage('inventory_limit_page')
+    local inventoryLimit = nil -- Define a local variable to store the inventory limit
+
+    -- Header for the inventory limit page
+    changeHouseInventoryPage:RegisterElement('header', {
+        value = _U('setInvLimit'),
+        slot = 'header',
+        style = {}
+    })
+
+    changeHouseInventoryPage:RegisterElement('line', {
+        slot = "header",
+        style = {}
+    })
+
+    -- Input for entering the inventory limit
+    changeHouseInventoryPage:RegisterElement('input', {
+        label = _U('setInvLimit'),
+        placeholder = _U("insertAmount"),
+        inputType = 'number',
+        slot = 'content',
+        style = {}
+    }, function(data)
+        if data.value and tonumber(data.value) and tonumber(data.value) > 0 then
+            inventoryLimit = tonumber(data.value) -- Set the valid inventory limit
+            --VORPcore.NotifyRightTip(_U("invLimitReady"), 4000) -- Feedback that the input is ready
+        else
+            inventoryLimit = nil -- Reset if input is invalid
+            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+        end
+    end)
+
+    -- Confirm button to process the inventory limit
+    changeHouseInventoryPage:RegisterElement('button', {
+        label = _U('Confirm'),
+        style = {},
+    }, function()
+        if inventoryLimit then -- Check if the inventory limit is set
+            TriggerServerEvent('bcc-house:AdminManagementChangeInvLimit', houseInfo.houseid, inventoryLimit)
+            --VORPcore.NotifyRightTip(_U("invLimitSet"), 4000)
+            AdminManagementMenuHouseChose(houseInfo) -- Return to house options menu
+        else
+            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+        end
+    end)
+
+    -- Register a back button
+    changeHouseInventoryPage:RegisterElement('button', {
+        label = _U("backButton"),
+        style = {}
+    }, function()
+        AdminManagementMenuHouseChose(houseInfo) -- Return to house options menu
+    end)
+
+    changeHouseInventoryPage:RegisterElement('bottomline', {
+        -- slot = "header",
+        -- style = {}
+    })
+
+    TextDisplay = changeHouseInventoryPage:RegisterElement('textdisplay', {
+        value = _U("changeHouseInvLimit_desc"),
+        style = {}
+    })
+    -- Open the menu with the newly created page
+    BCCHousingMenu:Open({
+        startupPage = changeHouseInventoryPage
+    })
 end
