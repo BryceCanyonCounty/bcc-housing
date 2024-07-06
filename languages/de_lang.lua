@@ -92,6 +92,7 @@ Locales["de_lang"] = {
     toFar = 'Du bist zu weit von deinem Haus entfernt',
     cost = 'Einkaufspreis: ',
     houseBlip = 'Zuhause',
+    buyOwnerFurn = 'Buy furniture',
     sellOwnerFurn = 'Möbel verkaufen',
     sellOwnerFurn_desc = '',
     noFurn = 'Du hast keine Möbel',
@@ -152,5 +153,6 @@ Locales["de_lang"] = {
     changeHouseTaxes = 'Change House Taxes?',
     changeHouseTaxes_desc = 'Change the amount of taxes the house has to pay.',
     housesDeleted = 'House deleted!',
-    backButton = 'Back'
+    backButton = 'Back',
+    placeFurniture = 'Place Furniture'
 }

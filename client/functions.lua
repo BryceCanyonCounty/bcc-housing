@@ -42,23 +42,33 @@ function GetPlayers()
   return playersData
 end
 
-function showManageOpt(x, y, z)
-  local PromptGroup = BccUtils.Prompts:SetupPromptGroup()
-  local firstprompt = PromptGroup:RegisterPrompt(_U("openOwnerManage"), 0x760A9C6F, 1, 1, true, 'hold',
-    { timedeventhash = "MEDIUM_TIMED_EVENT" })
-  while true do
-    Wait(5)
-    if BreakHandleLoop then break end
-    local plc = GetEntityCoords(PlayerPedId())
-    local dist = GetDistanceBetweenCoords(plc.x, plc.y, plc.z, x, y, z, true)
-    if dist < 2 then
-      PromptGroup:ShowGroup(_U("house"))
-      if firstprompt:HasCompleted() then
-        --HousingManagementMenu()
-        TriggerEvent('bcc-housing:openmenu') -- Function to open the housing management menu
-      end
-    elseif dist > 200 then
-      Wait(2000)
+function showManageOpt(x, y, z, houseId)
+    local PromptGroup = BccUtils.Prompts:SetupPromptGroup()
+    local firstprompt = PromptGroup:RegisterPrompt(_U("openOwnerManage"), 0x760A9C6F, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+    
+    devPrint("Setting up manage options for House ID: " .. tostring(houseId) .. " at coordinates: " .. tostring(x) .. ", " .. tostring(y) .. ", " .. tostring(z))
+    
+    while true do
+        Wait(5)
+        if BreakHandleLoop then 
+            devPrint("Breaking handle loop for House ID: " .. tostring(houseId))
+            break 
+        end
+        
+        local plc = GetEntityCoords(PlayerPedId())
+        local dist = GetDistanceBetweenCoords(plc.x, plc.y, plc.z, x, y, z, true)
+        
+        if dist < 2 then
+            ---devPrint("Player is within 2 units of the house. Showing prompt for House ID: " .. tostring(houseId))
+            PromptGroup:ShowGroup(_U("house"))
+            
+            if firstprompt:HasCompleted() then
+                devPrint("Prompt completed. Opening housing management menu for House ID: " .. tostring(houseId))
+                TriggerEvent('bcc-housing:openmenu', houseId) -- Pass the houseId to the event
+            end
+        elseif dist > 200 then
+            devPrint("Player is more than 200 units away from the house. Waiting before next check.")
+            Wait(2000)
+        end
     end
-  end
 end

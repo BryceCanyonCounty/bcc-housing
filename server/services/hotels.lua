@@ -60,13 +60,26 @@ end)
 
 CreateThread(function()   --registering all inventories
     for k, v in pairs(Config.Hotels) do
-        --VORPInv.removeInventory('bcc-housinginv:' .. v.hotelId)
-        --Wait(50)
-        VorpInv.registerInventory('bcc-housinginv:' .. v.hotelId, _U("hotelInvName"), v.invSpace, true, false, true)
+        Wait(50)  -- Slight delay to ensure proper removal before registration
+        
+        -- Register inventory for the hotel
+        local data = {
+            id = 'bcc-housinginv:' .. tostring(v.hotelId),
+            name = _U("hotelInvName"),
+            limit = tonumber(v.invSpace),
+            acceptWeapons = true,
+            shared = true,
+            ignoreItemStackLimit = true,
+            whitelistItems = false,
+            UsePermissions = false,
+            UseBlackList = false,
+            whitelistWeapons = false
+        }
+        exports.vorp_inventory:registerInventory(data)
     end
 end)
 
 RegisterServerEvent('bcc-housing:HotelInvOpen', function(hotelId)
     local _source = source
-    VorpInv.OpenInv(_source, 'bcc-housinginv:' .. hotelId)
+    exports.vorp_inventory:openInventory(_source, 'bcc-housinginv:' .. tostring(hotelId))
 end)

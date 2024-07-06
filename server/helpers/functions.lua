@@ -1,10 +1,6 @@
 ---- Pulling Essentials -----
-VORPcore = {}
-TriggerEvent("getCore", function(core)
-  VORPcore = core
-end)
-VorpInv = {}
-VorpInv = exports.vorp_inventory:vorp_inventoryApi()
+VORPcore = exports.vorp_core:GetCore()
+
 BccUtils = exports['bcc-utils'].initiate()
 Discord = BccUtils.Discord.setup(Config.WebhookLink, 'bcc-housing', '')
 
@@ -26,7 +22,10 @@ AddEventHandler('bcc-housing:GetPlayers', function()
             if User then
                 local Character = User.getUsedCharacter  -- Calling the method correctly
                 if Character then
-                    local playerName = Character.firstname .. ' ' .. Character.lastname
+                    -- Check if firstname and lastname are not nil and provide default values if they are
+                    local firstname = Character.firstname or "Unknown"
+                    local lastname = Character.lastname or "Player"
+                    local playerName = firstname .. ' ' .. lastname
                     data[tostring(playerId)] = {
                         serverId = playerId,
                         PlayerName = playerName,
@@ -58,4 +57,11 @@ function table.contains(table, element)
         end
     end
     return false
+end
+
+if Config.DevMode then
+    -- Helper function for debugging
+    function devPrint(message)
+        print("^1[DEV] ^0" .. message)
+    end
 end

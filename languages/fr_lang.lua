@@ -92,6 +92,7 @@ Locales["fr_lang"] = {
     toFar = 'Trop loin de votre maison',
     cost = 'Coût d\'achat : ',
     houseBlip = 'Votre Maison',
+    buyOwnerFurn = 'Buy furniture',
     sellOwnerFurn = 'Vendre des meubles',
     sellOwnerFurn_desc = 'Vendre des meubles que vous possédez ?',
     noFurn = 'Vous ne possédez aucun meuble',
@@ -102,7 +103,8 @@ Locales["fr_lang"] = {
     taxAmountSet = 'Montant de la taxe défini',
     ledgerAmountInesrted = 'Argent mis dans le registre avec succès',
     ledger = 'Registre',
-    ledger_desc ='C\'est là que l\'argent pour les taxes sera prélevé. Vous ne pouvez pas retirer d\'argent une fois qu\'il a été mis, et vous ne pouvez pas stocker plus d\'argent que ce que vous avez à payer en taxes !',
+    ledger_desc =
+    'C\'est là que l\'argent pour les taxes sera prélevé. Vous ne pouvez pas retirer d\'argent une fois qu\'il a été mis, et vous ne pouvez pas stocker plus d\'argent que ce que vous avez à payer en taxes !',
     ledgerAmountToInsert = 'Montant',
     checkledger = 'Vérifier le registre',
     checkledger_desc = 'Vérifier combien d\'argent vous avez dans votre registre par rapport à votre montant de taxe.',
@@ -152,5 +154,6 @@ Locales["fr_lang"] = {
     changeHouseTaxes = 'Changer les impôts de la maison ?',
     changeHouseTaxes_desc = 'Modifier le montant des impôts que la maison doit payer.',
     housesDeleted = 'Maison supprimée !',
-    backButton = 'Back'
+    backButton = 'Back',
+    placeFurniture = 'Place Furniture'
 }
