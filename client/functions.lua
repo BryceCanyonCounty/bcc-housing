@@ -24,6 +24,13 @@ BCCHousingMenu = FeatherMenu:RegisterMenu('bcc:housing:mainmenu', {
     }
   },
   draggable = true
+}, {
+  opened = function()
+      DisplayRadar(false)
+  end,
+  closed = function()
+      DisplayRadar(true)
+  end,
 })
 
 BccUtils = exports['bcc-utils'].initiate()
