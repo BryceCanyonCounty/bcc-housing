@@ -64,4 +64,7 @@ if Config.DevMode then
     function devPrint(message)
         print("^1[DEV] ^0" .. message)
     end
+else
+    -- Define devPrint as a no-op function if DevMode is not enabled
+    function devPrint(message) end
 end

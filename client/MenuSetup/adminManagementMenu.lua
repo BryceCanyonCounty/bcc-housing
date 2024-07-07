@@ -35,17 +35,23 @@ function AdminManagementMenu(allHouses)
         end)
     end
 
+    adminMenuPage:RegisterElement('line', {
+        slot = "footer",
+        style = {}
+    })
+
     -- Register a back button
     adminMenuPage:RegisterElement('button', {
         label = _U("backButton"),
+        slot = "footer",
         style = {}
     }, function()
         HouseManagementMenu() -- Assuming this method exists to go back to the previous menu
     end)
 
     adminMenuPage:RegisterElement('bottomline', {
-        -- slot = "header",
-        -- style = {}
+        slot = "footer",
+        style = {}
     })
 
     -- Open the menu with the configured page
@@ -105,17 +111,23 @@ function AdminManagementMenuHouseChose(houseInfo)
         changeHouseTaxes(houseInfo)
     end)
 
+    houseOptionsPage:RegisterElement('line', {
+        slot = "footer",
+        style = {}
+    })
+
     -- Register a back button
     houseOptionsPage:RegisterElement('button', {
         label = _U("backButton"),
+        slot = "footer",
         style = {}
     }, function()
         TriggerServerEvent('bcc-housing:AdminGetAllHouses') -- This should reopen the admin menu listing all houses
     end)
 
     houseOptionsPage:RegisterElement('bottomline', {
-        -- slot = "header",
-        -- style = {}
+        slot = "footer",
+        style = {}
     })
 
     -- Open the house options menu
@@ -136,7 +148,6 @@ function deleteHouse(houseInfo)
 
     -- Initialize the teleport options menu page
     local deleteHousePage = BCCHousingMenu:RegisterPage("delete_house_page") -- Ensure the page name is unique and descriptive
-
 
     -- Add a header for deletion confirmation
     deleteHousePage:RegisterElement('header', {
@@ -175,8 +186,8 @@ function deleteHouse(houseInfo)
     end)
 
     deleteHousePage:RegisterElement('bottomline', {
-        -- slot = "header",
-        -- style = {}
+        slot = "footer",
+        style = {}
     })
 
     TextDisplay = deleteHousePage:RegisterElement('textdisplay', {
@@ -225,8 +236,14 @@ function changeHouseRadius(houseInfo)
         end
     end)
 
+    changeRadiusPage:RegisterElement('line', {
+        slot = "footer",
+        style = {}
+    })
+
     changeRadiusPage:RegisterElement('button', {
         label = _U("Confirm"),
+        slot = "footer",
         style = {},
     }, function()
         if radiusValue then -- Check the stored radius value
@@ -240,18 +257,20 @@ function changeHouseRadius(houseInfo)
 
     changeRadiusPage:RegisterElement('button', {
         label = _U("backButton"),
+        slot = "footer",
         style = {}
     }, function()
         AdminManagementMenuHouseChose(houseInfo) -- Go back to house options
     end)
 
     changeRadiusPage:RegisterElement('bottomline', {
-        -- slot = "header",
-        -- style = {}
+        slot = "footer",
+        style = {}
     })
 
     TextDisplay = changeRadiusPage:RegisterElement('textdisplay', {
         value = _U("changeHouseRadius_desc"),
+        slot = "footer",
         style = {}
     })
 
@@ -296,8 +315,14 @@ function changeHouseTaxes(houseInfo)
         end
     end)
 
+    changeHouseTaxesPage:RegisterElement('line', {
+        slot = "footer",
+        style = {}
+    })
+
     changeHouseTaxesPage:RegisterElement('button', {
         label = _U("Confirm"),
+        slot = "footer",
         style = {},
     }, function()
         if taxAmount then -- Check the stored tax amount value
@@ -311,18 +336,20 @@ function changeHouseTaxes(houseInfo)
 
     changeHouseTaxesPage:RegisterElement('button', {
         label = _U("backButton"),
+        slot = "footer",
         style = {}
     }, function()
         AdminManagementMenuHouseChose(houseInfo) -- Go back to house options
     end)
 
     changeHouseTaxesPage:RegisterElement('bottomline', {
-        -- slot = "header",
-        -- style = {}
+        slot = "footer",
+        style = {}
     })
 
     TextDisplay = changeHouseTaxesPage:RegisterElement('textdisplay', {
         value = _U("changeHouseTaxes_desc"),
+        slot = "footer",
         style = {}
     })
 
@@ -368,9 +395,15 @@ function changeHouseInventory(houseInfo)
         end
     end)
 
+    changeHouseInventoryPage:RegisterElement('line', {
+        slot = "footer",
+        style = {}
+    })
+
     -- Confirm button to process the inventory limit
     changeHouseInventoryPage:RegisterElement('button', {
         label = _U('Confirm'),
+        slot = "footer",
         style = {},
     }, function()
         if inventoryLimit then -- Check if the inventory limit is set
@@ -385,18 +418,20 @@ function changeHouseInventory(houseInfo)
     -- Register a back button
     changeHouseInventoryPage:RegisterElement('button', {
         label = _U("backButton"),
+        slot = "footer",
         style = {}
     }, function()
         AdminManagementMenuHouseChose(houseInfo) -- Return to house options menu
     end)
 
     changeHouseInventoryPage:RegisterElement('bottomline', {
-        -- slot = "header",
-        -- style = {}
+        slot = "footer",
+        style = {}
     })
 
     TextDisplay = changeHouseInventoryPage:RegisterElement('textdisplay', {
         value = _U("changeHouseInvLimit_desc"),
+        slot = "footer",
         style = {}
     })
     -- Open the menu with the newly created page

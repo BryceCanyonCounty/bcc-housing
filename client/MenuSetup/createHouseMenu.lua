@@ -52,17 +52,22 @@ function PlayerListMenu(houseId, callback, context)
             callback(tpHouse, context) -- Pass context to the callback if needed
         end)
     end
+    playerListMenupage:RegisterElement('line', {
+        slot = "footer",
+        style = {}
+    })
 
     playerListMenupage:RegisterElement("button", {
         label = _U("backButton"),
+        slot = "footer",
         style = {}
     }, function()
         callback(tpHouse, context) -- Handle the back action appropriately
     end)
 
     playerListMenupage:RegisterElement('bottomline', {
-        -- slot = "header",
-        -- style = {}
+        slot = "footer",
+        style = {}
     })
 
     TextDisplay = playerListMenupage:RegisterElement('textdisplay', {
@@ -105,7 +110,7 @@ function doorCreationMenu()
         end
         table.insert(globalHouseData.doors, door)
         SetTimeout(500, function() -- Delay to prevent immediate reopening; adjust time as needed
-            doorCreationMenu()     -- Refresh the menu to show new door
+            CreateHouseMenu(false) -- Open the house creation menu again
         end)
     end)
 
@@ -119,21 +124,28 @@ function doorCreationMenu()
         end)
     end
 
+    doorCreationMenuPage:RegisterElement('line', {
+        slot = "footer",
+        style = {}
+    })
+
     -- Register a back button
     doorCreationMenuPage:RegisterElement('button', {
         label = _U("backButton"),
+        slot = "footer",
         style = {}
     }, function()
         CreateHouseMenu(false) -- Ensure tpHouse is properly maintained throughout the navigation
     end)
 
     doorCreationMenuPage:RegisterElement('bottomline', {
-        -- slot = "header",
-        -- style = {}
+        slot = "footer",
+        style = {}
     })
 
     TextDisplay = doorCreationMenuPage:RegisterElement('textdisplay', {
         value = _U("doorCreation_desc"),
+        slot = "footer",
         style = {}
     })
 
@@ -176,21 +188,28 @@ function IntChoice()
         CreateHouseMenu(true)
     end)
 
+    interiorChoiceMenuPage:RegisterElement('line', {
+        slot = "footer",
+        style = {}
+    })
+
     -- Register a back button on the menu
     interiorChoiceMenuPage:RegisterElement('button', {
         label = _U("backButton"),
+        slot = "footer",
         style = {}
     }, function()
         HouseManagementMenu()
     end)
 
     interiorChoiceMenuPage:RegisterElement('bottomline', {
-        -- slot = "header",
-        -- style = {}
+        slot = "footer",
+        style = {}
     })
 
     TextDisplay = interiorChoiceMenuPage:RegisterElement('textdisplay', {
         value = _U("SelectInterior_desc"),
+        slot = "footer",
         style = {}
     })
 
@@ -244,12 +263,13 @@ function HouseManagementMenu(allHouses)
     end)
 
     HouseManagementList:RegisterElement('bottomline', {
-        -- slot = "header",
-        -- style = {}
+        slot = "footer",
+        style = {}
     })
 
     TextDisplay = HouseManagementList:RegisterElement('textdisplay', {
         value = _U("HousingOptionDescr"),
+        slot = "footer",
         style = {}
     })
 
@@ -259,7 +279,10 @@ function HouseManagementMenu(allHouses)
     })
 end
 
-function CreateHouseMenu(tp)
+function CreateHouseMenu(tp, refresh)
+    if refresh then
+        BCCHousingMenu:Close() -- Close the current menu before reopening
+    end
     tp = tp or false -- Default to false if tp isn't provided
     print("Adjusted tp in CreateHouseMenu:", tp)
     -- Close any existing menus, assuming BCCHousingMenu is your FeatherMenu instance
@@ -326,8 +349,14 @@ function CreateHouseMenu(tp)
         end)
     end
 
+    createHouseMenu:RegisterElement('line', {
+        slot = "footer",
+        style = {}
+    })
+    
     createHouseMenu:RegisterElement('button', {
         label = _U("Confirm"),
+        slot = "footer",
         style = {}
     }, function()
         confirmCreation(globalHouseData)
@@ -337,18 +366,20 @@ function CreateHouseMenu(tp)
     -- Register a back button on the menu
     createHouseMenu:RegisterElement('button', {
         label = _U("backButton"),
+        slot = "footer",
         style = {}
     }, function()
         HouseManagementMenu()
     end)
 
     createHouseMenu:RegisterElement('bottomline', {
-        -- slot = "header",
-        -- style = {}
+        slot = "footer",
+        style = {}
     })
 
     TextDisplay = createHouseMenu:RegisterElement('textdisplay', {
         value = _U("nonTp_desc"),
+        slot = "footer",
         style = {}
     })
 
@@ -397,10 +428,16 @@ function setRadius()
         end
     end)
 
+    setRadiusPage:RegisterElement('line', {
+        slot = "footer",
+        style = {}
+    })
+
     -- Confirm button to process and confirm the radius setting
     setRadiusPage:RegisterElement('button', {
         label = _U("Confirm"),
         style = {},
+        slot = "footer",
     }, function()
         if globalHouseData.radius then
             VORPcore.NotifyRightTip(_U("radiusSet"), 4000)
@@ -413,18 +450,20 @@ function setRadius()
     -- Register a back button
     setRadiusPage:RegisterElement('button', {
         label = _U("backButton"),
+        slot = "footer",
         style = {}
     }, function()
         CreateHouseMenu(tpHouse)
     end)
 
     setRadiusPage:RegisterElement('bottomline', {
-        -- slot = "header",
-        -- style = {}
+        slot = "footer",
+        style = {}
     })
 
     TextDisplay = setRadiusPage:RegisterElement('textdisplay', {
         value = _U("setRadius_desc"),
+        slot = "footer",
         style = {}
     })
 
@@ -473,9 +512,15 @@ function setTaxAmount()
         end
     end)
 
+    setTaxAmountPage:RegisterElement('line', {
+        slot = "footer",
+        style = {}
+    })
+
     -- Confirm button to process and confirm the tax amount setting
     setTaxAmountPage:RegisterElement('button', {
         label = _U("Confirm"),
+        slot = "footer",
         style = {},
     }, function()
         if globalHouseData.taxAmount then
@@ -489,18 +534,20 @@ function setTaxAmount()
     -- Register a back button
     setTaxAmountPage:RegisterElement('button', {
         label = _U("backButton"),
+        slot = "footer",
         style = {}
     }, function()
         CreateHouseMenu(tpHouse)
     end)
 
     setTaxAmountPage:RegisterElement('bottomline', {
-        -- slot = "header",
-        -- style = {}
+        slot = "footer",
+        style = {}
     })
 
     TextDisplay = setTaxAmountPage:RegisterElement('textdisplay', {
         value = _U("taxAmount_desc"),
+        slot = "footer",
         style = {}
     })
 
@@ -547,9 +594,15 @@ function setInvLimit(houseId)
         end
     end)
 
+    inventoryLimitPage:RegisterElement('bottomline', {
+        slot = "footer",
+        style = {}
+    })
+
     -- Confirm button to process the inventory limit
     inventoryLimitPage:RegisterElement('button', {
         label = _U('Confirm'),
+        slot = "footer",
         style = {},
     }, function()
         if globalHouseData.invLimit then
@@ -565,18 +618,20 @@ function setInvLimit(houseId)
     -- Register a back button
     inventoryLimitPage:RegisterElement('button', {
         label = _U("backButton"),
+        slot = "footer",
         style = {}
     }, function()
         CreateHouseMenu(tpHouse) -- Optionally go back to the main menu of house creation
     end)
 
     inventoryLimitPage:RegisterElement('bottomline', {
-        -- slot = "header",
-        -- style = {}
+        slot = "footer",
+        style = {}
     })
 
     TextDisplay = inventoryLimitPage:RegisterElement('textdisplay', {
         value = _U("setInvLimit_desc"),
+        slot = "footer",
         style = {}
     })
 

@@ -7,9 +7,14 @@ RegisterCommand(Config.AdminManagementMenuCommand, function() --house creation c
     end
 end)
 
--- Helper function for debugging
-function devPrint(message)
-    print("^1[DEV] ^0" .. message)
+if Config.DevMode then
+    -- Helper function for debugging
+    function devPrint(message)
+        print("^1[DEV] ^0" .. message)
+    end
+else
+    -- Define devPrint as a no-op function if DevMode is not enabled
+    function devPrint(message) end
 end
 
 RegisterNetEvent('vorp:SelectedCharacter') --init loading
