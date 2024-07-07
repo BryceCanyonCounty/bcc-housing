@@ -1,5 +1,5 @@
 -- Global variables to store house data
-local globalHouseData = {
+globalHouseData = {
     owner = nil,
     ownerSource = nil,
     radius = nil,
@@ -11,24 +11,11 @@ local globalHouseData = {
 }
 
 -- When creating a house
-function afterSelectingOwner(tpHouse)
+local function afterSelectingOwner(tpHouse)
     CreateHouseMenu(tpHouse) -- This might initialize house creation or whatever is appropriate after selecting an owner
 end
 
--- When giving access
-function afterGivingAccess(tpHouse)
-    -- Ensure you have the necessary data to pass. Check for any potential nil values and handle them appropriately.
-    if globalHouseData.owner and HouseId and globalHouseData.ownerSource then
-        TriggerServerEvent('bcc-housing:NewPlayerGivenAccess', globalHouseData.owner, tpHouse,
-            globalHouseData.ownerSource)
-        TriggerEvent('bcc-housing:openmenu')
-    else
-        VORPcore.NotifyLeft("Missing necessary information for granting access.", "", "scoretimer_textures",
-            "scoretimer_generic_cross", 5000)
-    end
-end
-
-function PlayerListMenu(tpHouse, callback, context)
+function PlayerListMenu(houseId, callback, context)
     BCCHousingMenu:Close()
     local players = GetPlayers()
     table.sort(players, function(a, b)

@@ -9,9 +9,14 @@ function FurnitureMenu()
         style = {}
     })
 
+    furnitureMainMenu:RegisterElement('line', {
+        slot = "header",
+        style = {}
+    })
+
     -- Register a back button to return to the previous menu
     furnitureMainMenu:RegisterElement('button', {
-        label = "Buy furniture",
+        label = _U("buyOwnerFurn"),
         style = {}
     }, function()
         buyFurnitureMenu()
@@ -19,19 +24,30 @@ function FurnitureMenu()
 
     -- Register a back button to return to the previous menu
     furnitureMainMenu:RegisterElement('button', {
-        label = "Sell furniture",
+        label = _U("sellOwnerFurn"),
         style = {}
     }, function()
         SellOwnedFurnitureMenu()
     end)
 
+    furnitureMainMenu:RegisterElement('line', {
+        slot = "footer",
+        style = {}
+    })
+
     -- Register a back button to return to the previous menu
     furnitureMainMenu:RegisterElement('button', {
-        label = "Back",
+        label = _U("backButton"),
+        slot = 'footer',
         style = {}
     }, function()
-        TriggerEvent('bcc-housing:openmenu')
+        TriggerEvent('bcc-housing:openmenu', houseId)
     end)
+
+    furnitureMainMenu:RegisterElement('bottomline', {
+        slot = "footer",
+        style = {}
+    })
 
     -- Open the menu with the configured main page
     BCCHousingMenu:Open({
@@ -50,43 +66,48 @@ function buyFurnitureMenu()
         style = {}
     })
 
+    buyFurnitureMenu:RegisterElement('line', {
+        slot = "header",
+        style = {}
+    })
+
     -- Define the furniture items with their actions
     local furnitureItems = { {
         label = _U("chairs"),
         desc = _U("chairs_desc"),
-        action = 'Chairs'
+        action = 'chairs'
     }, {
         label = _U("benches"),
         desc = _U("benches_desc"),
-        action = 'Benches'
+        action = 'benches'
     }, {
         label = _U("tables"),
         desc = _U("tables_desc"),
-        action = 'Tables'
+        action = 'tables'
     }, {
         label = _U("beds"),
         desc = _U("beds_desc"),
-        action = 'Beds'
+        action = 'beds'
     }, {
         label = _U("lights"),
         desc = _U("lights_desc"),
-        action = 'Lights'
+        action = 'lights'
     }, {
         label = _U("post"),
         desc = _U("post_desc"),
-        action = 'Post'
+        action = 'post'
     }, {
         label = _U("couch"),
         desc = _U("couch_desc"),
-        action = 'Couch'
+        action = 'couch'
     }, {
         label = _U("seat"),
         desc = _U("seat_desc"),
-        action = 'Seat'
+        action = 'seat'
     }, {
         label = _U("shelf"),
         desc = _U("shelf_desc"),
-        action = 'Shelf'
+        action = 'shelf'
     } }
 
     -- Register elements for each furniture item
@@ -100,13 +121,24 @@ function buyFurnitureMenu()
         end)
     end
 
+    buyFurnitureMenu:RegisterElement('line', {
+        slot = "footer",
+        style = {}
+    })
+
     -- Register a back button to return to the previous menu
     buyFurnitureMenu:RegisterElement('button', {
-        label = "Back",
+        label = _U("backButton"),
+        slot = "footer",
         style = {}
     }, function()
         FurnitureMenu()
     end)
+
+    buyFurnitureMenu:RegisterElement('bottomline', {
+        slot = "footer",
+        style = {}
+    })
 
     -- Open the menu with the configured main page
     BCCHousingMenu:Open({
@@ -133,21 +165,37 @@ function IndFurnitureTypeMenu(type)
         style = {}
     })
 
+    furnitureTypeMenu:RegisterElement('line', {
+        slot = "header",
+        style = {}
+    })
+
     for k, v in pairs(furnConfigTable) do
         furnitureTypeMenu:RegisterElement('button', {
-            label = v.displayName .. " - " .. _U("cost") .. tostring(v.costToBuy),
+            label = v.displayName .. " - $" .. tostring(v.costToBuy),
             style = {}
         }, function()
             PlaceFurnitureIntoWorldMenu(v.propModel, v.costToBuy, v.displayName, v.sellFor)
         end)
     end
+    
+    furnitureTypeMenu:RegisterElement('line', {
+        slot = "footer",
+        style = {}
+    })
 
     furnitureTypeMenu:RegisterElement('button', {
-        label = "Back",
+        label = _U("backButton"),
+        slot = "footer",
         style = {}
     }, function()
         FurnitureMenu()
     end)
+
+    furnitureTypeMenu:RegisterElement('bottomline', {
+        slot = "footer",
+        style = {}
+    })
 
     BCCHousingMenu:Open({
         startupPage = furnitureTypeMenu
@@ -168,8 +216,13 @@ function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
     local furniturePlacementMenu = BCCHousingMenu:RegisterPage('furniture_placement_menu')
 
     furniturePlacementMenu:RegisterElement('header', {
-        value = "Place Furniture",
+        value = _U("placeFurniture"),
         slot = 'header',
+        style = {}
+    })
+
+    furniturePlacementMenu:RegisterElement('line', {
+        slot = "header",
         style = {}
     })
 
@@ -196,9 +249,15 @@ function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
         end)
     end
 
+    furniturePlacementMenu:RegisterElement('line', {
+        slot = "footer",
+        style = {}
+    })
+
     -- Confirm placement
     furniturePlacementMenu:RegisterElement('button', {
         label = _U("Confirm"),
+        slot = "footer",
         style = {}
     }, function()
         SetEntityCollision(createdObject, true, true)
@@ -221,11 +280,17 @@ function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
     -- Register a back button
     furniturePlacementMenu:RegisterElement('button', {
         label = _U("backButton"),
+        slot = "footer",
         style = {}
     }, function()
         DeleteObject(createdObject)
-        BCCHousingMenu:Close()
+        TriggerEvent('bcc-housing:openmenu')
     end)
+
+    furniturePlacementMenu:RegisterElement('bottomline', {
+        slot = "footer",
+        style = {}
+    })
 
     BCCHousingMenu:Open({
         startupPage = furniturePlacementMenu
@@ -375,21 +440,36 @@ function SellOwnedFurnitureMenu(furnTable)
         })
     end
 
+    sellFurnMenu:RegisterElement('line', {
+        slot = "footer",
+        style = {}
+    })
+
     -- Add a back button to return to the main furniture menu
     sellFurnMenu:RegisterElement('button', {
-        label = "Back",
+        label = _U("backButton"),
+        slot = "footer",
         style = {}
     }, function()
         FurnitureMenu()
     end)
+
+    sellFurnMenu:RegisterElement('bottomline', {
+        slot = "footer",
+        style = {}
+    })
+
+    TextDisplay = sellFurnMenu:RegisterElement('textdisplay', {
+        value = _U("sellOwnerFurn_desc"),
+        slot = "footer",
+        style = {}
+    })
 
     -- Open the menu with the configured page
     BCCHousingMenu:Open({
         startupPage = sellFurnMenu
     })
 end
-
---
 
 RegisterNetEvent('bcc-housing:ClientCloseAllMenus', function()
     BCCHousingMenu:Close()
