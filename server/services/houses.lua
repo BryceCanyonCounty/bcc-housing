@@ -1,4 +1,3 @@
----- House Creation DB Insert ----
 RegisterServerEvent('bcc-housing:CreationDBInsert', function(tpHouse, owner, radius, doors, houseCoords, invLimit, ownerSource, taxAmount)
     local _source = source
     local taxes = tonumber(taxAmount) > 0 and tonumber(taxAmount) or 0
@@ -54,7 +53,6 @@ AddEventHandler('bcc-housing:CheckIfHasHouse', function(passedSource)
 
         if #result > 0 then
             for k, v in pairs(result) do
-                -- Register inventory for the house
                 local data = {
                     id = 'Player_' .. tostring(v.houseid) .. '_bcc-houseinv',
                     name = _U("houseInv"),
@@ -69,19 +67,17 @@ AddEventHandler('bcc-housing:CheckIfHasHouse', function(passedSource)
                 }
                 exports.vorp_inventory:registerInventory(data)
 
-                -- Check if the player owns the house
                 if character.charIdentifier == tonumber(v.charidentifier) then
                     table.insert(accessibleHouses, v.houseid)
                     TriggerClientEvent('bcc-housing:OwnsHouseClientHandler', _source, v, true)
                 else
-                    -- Check if the player has access to the house
                     local allowed_idsTable = json.decode(v.allowed_ids)
                     if allowed_idsTable then
                         for y, e in pairs(allowed_idsTable) do
                             if character.charIdentifier == tonumber(e) then
                                 table.insert(accessibleHouses, v.houseid)
                                 TriggerClientEvent('bcc-housing:OwnsHouseClientHandler', _source, v, false)
-                                break     -- Once access is confirmed, break out of the loop
+                                break
                             end
                         end
                     end
@@ -89,12 +85,10 @@ AddEventHandler('bcc-housing:CheckIfHasHouse', function(passedSource)
             end
         end
 
-        -- Send the accessible houses list back to the client
         TriggerClientEvent('bcc-housing:ReceiveAccessibleHouses', _source, accessibleHouses)
     end)
 end)
 
--- Handler to open house inventory
 RegisterServerEvent('bcc-house:OpenHouseInv')
 AddEventHandler('bcc-house:OpenHouseInv', function(houseId)
     local src = source
@@ -112,14 +106,12 @@ AddEventHandler('bcc-house:OpenHouseInv', function(houseId)
                 if tostring(houseData.charidentifier) == tostring(charIdentifier) then
                     devPrint("Player is the owner of house ID: " .. tostring(houseId))
                     exports.vorp_inventory:openInventory(src, 'Player_' .. tostring(houseId) .. '_bcc-houseinv')
-                    devPrint("Player has access to house inventory: " .. tostring(houseId))
                 else
                     local allowedIds = json.decode(houseData.allowed_ids) or {}
                     for _, id in ipairs(allowedIds) do
                         if tostring(id) == tostring(charIdentifier) then
                             devPrint("Player is allowed to access house ID: " .. tostring(houseId))
                             exports.vorp_inventory:openInventory(src, 'Player_' .. tostring(houseId) .. '_bcc-houseinv')
-                            devPrint("Player has access to house inventory: " .. tostring(houseId))
                             return
                         end
                     end
@@ -155,7 +147,6 @@ AddEventHandler('bcc-housing:NewPlayerGivenAccess', function(id, houseid, recSou
         return
     end
 
-    -- Handle 'none' or nil `allowed_ids` by initializing to an empty table
     local idsTable = {}
     if houseData.allowed_ids ~= 'none' and houseData.allowed_ids ~= nil then
         idsTable = json.decode(houseData.allowed_ids)
@@ -192,13 +183,12 @@ AddEventHandler('bcc-housing:NewPlayerGivenAccess', function(id, houseid, recSou
         devPrint("ID already exists in the access list for houseid: " .. tostring(houseid))
     end
 
-    -- Update door access if doors are defined
     if houseData.doors then
         local doors = json.decode(houseData.doors)
         if doors then
             for _, doorId in ipairs(doors) do
                 devPrint("Updating door access for door ID: " .. tostring(doorId))
-                updateDoorAccess(doorId, id)
+                updateDoorAccess(doorId, id, false)
             end
         else
             devPrint("Error: Failed to decode 'doors' for houseid: " .. tostring(houseid))
@@ -226,9 +216,7 @@ end
 
 RegisterServerEvent('bcc-housing:InsertFurnitureIntoDB', function(furnTable, houseId)
     devPrint("Inserting furniture into DB for house ID: " .. tostring(houseId))
-    local param = {
-        ['houseid'] = houseId
-    }
+    local param = { ['houseid'] = houseId }
     local result = MySQL.query.await("SELECT * FROM bcchousing WHERE houseid=@houseid", param)
     if result[1].furniture == 'none' then
         local param2 = {
@@ -254,8 +242,6 @@ RegisterServerEvent('bcc-housing:FurniturePlacedCheck', function(houseid, deleti
         ['houseid'] = houseid,
         ['source'] = tostring(_source)
     }
-
-    --devPrint("Furniture placed check for house ID: " .. tostring(houseid) .. " and source: " .. tostring(_source))
 
     local result = MySQL.query.await("SELECT * FROM bcchousing WHERE houseid=@houseid", param)
     if result[1] then
@@ -342,9 +328,7 @@ end)
 
 RegisterServerEvent('bcc-housing:GetOwnerFurniture', function(houseId)
     devPrint("Getting owner furniture for house ID: " .. tostring(houseId))
-    local param = {
-        ['houseid'] = houseId
-    }
+    local param = { ['houseid'] = houseId }
     local _source = source
     local result = MySQL.query.await("SELECT * FROM bcchousing WHERE houseid=@houseid", param)
 
@@ -448,9 +432,7 @@ RegisterServerEvent('bcc-housing:CheckLedger')
 AddEventHandler('bcc-housing:CheckLedger', function(houseid)
     local _source = source
     devPrint("Checking ledger for house ID: " .. tostring(houseid))
-    local param = {
-        ['houseid'] = houseid
-    }
+    local param = { ['houseid'] = houseid }
     local result = MySQL.query.await("SELECT * FROM bcchousing WHERE houseid=@houseid", param)
     if #result > 0 then
         VORPcore.NotifyLeft(_source, tostring(result[1].ledger) .. '/' .. tostring(result[1].tax_amount), "", "menu_textures", "menu_icon_alert", 5000)
@@ -494,9 +476,9 @@ AddEventHandler('bcc-housing:getHouseId', function(context, houseId)
                         elseif context == 'access' then
                             devPrint("Granting access to House ID: " .. tostring(houseId) .. " for character ID: " .. tostring(charIdentifier))
                             TriggerClientEvent('bcc-housing:receiveHouseId', src, houseId)
-                        else
-                            devPrint("Error: Invalid context provided: " .. tostring(context))
-                            TriggerClientEvent('bcc-housing:receiveHouseId', src, nil)
+                        elseif context == 'removeAccess' then
+                            devPrint("Opening Remove access to House ID: " .. tostring(houseId) .. " for character ID: " .. tostring(charIdentifier))
+                            TriggerClientEvent('bcc-housing:receiveHouseIdremove', src, houseId)
                         end
                     else
                         devPrint("Player does not have access to the house ID: " .. tostring(houseId))
@@ -515,4 +497,123 @@ AddEventHandler('bcc-housing:getHouseId', function(context, houseId)
         devPrint("Error: No character found for source: " .. tostring(src))
         TriggerClientEvent('bcc-housing:receiveHouseId', src, nil)
     end
+end)
+
+RegisterServerEvent('bcc-housing:getHouseOwner')
+AddEventHandler('bcc-housing:getHouseOwner', function(houseId)
+    local src = source
+    local user = VORPcore.getUser(src)
+    local character = user.getUsedCharacter
+
+    if character then
+        local charIdentifier = character.charIdentifier
+        devPrint("getHouseOwner event triggered with charidentifier: " .. tostring(charIdentifier) .. " for House ID: " .. tostring(houseId))
+
+        if houseId then
+            MySQL.query("SELECT * FROM bcchousing WHERE houseid = @houseid", { ['@houseid'] = houseId }, function(result)
+                if result and #result > 0 then
+                    local houseData = result[1]
+                    local isOwner = tostring(houseData.charidentifier) == tostring(charIdentifier)
+
+                    devPrint("Owner of House ID: " .. tostring(houseId) .. " is charidentifier: " .. tostring(houseData.charidentifier))
+                    TriggerClientEvent('bcc-housing:receiveHouseOwner', src, houseId, isOwner)
+                else
+                    devPrint("Error: No results found for house ID: " .. tostring(houseId))
+                    TriggerClientEvent('bcc-housing:receiveHouseOwner', src, houseId, nil)
+                end
+            end)
+        else
+            devPrint("Error: No house ID provided")
+            TriggerClientEvent('bcc-housing:receiveHouseOwner', src, houseId, nil)
+        end
+    else
+        devPrint("Error: No character found for source: " .. tostring(src))
+        TriggerClientEvent('bcc-housing:receiveHouseOwner', src, houseId, nil)
+    end
+end)
+
+RegisterServerEvent('bcc-housing:getPlayersWithAccess')
+AddEventHandler('bcc-housing:getPlayersWithAccess', function(houseId)
+    local src = source
+    devPrint("Fetching players with access for House ID: " .. tostring(houseId))
+
+    -- Query to fetch allowed character IDs for the house
+    MySQL.query("SELECT allowed_ids FROM bcchousing WHERE houseid = @houseid", { ['@houseid'] = houseId }, function(result)
+        if result and #result > 0 then
+            local allowedIds = json.decode(result[1].allowed_ids)
+            if allowedIds and #allowedIds > 0 then
+                -- Convert the allowed IDs list into a comma-separated string for the SQL query
+                local allowedIdsString = table.concat(allowedIds, ',')
+                
+                -- Fetching detailed character information from the database
+                MySQL.query("SELECT * FROM characters WHERE charidentifier IN (" .. allowedIdsString .. ")", {}, function(characterDetails)
+                    if characterDetails and #characterDetails > 0 then
+                        for _, character in ipairs(characterDetails) do
+                            devPrint("Character found: ID=" .. character.charidentifier .. ", Name=" .. character.firstname .. " " .. character.lastname)
+                        end
+                        -- Send character details back to the client
+                        TriggerClientEvent('bcc-housing:ReceivePlayersWithAccess', src, characterDetails)
+                    else
+                        devPrint("No character details found for the allowed IDs")
+                        TriggerClientEvent('bcc-housing:ReceivePlayersWithAccess', src, {})
+                    end
+                end)
+            else
+                devPrint("No allowed IDs found for House ID: " .. tostring(houseId))
+                TriggerClientEvent('bcc-housing:ReceivePlayersWithAccess', src, {})
+            end
+        else
+            devPrint("No players found with access to house ID: " .. tostring(houseId))
+            TriggerClientEvent('bcc-housing:ReceivePlayersWithAccess', src, {})
+        end
+    end)
+end)
+
+RegisterServerEvent('bcc-housing:RemovePlayerAccess')
+AddEventHandler('bcc-housing:RemovePlayerAccess', function(houseId, playerId)
+    local src = source
+    devPrint("Starting removal of player access. House ID: " .. tostring(houseId) .. ", Player ID: " .. tostring(playerId))
+
+    -- Query to get the current list of allowed IDs for the house
+    MySQL.query("SELECT allowed_ids FROM bcchousing WHERE houseid = @houseid", { ['@houseid'] = houseId }, function(result)
+        if result and #result > 0 then
+            local allowedIds = json.decode(result[1].allowed_ids) or {}
+            devPrint("Current allowed IDs: " .. json.encode(allowedIds))
+
+            -- Searching and removing the player ID from the allowed IDs list
+            local found = false
+            for i, id in ipairs(allowedIds) do
+                if id == playerId then
+                    table.remove(allowedIds, i)
+                    found = true
+                    devPrint("Found and removed player ID from allowed list. Updated list: " .. json.encode(allowedIds))
+                    break
+                end
+            end
+
+            if not found then
+                devPrint("Player ID not found in allowed list, nothing to remove.")
+                TriggerClientEvent('bcc-housing:PlayerAccessRemovalFailed', src, houseId, playerId, "Player ID not in allowed list.")
+                return
+            end
+
+            -- Updating the allowed IDs list in the database
+            MySQL.update("UPDATE bcchousing SET allowed_ids = @allowedids WHERE houseid = @houseid", {
+                ['@allowedids'] = json.encode(allowedIds),
+                ['@houseid'] = houseId
+            }, function(affectedRows)
+                if affectedRows > 0 then
+                    devPrint("Removed player access successfully for Player ID: " .. tostring(playerId))
+                    VORPcore.NotifyRightTip(src, "Removed player access successfully for Player ID: " .. tostring(playerId))
+                else
+                    devPrint("Failed to update database with new allowed IDs list.")
+                    VORPcore.NotifyRightTip(src, 'Failed to update database with new allowed IDs list.')
+                    --TriggerClientEvent('bcc-housing:PlayerAccessRemovalFailed', src, houseId, playerId, "Database update failed.")
+                end
+            end)
+        else
+            devPrint("No house found with ID: " .. tostring(houseId) .. " or allowed_ids is empty.")
+            TriggerClientEvent('bcc-housing:PlayerAccessRemovalFailed', src, houseId, playerId, "No such house ID or empty allowed list.")
+        end
+    end)
 end)
