@@ -5,22 +5,17 @@ FeatherMenu = exports['feather-menu'].initiate()
 BccUtils = exports['bcc-utils'].initiate()
 
 BCCHousingMenu = FeatherMenu:RegisterMenu('bcc:housing:mainmenu', {
-  top = '50%',
-  right = '10%',
+  top = '5%',
+  left = '5%',
   ['720width'] = '500px',
   ['1080width'] = '600px',
   ['2kwidth'] = '700px',
   ['4kwidth'] = '900px',
-  style = {
-    --['height'] = '500px',
-    ['border'] = '5px solid white',
-    --['background-image'] = 'none',
-    ['background-color'] = '#515A5A'
-  },
+  style = {},
   contentslot = {
     style = {
-      ['height'] = '500px',
-      --['min-height'] = '300px'
+      ['height'] = '450px',
+      ['min-height'] = '250px'
     }
   },
   draggable = true
@@ -49,6 +44,22 @@ function GetPlayers()
   return playersData
 end
 
+function GetPlayersWithAccess(houseId, callback)
+  devPrint("Requesting players with access for House ID: " .. tostring(houseId))
+  
+  RegisterNetEvent("bcc-housing:ReceivePlayersWithAccess", function(result)
+      -- Debugging the data received from the server
+      devPrint("Received players data from server for House ID: " .. tostring(houseId))
+      devPrint("Number of players with access received: " .. tostring(#result))
+      
+      -- Trigger the callback with the results
+      callback(result)
+  end)
+
+  -- Trigger the server event to fetch players with access
+  TriggerServerEvent("bcc-housing:getPlayersWithAccess", houseId)
+end
+
 function showManageOpt(x, y, z, houseId)
     local PromptGroup = BccUtils.Prompts:SetupPromptGroup()
     local firstprompt = PromptGroup:RegisterPrompt(_U("openOwnerManage"), 0x760A9C6F, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
@@ -66,16 +77,21 @@ function showManageOpt(x, y, z, houseId)
         local dist = GetDistanceBetweenCoords(plc.x, plc.y, plc.z, x, y, z, true)
         
         if dist < 2 then
-            ---devPrint("Player is within 2 units of the house. Showing prompt for House ID: " .. tostring(houseId))
             PromptGroup:ShowGroup(_U("house"))
             
             if firstprompt:HasCompleted() then
                 devPrint("Prompt completed. Opening housing management menu for House ID: " .. tostring(houseId))
-                TriggerEvent('bcc-housing:openmenu', houseId) -- Pass the houseId to the event
+                TriggerServerEvent('bcc-housing:getHouseOwner', houseId)
             end
         elseif dist > 200 then
-            devPrint("Player is more than 200 units away from the house. Waiting before next check.")
             Wait(2000)
         end
     end
 end
+
+-- Receive House Owner Information
+RegisterNetEvent('bcc-housing:receiveHouseOwner')
+AddEventHandler('bcc-housing:receiveHouseOwner', function(houseId, isOwner)
+    devPrint("Received house owner information for House ID: " .. tostring(houseId) .. ", Is Owner: " .. tostring(isOwner))
+    TriggerEvent('bcc-housing:openmenu', houseId, isOwner)
+end)
