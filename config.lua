@@ -54,7 +54,7 @@ Config = {
         },
     },
     Furniture = {
-        Chairs = {
+        chairs = {
             { propModel = 'p_chair14x',  displayName = 'Gardenchar',          costToBuy = 50, sellFor = 30 },
             { propModel = 'p_chair11x',  displayName = 'Chair',               costToBuy = 50, sellFor = 30 },
             { propModel = 'p_chair04x',  displayName = 'Woodchair',           costToBuy = 50, sellFor = 30 },
@@ -79,7 +79,7 @@ Config = {
             { propModel = 'p_chair13x',  displayName = 'noble Chair',         costToBuy = 50, sellFor = 30 },
             { propModel = 'p_chair30x',  displayName = 'noble Chair 2',       costToBuy = 50, sellFor = 30 },
         },
-        Seat = {
+        seat = {
             { propModel = 'p_chaircomfy07x',         displayName = 'Braidchair',             costToBuy = 70, sellFor = 50 },
             { propModel = 'p_woodendeskchair01x',    displayName = 'Woodseat',               costToBuy = 70, sellFor = 50 },
             { propModel = 'p_chaircomfy09x',         displayName = 'Seat',                   costToBuy = 70, sellFor = 50 },
@@ -100,7 +100,7 @@ Config = {
             { propModel = 'p_chaircomfy22x',         displayName = 'noble Seat 4',           costToBuy = 70, sellFor = 50 },
             { propModel = 'p_chaircomfycombo01x',    displayName = 'noble Seat 5',           costToBuy = 70, sellFor = 50 },
         },
-        Benches = {
+        benches = {
             { propModel = 'p_bench03x',        displayName = 'Woodbench',           costToBuy = 40, sellFor = 20 },
             { propModel = 'p_bench06x',        displayName = 'Woodbench 2',         costToBuy = 40, sellFor = 20 },
             { propModel = 'p_bench09x',        displayName = 'Woodbench 3',         costToBuy = 40, sellFor = 20 },
@@ -119,7 +119,7 @@ Config = {
             { propModel = 'p_hallbench01x',    displayName = 'upholstered Bench',   costToBuy = 40, sellFor = 20 },
             { propModel = 'p_seatbench01x',    displayName = 'upholstered Bench 2', costToBuy = 40, sellFor = 20 },
         },
-        Tables = {
+        tables = {
             { propModel = 'p_writingdesk01x',   displayName = 'small Woodtable',   costToBuy = 60, sellFor = 40 },
             { propModel = 'p_desk04x',          displayName = 'wooden Desk',       costToBuy = 60, sellFor = 40 },
             { propModel = 'p_desk07x',          displayName = 'wooden Desk 2',     costToBuy = 60, sellFor = 40 },
@@ -132,7 +132,7 @@ Config = {
             { propModel = 'p_desk09x',          displayName = 'noble Desk',        costToBuy = 60, sellFor = 40 },
             { propModel = 'p_desk09bx',         displayName = 'noble Desk 2',      costToBuy = 60, sellFor = 40 },
         },
-        Couch = {
+        couch = {
             { propModel = 'p_couchwicker01x',   displayName = 'Gardensofa',         costToBuy = 80, sellFor = 60 },
             { propModel = 'p_couch08x',         displayName = 'upholstered sofa',   costToBuy = 80, sellFor = 60 },
             { propModel = 'p_sofa01x',          displayName = 'upholstered sofa 2', costToBuy = 80, sellFor = 60 },
@@ -145,7 +145,7 @@ Config = {
             { propModel = 'p_victoriansofa01x', displayName = 'noble Sofa 6',       costToBuy = 80, sellFor = 60 },
             { propModel = 'p_couch05x',         displayName = 'Leathersofa',        costToBuy = 80, sellFor = 60 },
         },
-        Beds = {
+        beds = {
             { propModel = 'p_bed04x',     displayName = 'wooden bed',         costToBuy = 80, sellFor = 60 },
             { propModel = 'p_bed05x',     displayName = 'wooden bed 2',       costToBuy = 80, sellFor = 60 },
             { propModel = 'p_bed17x',     displayName = 'wooden bed 3',       costToBuy = 80, sellFor = 60 },
@@ -157,7 +157,7 @@ Config = {
             { propModel = 'p_bed12x',     displayName = 'sized noble bed',    costToBuy = 80, sellFor = 60 },
             { propModel = 'p_bedking02x', displayName = 'sized noble bed 2',  costToBuy = 80, sellFor = 60 },
         },
-        Post = {
+        post = {
             { propModel = 'p_hitchingpost01x_dmg', displayName = 'damaged wooden post',  costToBuy = 30, sellFor = 15 },
             { propModel = 'p_hitchingpost04x',     displayName = 'wooden post',          costToBuy = 30, sellFor = 15 },
             { propModel = 's_hitchpo02x',          displayName = 'wooden post 2',        costToBuy = 30, sellFor = 15 },
@@ -166,7 +166,7 @@ Config = {
             { propModel = 'p_hitchpostbla01x',     displayName = 'metal post',           costToBuy = 30, sellFor = 15 },
             { propModel = 'p_horsehitchnbd01x',    displayName = 'metal post 2',         costToBuy = 30, sellFor = 15 },
         },
-        Shelf = {
+        shelf = {
             { propModel = 'p_shelf06x',       displayName = 'wooden cabinet',     costToBuy = 70, sellFor = 50 },
             { propModel = 'p_shelf09x',       displayName = 'simple shelf',       costToBuy = 70, sellFor = 50 },
             { propModel = 'p_shelf10x',       displayName = 'wooden shelf',       costToBuy = 70, sellFor = 50 },
@@ -175,7 +175,7 @@ Config = {
             { propModel = 'p_shelfmail01x',   displayName = 'letter cabinet',     costToBuy = 70, sellFor = 50 },
             { propModel = 'p_shelfwine01x',   displayName = 'letter cabinet 2',   costToBuy = 70, sellFor = 50 },
         },
-        Lights = {
+        lights = {
             { propModel = 'p_lightpolenbx04x', displayName = 'Lightpole',   costToBuy = 20, sellFor = 10 },
             { propModel = 'p_lightpolenbx01x', displayName = 'Lightpole 2', costToBuy = 20, sellFor = 10 },
             { propModel = 'p_lightpolenbx02x', displayName = 'Lightpole 3', costToBuy = 20, sellFor = 10 },

@@ -30,8 +30,8 @@
 - The owner will be able to walk upto where his ranch is press "G" to open a menu to manage the house!
 
 # How to install
-- Run the sql file
 - Ensure the script! Thats it!
+- Database will run automatically!
 
 # Custom Interiors Coords (Credits to punchedgang/siddwell740)
 Siddin3 = {x = -1103.15, y = -2252.92, z = 50.65}
