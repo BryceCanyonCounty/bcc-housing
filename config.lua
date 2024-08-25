@@ -9,6 +9,7 @@ Config = {
     TaxResetDay = 24,                             --This MUST be the day after TaxDay set above!!! (do not change either of these dates if the current date is one of the 2 for ex if its the 22 or 23rd day do not change these dates it will break the code)
     WebhookLink = '',                             --insert your webhook link here if you want webhooks
     AdminManagementMenuCommand = 'HousingManager', --the name of the command for admins to manage all houses
+    EnablePrivatePropertyCheck = false, -- Set to true to enable, false to disable, this is for if you want to see a message that you enterd on a private property
     Hotels = {
         {
             hotelId = 1,                                      --Make sure this is a unique number for each hotel (once set do not change it will break!)
@@ -196,6 +197,10 @@ Config = {
         },
         Interior2 = {
             exitCoords = { x = -63.74, y = 14.05, z = 76.6 },
+            furnRadius = 10
+        },
+        Interior3 = {
+            exitCoords = { x = -60.36, y = 1238.86, z = 170.79 },
             furnRadius = 10
         }
     }

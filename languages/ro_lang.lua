@@ -98,6 +98,7 @@ Locales["ro_lang"] = {
 	noFurn = 'Nu detii niciun mobilier',
 	sellFor = 'Vinde Pentru: ',
 	furnSold = 'Mobilier Vandut',
+	furnNotSold = 'Nu ai putut vinde mobilierul',
 	taxAmount = 'Suma Taxei',
 	taxAmount_desc = 'Seteaza suma pe care casa va trebui sa o plateasca In taxe.',
 	taxAmountSet = 'Suma Taxei Stabilita',

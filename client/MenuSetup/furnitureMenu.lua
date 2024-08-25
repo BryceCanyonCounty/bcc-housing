@@ -50,7 +50,11 @@ function FurnitureMenu(houseId)
 
     -- Open the menu with the configured main page
     BCCHousingMenu:Open({
-        startupPage = furnitureMainMenu
+        startupPage = furnitureMainMenu,
+        sound = {
+            action = "SELECT",
+            soundset = "RDRO_Character_Creator_Sounds"
+       }
     })
 end
 
@@ -141,7 +145,11 @@ function buyFurnitureMenu(houseId)
 
     -- Open the menu with the configured main page
     BCCHousingMenu:Open({
-        startupPage = buyFurnitureMenu
+        startupPage = buyFurnitureMenu,
+        sound = {
+            action = "SELECT",
+            soundset = "RDRO_Character_Creator_Sounds"
+       }
     })
 end
 
@@ -197,7 +205,11 @@ function IndFurnitureTypeMenu(type, houseId)
     })
 
     BCCHousingMenu:Open({
-        startupPage = furnitureTypeMenu
+        startupPage = furnitureTypeMenu,
+        sound = {
+            action = "SELECT",
+            soundset = "RDRO_Character_Creator_Sounds"
+       }
     })
 end
 
@@ -228,9 +240,11 @@ function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
     -- Slider for adjustment precision
     furniturePlacementMenu:RegisterElement('slider', {
         label = _U("amountToMove"),
+        slot = 'header',
+        start = 0.2,
         min = 0,
-        max = 5,
-        step = 0.1,
+        max = 10,
+        steps = 0.1,
         value = amountToMove
     }, function(data)
         amountToMove = data.value
@@ -290,10 +304,18 @@ function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
         slot = "footer",
         style = {}
     })
-
     BCCHousingMenu:Open({
-        startupPage = furniturePlacementMenu
+        cursorFocus = false,
+        menuFocus = true,
+        startupPage = furniturePlacementMenu,
+        sound = {
+             action = "SELECT",
+             soundset = "RDRO_Character_Creator_Sounds"
+        }
     })
+    --BCCHousingMenu:Open({
+        --startupPage = furniturePlacementMenu
+    --})
 end
 
 function MoveFurniture(obj, direction, moveAmount)
@@ -439,7 +461,7 @@ function SellOwnedFurnitureMenu(houseId,furnTable)
                         DeleteEntity(entity)
                         table.remove(CreatedFurniture, idx)
                         TriggerServerEvent('bcc-housing:FurnSoldRemoveFromTable', v, houseId, furnTable, k)
-                        VORPcore.NotifyRightTip(_U("furnSold"), 4000)
+                        --VORPcore.NotifyRightTip(_U("furnSold"), 4000)
                         sold = true
                         break
                     end
@@ -484,13 +506,13 @@ function SellOwnedFurnitureMenu(houseId,furnTable)
 
     -- Open the menu with the configured page
     BCCHousingMenu:Open({
-        startupPage = sellFurnMenu
+        startupPage = sellFurnMenu,
+        sound = {
+            action = "SELECT",
+            soundset = "RDRO_Character_Creator_Sounds"
+       }
     })
 end
-
-RegisterNetEvent('bcc-housing:ClientCloseAllMenus', function()
-    BCCHousingMenu:Close()
-end)
 
 function GetOwnedFurniture(houseId)
     devPrint("Requesting furniture for house ID: " .. tostring(houseId))

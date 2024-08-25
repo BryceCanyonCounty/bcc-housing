@@ -98,6 +98,7 @@ Locales["fr_lang"] = {
     noFurn = 'Vous ne possédez aucun meuble',
     sellFor = 'Vendre pour : ',
     furnSold = 'Meubles vendus',
+    furnNotSold = 'Furniture not sold',
     taxAmount = 'Montant de la taxe',
     taxAmount_desc = 'Définir le montant que la maison devra payer en taxes.',
     taxAmountSet = 'Montant de la taxe défini',

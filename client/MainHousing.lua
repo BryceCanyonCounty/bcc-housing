@@ -1,7 +1,7 @@
---Insert Your Main Client Side Code Here
+-- Insert Your Main Client Side Code Here
 HouseCoords, HouseRadius, HouseId, AdminAllowed, Owner, HouseBlips, OwnedHotels, TpHouse, TpHouseInstance = nil, nil, nil, false, nil, {}, {}, nil, nil
 
-RegisterCommand(Config.AdminManagementMenuCommand, function() --house creation command
+RegisterCommand(Config.AdminManagementMenuCommand, function() -- house creation command
     if AdminAllowed then
         HouseManagementMenu()
     end
@@ -14,25 +14,26 @@ if Config.DevMode then
     end
 else
     -- Define devPrint as a no-op function if DevMode is not enabled
-    function devPrint(message) end
+    function devPrint(message)
+    end
 end
 
-RegisterNetEvent('vorp:SelectedCharacter') --init loading
+RegisterNetEvent('vorp:SelectedCharacter') -- init loading
 AddEventHandler('vorp:SelectedCharacter', function()
-    local player = GetPlayerServerId(tonumber(PlayerId())) --credit vorp_admin
+    local player = GetPlayerServerId(tonumber(PlayerId())) -- credit vorp_admin
     Wait(200)
-    TriggerServerEvent("bcc-housing:getPlayersInfo", player) --credit vorp_admin
+    TriggerServerEvent("bcc-housing:getPlayersInfo", player) -- credit vorp_admin
     TriggerServerEvent('bcc-housing:AdminCheck')
     TriggerServerEvent('bcc-housing:HotelDbRegistry')
     TriggerServerEvent('bcc-housing:CheckIfHasHouse')
 end)
 
-CreateThread(function() --Devmode area
+CreateThread(function() -- Devmode area
     if Config.DevMode then
         RegisterCommand('HousingDev', function()
-            local player = GetPlayerServerId(tonumber(PlayerId())) --credit vorp_admin
+            local player = GetPlayerServerId(tonumber(PlayerId())) -- credit vorp_admin
             Wait(200)
-            TriggerServerEvent("bcc-housing:getPlayersInfo", player) --credit vorp_admin
+            TriggerServerEvent("bcc-housing:getPlayersInfo", player) -- credit vorp_admin
             TriggerServerEvent('bcc-housing:AdminCheck')
             TriggerServerEvent('bcc-housing:HotelDbRegistry')
             TriggerServerEvent('bcc-housing:CheckIfHasHouse')
@@ -52,52 +53,62 @@ AddEventHandler('bcc-housing:OwnsHouseClientHandler', function(houseTable, owner
     end
 
     devPrint("House information set for House ID: " .. tostring(HouseId))
-    
+
     -- ManageHouse Menu Setup
     TriggerEvent('bcc-housing:FurnCheckHandler')
+    --TriggerEvent('bcc-housing:PrivatePropertyCheckHandler')
     local blip = BccUtils.Blips:SetBlip(_U("houseBlip"), 'blip_mp_base', 0.2, HouseCoords.x, HouseCoords.y, HouseCoords.z)
     table.insert(HouseBlips, blip)
     showManageOpt(HouseCoords.x, HouseCoords.y, HouseCoords.z, HouseId) -- Ensure HouseId is passed here
 end)
 
-RegisterNetEvent('bcc-housing:AdminClientCatch', function(var) --admin check catch
+RegisterNetEvent('bcc-housing:AdminClientCatch', function(var) -- admin check catch
     if var then
         AdminAllowed = true
     end
 end)
 
-AddEventHandler('bcc-housing:FurnCheckHandler', function() --event to spawn, and del furniture based on distance to house
-    devPrint("Starting furniture check handler")
-    while true do
-        Wait(2000)
-        local plc = GetEntityCoords(PlayerPedId())
-        local dist = GetDistanceBetweenCoords(plc.x, plc.y, plc.z, HouseCoords.x, HouseCoords.y, HouseCoords.z, true)
-        if dist < HouseRadius + 20 then
-            --devPrint("Player is near the house. Spawning furniture.")
-            TriggerServerEvent('bcc-housing:FurniturePlacedCheck', HouseId, false, true)
-            Wait(1500)
-        elseif dist > HouseRadius + 100 then
-            devPrint("Player is far from the house. Deleting furniture.")
-            TriggerServerEvent('bcc-housing:FurniturePlacedCheck', HouseId, true)
+AddEventHandler('bcc-housing:FurnCheckHandler',
+    function() -- event to spawn, and del furniture based on distance to house
+        devPrint("Starting furniture check handler")
+        while true do
             Wait(2000)
+            local plc = GetEntityCoords(PlayerPedId())
+            local dist = GetDistanceBetweenCoords(plc.x, plc.y, plc.z, HouseCoords.x, HouseCoords.y, HouseCoords.z, true)
+            if dist < HouseRadius + 20 then
+                -- devPrint("Player is near the house. Spawning furniture.")
+                TriggerServerEvent('bcc-housing:FurniturePlacedCheck', HouseId, false, true)
+                Wait(1500)
+            elseif dist > HouseRadius + 100 then
+                devPrint("Player is far from the house. Deleting furniture.")
+                TriggerServerEvent('bcc-housing:FurniturePlacedCheck', HouseId, true)
+                Wait(2000)
+            end
         end
-    end
-end)
+    end)
 
---Hotel area --
+-- Hotel area --
 RegisterNetEvent('bcc-housing:MainHotelHandler', function()
     devPrint("Initializing main hotel handler")
     local PromptGroup = BccUtils.Prompts:SetupPromptGroup()
-    local firstprompt = PromptGroup:RegisterPrompt(_U("promptBuy"), 0x760A9C6F, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+    local firstprompt = PromptGroup:RegisterPrompt(_U("promptBuy"), 0x760A9C6F, 1, 1, true, 'hold', {
+        timedeventhash = "MEDIUM_TIMED_EVENT"
+    })
 
     local PromptGroup2 = BccUtils.Prompts:SetupPromptGroup()
-    local firstprompt2 = PromptGroup2:RegisterPrompt(_U("promptEnterHotel"), 0x760A9C6F, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+    local firstprompt2 = PromptGroup2:RegisterPrompt(_U("promptEnterHotel"), 0x760A9C6F, 1, 1, true, 'hold', {
+        timedeventhash = "MEDIUM_TIMED_EVENT"
+    })
 
     local PromptGroup3 = BccUtils.Prompts:SetupPromptGroup()
-    local firstprompt3 = PromptGroup3:RegisterPrompt(_U("hotelInvName"), 0x760A9C6F, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+    local firstprompt3 = PromptGroup3:RegisterPrompt(_U("hotelInvName"), 0x760A9C6F, 1, 1, true, 'hold', {
+        timedeventhash = "MEDIUM_TIMED_EVENT"
+    })
 
     local PromptGroup4 = BccUtils.Prompts:SetupPromptGroup()
-    local firstprompt4 = PromptGroup4:RegisterPrompt(_U("promptLeaveHotel"), 0x760A9C6F, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+    local firstprompt4 = PromptGroup4:RegisterPrompt(_U("promptLeaveHotel"), 0x760A9C6F, 1, 1, true, 'hold', {
+        timedeventhash = "MEDIUM_TIMED_EVENT"
+    })
 
     local inHotel, hotelInside, instanceNumber, coordsWhenEntered = false, nil, 0, nil
     while true do
@@ -149,14 +160,56 @@ RegisterNetEvent('bcc-housing:MainHotelHandler', function()
                     devPrint("Leaving hotel: " .. tostring(hotelInside.hotelId))
                     SetEntityCoords(PlayerPedId(), coordsWhenEntered.x, coordsWhenEntered.y, coordsWhenEntered.z)
                     inHotel = false
-                    VORPcore.instancePlayers(0) --removes the player from instance
+                    VORPcore.instancePlayers(0) -- removes the player from instance
                 end
             end
         end
     end
 end)
 
-RegisterNetEvent('bcc-housing:HousingTableUpdate', function(houseId) --event to update the housing table
+RegisterNetEvent('bcc-housing:PrivatePropertyCheckHandler')
+AddEventHandler('bcc-housing:PrivatePropertyCheckHandler', function(houseCoords, houseRadius)
+    -- Check if the property check is enabled
+    if not Config.EnablePrivatePropertyCheck then
+        devPrint("Private property check is disabled in the config.")
+        return -- Exit the handler if the check is disabled
+    end
+    devPrint("Starting private property check handler")
+
+    local privatePropertyRadius = houseRadius + 20 -- Adjust the radius as needed
+    local isInsidePrivateProperty = false          -- Track if the player is currently inside the property
+    local lastNotificationTime = 0                 -- Track the last time a notification was shown
+
+    while true do
+        Wait(0) -- Run the loop continuously
+
+        local playerCoords = GetEntityCoords(PlayerPedId())
+        local distanceToHouse = GetDistanceBetweenCoords(playerCoords.x, playerCoords.y, playerCoords.z, houseCoords.x,
+            houseCoords.y, houseCoords.z, true)
+
+        if distanceToHouse < privatePropertyRadius then
+            if not isInsidePrivateProperty then
+                -- First time entering the property
+                VORPcore.NotifyBottomRight("You are entering private property!", 4000)
+                isInsidePrivateProperty = true
+                devPrint("Player has entered private property.")
+                lastNotificationTime = GetGameTimer() -- Set the time for the first notification
+            elseif GetGameTimer() - lastNotificationTime >= 10000 then
+                -- Show the message every 10 seconds
+                VORPcore.NotifyLeft("Private Property", "You are on a private property", "menu_textures",
+                    "menu_icon_alert", "red", 4000)
+                lastNotificationTime = GetGameTimer() -- Update the time for the next notification
+            end
+        elseif isInsidePrivateProperty then
+            -- Player has left the property
+            VORPcore.NotifyBottomRight("You are leaving private property!", 10000)
+            isInsidePrivateProperty = false
+            devPrint("Player has left private property.")
+        end
+    end
+end)
+
+RegisterNetEvent('bcc-housing:HousingTableUpdate', function(houseId) -- event to update the housing table
     devPrint("Updating housing table with house ID: " .. tostring(houseId))
     table.insert(OwnedHotels, houseId)
 end)

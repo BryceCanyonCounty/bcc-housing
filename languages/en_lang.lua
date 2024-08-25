@@ -98,6 +98,7 @@ Locales["en_lang"] = {
     noFurn = 'You do not own any furniture',
     sellFor = 'Sell For: ',
     furnSold = 'Furniture Sold',
+    furnNotSold = 'Furniture not sold',
     taxAmount = 'Tax Amount',
     taxAmount_desc = 'Set the amount the house will have to pay in taxes.',
     taxAmountSet = 'Tax amount set',

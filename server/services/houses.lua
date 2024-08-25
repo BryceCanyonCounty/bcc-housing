@@ -53,6 +53,8 @@ AddEventHandler('bcc-housing:CheckIfHasHouse', function(passedSource)
 
         if #result > 0 then
             for k, v in pairs(result) do
+                TriggerClientEvent('bcc-housing:PrivatePropertyCheckHandler', _source, json.decode(v.house_coords), v.house_radius_limit)
+
                 local data = {
                     id = 'Player_' .. tostring(v.houseid) .. '_bcc-houseinv',
                     name = _U("houseInv"),
@@ -400,7 +402,7 @@ RegisterServerEvent('bcc-housing:FurnSoldRemoveFromTable', function(furnTable, h
         VORPcore.NotifyRightTip(_source, _U("furnNotSoldInvalid"), 4000)
     end
 
-    TriggerClientEvent('bcc-housing:ClientCloseAllMenus', _source)
+    TriggerClientEvent('bcc-housing:SellOwnedFurnMenu', _source, houseId, wholeFurnTable)
 end)
 
 RegisterServerEvent('bcc-housing:LedgerHandling')
@@ -623,16 +625,16 @@ AddEventHandler('bcc-housing:RemovePlayerAccess', function(houseId, playerId)
             }, function(affectedRows)
                 if affectedRows > 0 then
                     devPrint("Removed player access successfully for Player ID: " .. tostring(playerId))
+                    TriggerClientEvent('bcc-housing:ClientRecHouseLoad', src)
                     VORPcore.NotifyRightTip(src, "Removed player access successfully for Player ID: " .. tostring(playerId))
                 else
                     devPrint("Failed to update database with new allowed IDs list.")
-                    VORPcore.NotifyRightTip(src, 'Failed to update database with new allowed IDs list.')
-                    --TriggerClientEvent('bcc-housing:PlayerAccessRemovalFailed', src, houseId, playerId, "Database update failed.")
+                    VORPcore.NotifyRightTip(src, "Update failed, please try again.", 4000)
                 end
             end)
         else
             devPrint("No house found with ID: " .. tostring(houseId) .. " or allowed_ids is empty.")
-            TriggerClientEvent('bcc-housing:PlayerAccessRemovalFailed', src, houseId, playerId, "No such house ID or empty allowed list.")
+            VORPcore.NotifyRightTip(src, "No such house ID or empty allowed list.", 4000)
         end
     end)
 end)
