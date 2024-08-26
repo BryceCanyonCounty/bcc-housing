@@ -1,59 +1,88 @@
 Config = {
-    defaultlang = 'en_lang',                      --set your language here
-    adminGroup = 'admin',                         --set your admin group here
-    DevMode = false,                              --False on live server
+    -- Set your language here
+    defaultlang = 'en_lang',
+    -----------------------------------------------------
+
+    -- Set your admin group here
+    adminGroup = 'admin',
+    -----------------------------------------------------
+
+    DevMode = true, --False on live server
+    -----------------------------------------------------
+
+    --Maximum allowed houses per character
     Setup = {
-        MaxHousePerChar = 2,                      --Maximum allowed houses per character
+        MaxHousePerChar = 2,
     },
-    TaxDay = 23,                                  --This is the number day of each month that taxes will be collected on
-    TaxResetDay = 24,                             --This MUST be the day after TaxDay set above!!! (do not change either of these dates if the current date is one of the 2 for ex if its the 22 or 23rd day do not change these dates it will break the code)
-    WebhookLink = '',                             --insert your webhook link here if you want webhooks
+    -----------------------------------------------------
+
+    -- Tax Day for checking the ledger and collect
+    TaxDay = 23,      --This is the number day of each month that taxes will be collected on
+    TaxResetDay = 24, --This MUST be the day after TaxDay set above!!! (do not change either of these dates if the current date is one of the 2 for ex if its the 22 or 23rd day do not change these dates it will break the code)
+    -----------------------------------------------------
+
+    -- Discord Webhooks
+    WebhookLink = '',              --insert your webhook link here if you want webhooks
+    WebhookTitle = 'BCC-Housing',
+    WebhookAvatar = '',
+    -----------------------------------------------------
+
+    -- Admin Commands
     AdminManagementMenuCommand = 'HousingManager', --the name of the command for admins to manage all houses
-    EnablePrivatePropertyCheck = false, -- Set to true to enable, false to disable, this is for if you want to see a message that you enterd on a private property
+    EnablePrivatePropertyCheck = true,             -- Set to true to enable, false to disable, this is for if you want to see a message that you enterd on a private property
+    keys = {
+        manage = 0x760A9C6F                        -- [G] Manage House
+    },
+    -----------------------------------------------------
+
+    -- Hotels
     Hotels = {
         {
-            hotelId = 1,                                      --Make sure this is a unique number for each hotel (once set do not change it will break!)
+            hotelId = 1,                                        --Make sure this is a unique number for each hotel (once set do not change it will break!)
             location = { x = -322.12, y = 767.12, z = 121.63 }, --location of where you will buy and enter the hotel room
-            cost = 40,                                        --cost to buy the hotel room
-            invSpace = 100,                                   --Amount of inventory room the hotel will have
-        },
-        {
-            hotelId = 2,                                       --Make sure this is a unique number for each hotel (once set do not change it will break!)
-            location = { x = 1343.59, y = -1302.07, z = 77.42 }, --location of where you will buy and enter the hotel room
-            cost = 40,                                         --cost to buy the hotel room
-            invSpace = 100,                                    --Amount of inventory room the hotel will have
-        },
-        {
-            hotelId = 3,                                      --Make sure this is a unique number for each hotel (once set do not change it will break!)
-            location = { x = 2671.97, y = -1219.82, z = 53.3 }, --location of where you will buy and enter the hotel room
-            cost = 40,                                        --cost to buy the hotel room
-            invSpace = 100,                                   --Amount of inventory room the hotel will have
-        },
-        {
-            hotelId = 4,                                      --Make sure this is a unique number for each hotel (once set do not change it will break!)
-            location = { x = 2769.85, y = -1337.6, z = 46.46 }, --location of where you will buy and enter the hotel room
-            cost = 40,                                        --cost to buy the hotel room
-            invSpace = 100,                                   --Amount of inventory room the hotel will have
-        },
-        {
-            hotelId = 5,                                        --Make sure this is a unique number for each hotel (once set do not change it will break!)
-            location = { x = -1778.39, y = -375.34, z = 159.91 }, --location of where you will buy and enter the hotel room
             cost = 40,                                          --cost to buy the hotel room
             invSpace = 100,                                     --Amount of inventory room the hotel will have
         },
         {
-            hotelId = 6,                                       --Make sure this is a unique number for each hotel (once set do not change it will break!)
+            hotelId = 2,                                         --Make sure this is a unique number for each hotel (once set do not change it will break!)
+            location = { x = 1343.59, y = -1302.07, z = 77.42 }, --location of where you will buy and enter the hotel room
+            cost = 40,                                           --cost to buy the hotel room
+            invSpace = 100,                                      --Amount of inventory room the hotel will have
+        },
+        {
+            hotelId = 3,                                        --Make sure this is a unique number for each hotel (once set do not change it will break!)
+            location = { x = 2671.97, y = -1219.82, z = 53.3 }, --location of where you will buy and enter the hotel room
+            cost = 40,                                          --cost to buy the hotel room
+            invSpace = 100,                                     --Amount of inventory room the hotel will have
+        },
+        {
+            hotelId = 4,                                        --Make sure this is a unique number for each hotel (once set do not change it will break!)
+            location = { x = 2769.85, y = -1337.6, z = 46.46 }, --location of where you will buy and enter the hotel room
+            cost = 40,                                          --cost to buy the hotel room
+            invSpace = 100,                                     --Amount of inventory room the hotel will have
+        },
+        {
+            hotelId = 5,                                          --Make sure this is a unique number for each hotel (once set do not change it will break!)
+            location = { x = -1778.39, y = -375.34, z = 159.91 }, --location of where you will buy and enter the hotel room
+            cost = 40,                                            --cost to buy the hotel room
+            invSpace = 100,                                       --Amount of inventory room the hotel will have
+        },
+        {
+            hotelId = 6,                                         --Make sure this is a unique number for each hotel (once set do not change it will break!)
             location = { x = -790.34, y = -1264.38, z = 43.63 }, --location of where you will buy and enter the hotel room
+            cost = 40,                                           --cost to buy the hotel room
+            invSpace = 100,                                      --Amount of inventory room the hotel will have
+        },
+        {
+            hotelId = 7,                                       --Make sure this is a unique number for each hotel (once set do not change it will break!)
+            location = { x = 2958.83, y = 483.01, z = 47.77 }, --location of where you will buy and enter the hotel room
             cost = 40,                                         --cost to buy the hotel room
             invSpace = 100,                                    --Amount of inventory room the hotel will have
         },
-        {
-            hotelId = 7,                                     --Make sure this is a unique number for each hotel (once set do not change it will break!)
-            location = { x = 2958.83, y = 483.01, z = 47.77 }, --location of where you will buy and enter the hotel room
-            cost = 40,                                       --cost to buy the hotel room
-            invSpace = 100,                                  --Amount of inventory room the hotel will have
-        },
     },
+    -----------------------------------------------------
+
+    -- Furnitures
     Furniture = {
         chairs = {
             { propModel = 'p_chair14x',  displayName = 'Gardenchar',          costToBuy = 50, sellFor = 30 },
@@ -185,11 +214,18 @@ Config = {
             { propModel = 'p_lightpostnbx01x', displayName = 'Lightpole 6', costToBuy = 20, sellFor = 10 },
         }
     },
-    ALlowedJobs = {      --these are jobs that will be able to make houses just like the admins can above useful for real estate jobs
+    -----------------------------------------------------
+
+    -- These are jobs that will be able to make houses just like the admins can above useful for real estate jobs
+    ALlowedJobs = {
         {
             jobname = '' --the job name
         },               --to add more just copy this table paste and change job name
     },
+    -----------------------------------------------------
+    -- TP Houses
+    -- Here you need to add coordinates for interiors which doors cannot be open, you need to enter in the house with Noclip and get the coords
+    -- Make sure you add the cordinates before create the TP House
     TpInteriors = {
         Interior1 = {
             exitCoords = { x = -1103.15, y = -2252.92, z = 50.65 },
