@@ -98,6 +98,7 @@ Locales["de_lang"] = {
     noFurn = 'Du hast keine Möbel',
     sellFor = 'Verkaufspreis: ',
     furnSold = 'Möbelstück verkaut',
+    furnNotSold = 'Furniture not sold',
     taxAmount = 'Steuern',
     taxAmount_desc = '',
     taxAmountSet = 'Steuerhöhe gesetzt',

@@ -19,6 +19,8 @@
 - Can add as many furniture items as you want in the config!
 - House owners can buy furniture and place it around thier house!
 - House owners can sell the furniture they bought!
+- House owners can give and/or remove access to players
+- When players approach a house, they will receive a notification indicating that they have entered private property. 
 - Easy to translate!
 - In depth webhooks!
 - Built in hotel system!
@@ -34,8 +36,8 @@
 - Database will run automatically!
 
 # Custom Interiors Coords (Credits to punchedgang/siddwell740)
-Siddin3 = {x = -1103.15, y = -2252.92, z = 50.65}
-Siddin4 = {x = -63.74, y = 14.05, z = 76.6}
+- Siddin3 = {x = -1103.15, y = -2252.92, z = 50.65}
+- Siddin4 = {x = -63.74, y = 14.05, z = 76.6}
 
 # Side Notes
 - This is a massive project there is most likely oversights if you have any suggestions or bugs report them asap!

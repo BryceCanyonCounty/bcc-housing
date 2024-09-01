@@ -6,6 +6,7 @@ RegisterNetEvent('bcc-housing:ReceiveAccessibleHouses')
 AddEventHandler('bcc-housing:ReceiveAccessibleHouses', function(accessibleHouses)
     devPrint("Received accessible houses list from server")
     PlayerAccessibleHouses = accessibleHouses
+    
 end)
 
 -- Function to check if the player has access to a specific house
@@ -292,7 +293,7 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
         style = {}
     }, function()
         if houseId then
-            TriggerEvent('bcc-housing:addLedger', houseId)
+            TriggerEvent('bcc-housing:addLedger', houseId, isOwner)
         else
             devPrint("Error: HouseId is undefined or invalid.")
         end
@@ -325,7 +326,7 @@ function enterOrExitHouse(enter, tpHouseIndex)
 end
 
 RegisterNetEvent('bcc-housing:addLedger')
-AddEventHandler('bcc-housing:addLedger', function(houseId)
+AddEventHandler('bcc-housing:addLedger', function(houseId, isOwner)
     devPrint("Adding ledger for House ID: " .. tostring(houseId))
     local AddLedgerPage = BCCHousingMenu:RegisterPage('add_ledger_page')
     local amountToInsert = nil
@@ -374,7 +375,8 @@ AddEventHandler('bcc-housing:addLedger', function(houseId)
         slot = "footer",
         style = {}
     }, function()
-        TriggerEvent('bcc-housing:openmenu', houseId, true)
+        -- Reopen the menu with the correct ownership status
+        TriggerEvent('bcc-housing:openmenu', houseId, isOwner)
     end)
 
     AddLedgerPage:RegisterElement('bottomline', {

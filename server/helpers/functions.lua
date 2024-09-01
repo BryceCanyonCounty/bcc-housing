@@ -2,7 +2,7 @@
 VORPcore = exports.vorp_core:GetCore()
 
 BccUtils = exports['bcc-utils'].initiate()
-Discord = BccUtils.Discord.setup(Config.WebhookLink, 'bcc-housing', '')
+Discord = BccUtils.Discord.setup(Config.WebhookLink, Config.WebhookTitle, Config.WebhookAvatar)
 
 DbUpdated = false -- Use this to stop taxes from running till db has been made
 
