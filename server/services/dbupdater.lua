@@ -1,4 +1,5 @@
 CreateThread(function()
+    -- Create the bcchousing table if it doesn't exist
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `bcchousing` (
             `charidentifier` varchar(50) NOT NULL,
@@ -17,6 +18,7 @@ CreateThread(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ]])
 
+    -- Create the bcchousinghotels table if it doesn't exist
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `bcchousinghotels` (
             `charidentifier` varchar(50) NOT NULL,
@@ -24,8 +26,20 @@ CreateThread(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ]])
 
-    MySQL.query.await("ALTER TABLE `bcchousing` ADD COLUMN IF NOT EXISTS (`tpInt` int(10) DEFAULT 0)")
-    MySQL.query.await("ALTER TABLE `bcchousing` ADD COLUMN IF NOT EXISTS (`tpInstance` int(10) DEFAULT 0)")
+    -- Add tpInt and tpInstance columns to bcchousing if they don't exist
+    MySQL.query.await("ALTER TABLE `bcchousing` ADD COLUMN IF NOT EXISTS `tpInt` int(10) DEFAULT 0")
+    MySQL.query.await("ALTER TABLE `bcchousing` ADD COLUMN IF NOT EXISTS `tpInstance` int(10) DEFAULT 0")
+
+    -- Create the bcchousing_transactions table if it doesn't exist
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS `bcchousing_transactions` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `houseid` int(11) NOT NULL,
+            `identifier` varchar(50) NOT NULL,
+            `amount` int(11) NOT NULL,
+            PRIMARY KEY (`id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+    ]])
 
     DbUpdated = true
 

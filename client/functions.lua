@@ -64,36 +64,89 @@ end
 
 function showManageOpt(x, y, z, houseId)
     local PromptGroup = BccUtils.Prompts:SetupPromptGroup()
-    local firstprompt = PromptGroup:RegisterPrompt(_U("openOwnerManage"), Config.keys.manage, 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+    local firstprompt = PromptGroup:RegisterPrompt(_U("openOwnerManage"), Config.keys.manage, 1, 1, true, 'hold',
+        { timedeventhash = "MEDIUM_TIMED_EVENT" })
 
-    devPrint("Setting up manage options for House ID: " .. tostring(houseId) .. " at coordinates: " .. tostring(x) .. ", " .. tostring(y) .. ", " .. tostring(z))
+    devPrint("Setting up manage options for House ID: " ..
+        tostring(houseId) .. " at coordinates: " .. tostring(x) .. ", " .. tostring(y) .. ", " .. tostring(z))
+
+    -- Variable to track if the house exists
+    local houseExists = false
+
+    -- Check if the house exists on the server
+    TriggerServerEvent('bcc-housing:CheckIfHouseExists', houseId)
+
+    -- Listen for the server's response to determine if the house exists
+    RegisterNetEvent('bcc-housing:HouseExistenceChecked')
+    AddEventHandler('bcc-housing:HouseExistenceChecked', function(exists, checkedHouseId)
+        if checkedHouseId == houseId then
+            houseExists = exists
+            if not exists then
+                devPrint("House ID " .. tostring(houseId) .. " no longer exists. Deleting prompt.")
+                firstprompt:DeletePrompt()
+                --BreakHandleLoop = true -- Break the loop
+            end
+        end
+    end)
 
     while true do
         Wait(5)
         if BreakHandleLoop then
             devPrint("Breaking handle loop for House ID: " .. tostring(houseId))
-            break
+            break -- Exit the loop if the handle loop is broken
         end
 
-        local plc = GetEntityCoords(PlayerPedId())
-        local dist = GetDistanceBetweenCoords(plc.x, plc.y, plc.z, x, y, z, true)
-        
-        if dist < 2 then
-            PromptGroup:ShowGroup(_U("house"))
+        -- Only proceed if the house exists
+        if houseExists then
+            local plc = GetEntityCoords(PlayerPedId())
+            local dist = GetDistanceBetweenCoords(plc.x, plc.y, plc.z, x, y, z, true)
 
-            if firstprompt:HasCompleted() then
-                devPrint("Prompt completed. Opening housing management menu for House ID: " .. tostring(houseId))
-                TriggerServerEvent('bcc-housing:getHouseOwner', houseId)
+            if dist < 2 then
+                PromptGroup:ShowGroup(_U("house"))
+
+                if firstprompt:HasCompleted() then
+                    devPrint("Prompt completed. Opening housing management menu for House ID: " .. tostring(houseId))
+                    TriggerServerEvent('bcc-housing:getHouseOwner', houseId)
+                end
+            elseif dist > 200 then
+                Wait(2000)
             end
-        elseif dist > 200 then
-            Wait(2000)
+        else
+            Wait(1000) -- Wait a bit before checking again if the house exists
         end
     end
 end
 
+--- Cleanup/ deletion on leave ----
+AddEventHandler("onResourceStop", function(resource)
+    if resource == GetCurrentResourceName() then
+        -- Delete any created furniture
+        if #CreatedFurniture > 0 then
+            for k, v in pairs(CreatedFurniture) do
+                DeleteObject(v)
+            end
+        end
+        dealerPed:Remove()
+
+        -- Remove any blips that were created
+        if HouseBlips and next(HouseBlips) then
+            for k, v in pairs(HouseBlips) do
+                if v and v.rawblip then
+                    BccUtils.Blips:RemoveBlip(v.rawblip)
+                end
+            end
+            HouseBlips = {} -- Clear the table to prevent any stale references
+        end
+
+        -- Notify the server to clean up any server-side resources
+        TriggerServerEvent('bcc-housing:ServerSideRssStop')
+    end
+end)
+
 -- Receive House Owner Information
 RegisterNetEvent('bcc-housing:receiveHouseOwner')
 AddEventHandler('bcc-housing:receiveHouseOwner', function(houseId, isOwner)
-    devPrint("Received house owner information for House ID: " .. tostring(houseId) .. ", Is Owner: " .. tostring(isOwner))
+    devPrint("Received house owner information for House ID: " ..
+        tostring(houseId) .. ", Is Owner: " .. tostring(isOwner))
     TriggerEvent('bcc-housing:openmenu', houseId, isOwner)
 end)

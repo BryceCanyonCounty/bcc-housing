@@ -1,60 +1,83 @@
-RegisterServerEvent('bcc-housing:CreationDBInsert', function(tpHouse, owner, radius, doors, houseCoords, invLimit, ownerSource, taxAmount)
-    local _source = source
-    local taxes = tonumber(taxAmount) > 0 and tonumber(taxAmount) or 0
-    local character = VORPcore.getUser(_source).getUsedCharacter
-    local param
+-- Event to insert a house into the database when it is created
+RegisterServerEvent('bcc-housing:CreationDBInsert')
+AddEventHandler('bcc-housing:CreationDBInsert',
+    function(tpHouse, owner, radius, doors, houseCoords, invLimit, ownerSource, taxAmount)
+        local _source = source                                         -- Get the source of the event (the player who triggered it)
+        local taxes = tonumber(taxAmount) > 0 and tonumber(taxAmount) or 0                                                              -- Calculate the taxes, ensuring they are a positive number
+        local character = VORPcore.getUser(_source).getUsedCharacter   -- Get the character object for the player
+        local param                                                    -- Define a variable to hold the parameters for the database insertion
 
-    if not tpHouse then
-        param = {
-            ['charidentifier'] = owner,
-            ['radius'] = radius,
-            ["doors"] = json.encode(doors),
-            ['houseCoords'] = json.encode(houseCoords),
-            ['invlimit'] = invLimit,
-            ['taxes'] = taxes,
-            ['tpInt'] = 0,
-            ['tpInstance'] = 0
-        }
-    else
-        param = {
-            ['charidentifier'] = owner,
-            ['radius'] = radius,
-            ['doors'] = 'none',
-            ['houseCoords'] = json.encode(houseCoords),
-            ['invlimit'] = invLimit,
-            ['taxes'] = taxes,
-            ['tpInt'] = tpHouse,
-            ['tpInstance'] = 52324 + _source
-        }
-    end
-
-    local result = MySQL.query.await("SELECT * FROM bcchousing WHERE charidentifier=@charidentifier", param)
-    if #result < Config.Setup.MaxHousePerChar then
-        MySQL.insert("INSERT INTO bcchousing ( `charidentifier`,`house_radius_limit`,`doors`,`house_coords`,`invlimit`,`tax_amount`,`tpInt`,`tpInstance` ) VALUES ( @charidentifier,@radius,@doors,@houseCoords,@invlimit,@taxes,@tpInt,@tpInstance )", param)
-        Discord:sendMessage(_U("houseCreatedWebhook") .. tostring(character.charIdentifier), _U("houseCreatedWebhookGivenToo") .. tostring(owner))
-        Wait(1500)
-        if ownerSource ~= nil then
-            TriggerClientEvent('bcc-housing:ClientRecHouseLoad', ownerSource)
+        -- Check if a teleport house is provided
+        if not tpHouse then
+            -- If no teleport house is provided, set up the parameters without teleport info
+            param = {
+                ['charidentifier'] = owner,
+                ['radius'] = radius,
+                ["doors"] = json.encode(doors),
+                ['houseCoords'] = json.encode(houseCoords),
+                ['invlimit'] = invLimit,
+                ['taxes'] = taxes,
+                ['tpInt'] = 0,
+                ['tpInstance'] = 0
+            }
+        else
+            -- If a teleport house is provided, set up the parameters with teleport info
+            param = {
+                ['charidentifier'] = owner,
+                ['radius'] = radius,
+                ['doors'] = 'none',
+                ['houseCoords'] = json.encode(houseCoords),
+                ['invlimit'] = invLimit,
+                ['taxes'] = taxes,
+                ['tpInt'] = tpHouse,
+                ['tpInstance'] = 52324 + _source -- Generate a unique teleport instance based on the source
+            }
         end
-    else
-        VORPcore.NotifyRightTip(_source, _U("maxHousesReached"), 4000)
-    end
-end)
 
+        -- Check if the character already owns too many houses
+        local result = MySQL.query.await("SELECT * FROM bcchousing WHERE charidentifier=@charidentifier", param)
+        if #result < Config.Setup.MaxHousePerChar then
+            -- If the character can own more houses, insert the new house into the database
+            MySQL.insert(
+            "INSERT INTO bcchousing ( `charidentifier`,`house_radius_limit`,`doors`,`house_coords`,`invlimit`,`tax_amount`,`tpInt`,`tpInstance` ) VALUES ( @charidentifier,@radius,@doors,@houseCoords,@invlimit,@taxes,@tpInt,@tpInstance )",
+                param)
+
+            -- Notify Discord about the new house creation
+            Discord:sendMessage(_U("houseCreatedWebhook") ..
+            tostring(character.charIdentifier) .. _U("houseCreatedWebhookGivenToo") .. tostring(owner))
+
+            -- Wait for 1.5 seconds before proceeding
+            Wait(1500)
+
+            -- If the owner's source is provided, trigger the client event to load the house
+            if ownerSource ~= nil then
+                TriggerClientEvent('bcc-housing:ClientRecHouseLoad', ownerSource)
+            end
+        else
+            -- If the character has reached the maximum number of houses, notify them
+            VORPcore.NotifyRightTip(_source, _U("maxHousesReached"), 4000)
+        end
+    end)
+
+-- Event to check if the player owns or has access to any house
 RegisterServerEvent('bcc-housing:CheckIfHasHouse')
 AddEventHandler('bcc-housing:CheckIfHasHouse', function(passedSource)
-    local _source = passedSource or source
-    local character = VORPcore.getUser(_source).getUsedCharacter
+    local _source = passedSource or source                       -- Get the source or use the passed source
+    local character = VORPcore.getUser(_source).getUsedCharacter -- Get the character object for the player
 
     devPrint("Checking if player owns or has access to a house for character ID: " .. character.charIdentifier)
 
+    -- Query all houses from the database
     MySQL.query("SELECT * FROM bcchousing", {}, function(result)
-        local accessibleHouses = {}
+        local accessibleHouses = {} -- Initialize a table to hold accessible houses
 
         if #result > 0 then
+            -- Loop through the results and check for ownership or access
             for k, v in pairs(result) do
+                -- Trigger client event to check if the player is within private property radius
                 TriggerClientEvent('bcc-housing:PrivatePropertyCheckHandler', _source, json.decode(v.house_coords), v.house_radius_limit)
 
+                -- Register the house inventory with the player's information
                 local data = {
                     id = 'Player_' .. tostring(v.houseid) .. '_bcc-houseinv',
                     name = _U("houseInv"),
@@ -69,10 +92,12 @@ AddEventHandler('bcc-housing:CheckIfHasHouse', function(passedSource)
                 }
                 exports.vorp_inventory:registerInventory(data)
 
+                -- Check if the player is the owner of the house
                 if character.charIdentifier == tonumber(v.charidentifier) then
                     table.insert(accessibleHouses, v.houseid)
                     TriggerClientEvent('bcc-housing:OwnsHouseClientHandler', _source, v, true)
                 else
+                    -- Check if the player is allowed access to the house
                     local allowed_idsTable = json.decode(v.allowed_ids)
                     if allowed_idsTable then
                         for y, e in pairs(allowed_idsTable) do
@@ -87,28 +112,34 @@ AddEventHandler('bcc-housing:CheckIfHasHouse', function(passedSource)
             end
         end
 
+        -- Send the list of accessible houses to the client
         TriggerClientEvent('bcc-housing:ReceiveAccessibleHouses', _source, accessibleHouses)
     end)
 end)
 
+-- Event to open the house inventory
 RegisterServerEvent('bcc-house:OpenHouseInv')
 AddEventHandler('bcc-house:OpenHouseInv', function(houseId)
-    local src = source
-    local user = VORPcore.getUser(src)
-    local character = user.getUsedCharacter
+    local src = source                      -- Get the source of the event
+    local user = VORPcore.getUser(src)      -- Get the user object for the player
+    local character = user.getUsedCharacter -- Get the character object for the player
 
     if character then
-        local charIdentifier = character.charIdentifier
-        devPrint("Opening house inventory for House ID: " .. tostring(houseId) .. " and character ID: " .. tostring(charIdentifier))
+        local charIdentifier = character.charIdentifier -- Get the character identifier
+        devPrint("Opening house inventory for House ID: " ..
+        tostring(houseId) .. " and character ID: " .. tostring(charIdentifier))
 
+        -- Query the database to find the house by ID
         MySQL.query("SELECT * FROM bcchousing WHERE houseid = @houseid", { ['@houseid'] = houseId }, function(result)
             if result and #result > 0 then
-                local houseData = result[1]
+                local houseData = result[1] -- Get the house data from the query result
 
+                -- Check if the player is the owner of the house
                 if tostring(houseData.charidentifier) == tostring(charIdentifier) then
                     devPrint("Player is the owner of house ID: " .. tostring(houseId))
                     exports.vorp_inventory:openInventory(src, 'Player_' .. tostring(houseId) .. '_bcc-houseinv')
                 else
+                    -- Check if the player is allowed access to the house inventory
                     local allowedIds = json.decode(houseData.allowed_ids) or {}
                     for _, id in ipairs(allowedIds) do
                         if tostring(id) == tostring(charIdentifier) then
@@ -117,369 +148,144 @@ AddEventHandler('bcc-house:OpenHouseInv', function(houseId)
                             return
                         end
                     end
+                    -- Notify the player if they do not have access
                     devPrint("Player does not have access to house inventory: " .. tostring(houseId))
-                    VORPcore.NotifyLeft(src, "You do not have access to this house.", "", "generic_textures", "generic_cross", 5000)
+                    VORPcore.NotifyLeft(src, "You do not have access to this house.", "", "generic_textures",
+                        "generic_cross", 5000)
                 end
             else
+                -- Notify the player if no house was found
                 devPrint("Error: No results found for house ID: " .. tostring(houseId))
-                VORPcore.NotifyLeft(src, "No house found with the given ID.", "", "generic_textures", "generic_cross", 5000)
+                VORPcore.NotifyLeft(src, "No house found with the given ID.", "", "generic_textures", "generic_cross",
+                    5000)
             end
         end)
     else
+        -- Notify the player if no character was found
         devPrint("Error: No character found for source: " .. tostring(src))
         VORPcore.NotifyLeft(src, "No character found.", "", "generic_textures", "generic_cross", 5000)
     end
 end)
 
-RegisterServerEvent('bcc-housing:NewPlayerGivenAccess')
-AddEventHandler('bcc-housing:NewPlayerGivenAccess', function(id, houseid, recSource)
-    devPrint("NewPlayerGivenAccess event triggered with ID: " .. tostring(id) .. ", HouseID: " .. tostring(houseid) .. ", RecSource: " .. tostring(recSource))
-
-    local param = { ['@houseid'] = houseid }
-    local result = MySQL.query.await("SELECT * FROM bcchousing WHERE houseid = @houseid", param)
-
-    if not result or #result == 0 then
-        devPrint("Error: No results found for houseid: " .. tostring(houseid))
-        return
-    end
-
-    local houseData = result[1]
-    if not houseData then
-        devPrint("Error: House data is nil for houseid: " .. tostring(houseid))
-        return
-    end
-
-    local idsTable = {}
-    if houseData.allowed_ids ~= 'none' and houseData.allowed_ids ~= nil then
-        idsTable = json.decode(houseData.allowed_ids)
-        if not idsTable then
-            devPrint("Error: Failed to decode 'allowed_ids' for houseid: " .. tostring(houseid))
-            return
-        end
-    end
-
-    local exists = false
-    for _, v in ipairs(idsTable) do
-        if id == v then
-            exists = true
-            break
-        end
-    end
-    devPrint("Exists check: " .. tostring(exists))
-
-    if not exists then
-        table.insert(idsTable, id)
-        local encodedIds = json.encode(idsTable)
-        MySQL.update("UPDATE bcchousing SET allowed_ids = ? WHERE houseid = ?", { encodedIds, houseid }, function(affectedRows)
-            if affectedRows > 0 then
-                devPrint("Access list updated successfully for houseid: " .. tostring(houseid))
-                TriggerClientEvent('bcc-housing:ClientRecHouseLoad', recSource)
-            else
-                devPrint("Update failed for houseid: " .. tostring(houseid))
-                if recSource then
-                    VORPcore.NotifyRightTip(recSource, "Update failed, please try again.", 4000)
-                end
-            end
-        end)
-    else
-        devPrint("ID already exists in the access list for houseid: " .. tostring(houseid))
-    end
-
-    if houseData.doors then
-        local doors = json.decode(houseData.doors)
-        if doors then
-            for _, doorId in ipairs(doors) do
-                devPrint("Updating door access for door ID: " .. tostring(doorId))
-                updateDoorAccess(doorId, id, false)
-            end
-        else
-            devPrint("Error: Failed to decode 'doors' for houseid: " .. tostring(houseid))
-        end
-    end
-end)
-
+-- Function to update door access for a specific door ID
 function updateDoorAccess(doorId, newId)
     devPrint("Updating door access for door ID: " .. tostring(doorId) .. " with new ID: " .. tostring(newId))
-    local result = MySQL.query.await("SELECT ids_allowed FROM doorlocks WHERE doorid=@doorId", {
-        ['doorId'] = doorId
-    })
+    -- Query the database to get the allowed IDs for the door
+    local result = MySQL.query.await("SELECT ids_allowed FROM doorlocks WHERE doorid=@doorId", { ['doorId'] = doorId })
     if result and #result > 0 then
         local allowedIdTable = json.decode(result[1].ids_allowed) or {}
+        -- Check if the new ID is not already in the allowed IDs
         if not table.contains(allowedIdTable, newId) then
             table.insert(allowedIdTable, newId)
             local param = {
                 ['ids_allowed'] = json.encode(allowedIdTable),
                 ['doorId'] = doorId
             }
+            -- Update the door locks with the new allowed IDs
             MySQL.update("UPDATE doorlocks SET ids_allowed=@ids_allowed WHERE doorid=@doorId", param)
         end
     end
 end
 
-RegisterServerEvent('bcc-housing:InsertFurnitureIntoDB', function(furnTable, houseId)
-    devPrint("Inserting furniture into DB for house ID: " .. tostring(houseId))
-    local param = { ['houseid'] = houseId }
-    local result = MySQL.query.await("SELECT * FROM bcchousing WHERE houseid=@houseid", param)
-    if result[1].furniture == 'none' then
-        local param2 = {
-            ['houseid'] = houseId,
-            ['furn'] = json.encode({ furnTable })
-        }
-        MySQL.update("UPDATE bcchousing SET furniture=@furn WHERE houseid=@houseid", param2)
-    else
-        local oldFurn = json.decode(result[1].furniture)
-        table.insert(oldFurn, furnTable)
-        local param2 = {
-            ['houseid'] = houseId,
-            ['furn'] = json.encode(oldFurn)
-        }
-        MySQL.update("UPDATE bcchousing SET furniture=@furn WHERE houseid=@houseid", param2)
-    end
-end)
-
-local storedFurn = {}
-RegisterServerEvent('bcc-housing:FurniturePlacedCheck', function(houseid, deletion, close)
-    local _source = source
-    local param = {
-        ['houseid'] = houseid,
-        ['source'] = tostring(_source)
-    }
-
-    local result = MySQL.query.await("SELECT * FROM bcchousing WHERE houseid=@houseid", param)
-    if result[1] then
-        if result[1].player_source_spawnedfurn == 'none' and close then
-            if result[1].furniture ~= 'none' then
-                local furn = json.decode(result[1].furniture)
-                TriggerClientEvent('bcc-housing:SpawnFurnitureEvent', _source, furn)
-                MySQL.update("UPDATE bcchousing SET player_source_spawnedfurn=@source", param)
-            end
-        elseif tonumber(result[1].player_source_spawnedfurn) == _source then
-            if deletion then
-                DelSpawnedFurn(_source)
-            end
-        end
-    end
-end)
-
-RegisterServerEvent('bcc-housing:StoreFurnForDeletion', function(entId, houseid)
-    local _source = source
-    devPrint("Storing furniture for deletion with entity ID: " .. tostring(entId) .. " for house ID: " .. tostring(houseid))
-
-    if storedFurn[_source] == nil then
-        storedFurn[_source] = {}
-        local param = {
-            ['houseid'] = houseid,
-            ['source'] = tostring(_source)
-        }
-        MySQL.update("UPDATE bcchousing SET player_source_spawnedfurn=@source", param)
-    end
-    table.insert(storedFurn[_source], entId)
-end)
-
-AddEventHandler('playerDropped', function()
-    devPrint("Player dropped event for source: " .. tostring(source))
-    DelSpawnedFurn(source)
-end)
-
-function DelSpawnedFurn(source)
-    local result = MySQL.query.await("SELECT * FROM bcchousing")
-    local houseFurnDeleted = nil
-    if #result > 0 then
-        for k, v in pairs(result) do
-            if source == tonumber(v.player_source_spawnedfurn) then
-                houseFurnDeleted = v
-                if storedFurn[source] ~= nil then
-                    for w, e in pairs(storedFurn[source]) do
-                        local netEntId = NetworkGetEntityFromNetworkId(e)
-                        if DoesEntityExist(netEntId) then
-                            DeleteEntity(netEntId)
-                        end
-                    end
-                end
-            end
-        end
-    end
-    if houseFurnDeleted ~= nil then
-        local param = {
-            ['resetvar'] = 'none',
-            ['houseid'] = houseFurnDeleted.houseid
-        }
-        MySQL.update("UPDATE bcchousing SET player_source_spawnedfurn=@resetvar WHERE houseid=@houseid", param)
-    end
-end
-
-RegisterServerEvent('bcc-housing:BuyFurn', function(cost, entId, furnitureCreatedTable)
-    local _source = source
-    local character = VORPcore.getUser(_source).getUsedCharacter
-    devPrint("Buying furniture with cost: " .. tostring(cost) .. " and entity ID: " .. tostring(entId))
-
-    if character.money >= tonumber(cost) then
-        character.removeCurrency(0, tonumber(cost))
-        TriggerClientEvent('bcc-housing:ClientFurnBought', _source, furnitureCreatedTable, entId)
-        Discord:sendMessage(_U("furnWebHookBought") .. tostring(character.charIdentifier), _U("furnWebHookBoughtModel") .. tostring(furnitureCreatedTable.model) .. _U("furnWebHookSoldPrice") .. tostring(cost))
-    else
-        VORPcore.NotifyRightTip(_source, _U("noMoney"), 4000)
-        TriggerClientEvent('bcc-housing:ClientFurnBoughtFail', _source)
-    end
-end)
-
-RegisterServerEvent('bcc-housing:ServerSideRssStop', function()
-    devPrint("Server side RSS stop event triggered")
-    MySQL.update("UPDATE bcchousing SET player_source_spawnedfurn='none'")
-end)
-
-RegisterServerEvent('bcc-housing:GetOwnerFurniture', function(houseId)
-    devPrint("Getting owner furniture for house ID: " .. tostring(houseId))
-    local param = { ['houseid'] = houseId }
-    local _source = source
-    local result = MySQL.query.await("SELECT * FROM bcchousing WHERE houseid=@houseid", param)
-
-    if result and #result > 0 then
-        local houseData = result[1]
-        local furnitureData = houseData.furniture
-
-        -- Handle the case where furnitureData is "none"
-        if furnitureData == "none" or furnitureData == nil or furnitureData == "" then
-            VORPcore.NotifyRightTip(_source, _U("noFurn"), 4000)
-            devPrint("No furniture found for house ID: " .. tostring(houseId))
-            return
-        end
-
-        -- Attempt to decode the furniture data if it's not "none"
-        local furniture, decodeErr = json.decode(furnitureData)
-        if furniture then
-            -- If the furniture table is empty, notify the player
-            if #furniture == 0 then
-                VORPcore.NotifyRightTip(_source, _U("noFurn"), 4000)
-                devPrint("No furniture found for house ID: " .. tostring(houseId))
-            else
-                -- Log and trigger the event if furniture is found
-                for i, item in ipairs(furniture) do
-                    devPrint(string.format("Furniture Item %d: Model: %s, DisplayName: %s", i, item.model, item.displayName))
-                end
-                devPrint("Triggering SellOwnedFurnMenu event for house ID: " .. tostring(houseId) .. " with " .. tostring(#furniture) .. " items.")
-                TriggerClientEvent('bcc-housing:SellOwnedFurnMenu', _source, houseId, furniture)
-            end
-        else
-            -- Log the decoding error and notify the player
-            devPrint("Error decoding furniture data: " .. tostring(decodeErr) .. ". Raw data: " .. tostring(furnitureData))
-            VORPcore.NotifyRightTip(_source, "Error loading furniture data.", 4000)
-        end
-        
-    else
-        -- Notify the player if no house data was found
-        VORPcore.NotifyRightTip(_source, _U("noFurn"), 4000)
-        devPrint("No house data found for house ID: " .. tostring(houseId))
-    end
-end)
-
-RegisterServerEvent('bcc-housing:FurnSoldRemoveFromTable', function(furnTable, houseId, wholeFurnTable, wholeFurnTableKey)
-    local _source = source
-    local character = VORPcore.getUser(_source).getUsedCharacter
-    devPrint("Furniture sold, removing from table for house ID: " .. tostring(houseId))
-
-    if wholeFurnTable and tonumber(wholeFurnTableKey) and wholeFurnTable[tonumber(wholeFurnTableKey)] then
-        table.remove(wholeFurnTable, tonumber(wholeFurnTableKey))
-        local newDbTable = 'none'
-        if #wholeFurnTable > 0 then
-            newDbTable = json.encode(wholeFurnTable)
-        end
-
-        local params = {
-            ['houseid'] = houseId,
-            ['newFurnTable'] = newDbTable
-        }
-        MySQL.update("UPDATE bcchousing SET furniture=@newFurnTable WHERE houseid=@houseid", params, function(affectedRows)
-            if affectedRows > 0 then
-                VORPcore.NotifyRightTip(_source, _U("furnSold"), 4000)
-                character.addCurrency(0, tonumber(furnTable.sellprice))
-                Discord:sendMessage(_U("furnWebHookSold") .. character.charIdentifier, _U("furnWebHookSoldModel") .. tostring(furnTable.model) .. _U("furnWebHookSoldPrice") .. tostring(furnTable.sellprice))
-            else
-                VORPcore.NotifyRightTip(_source, _U("furnNotSold"), 4000)
-            end
-        end)
-    else
-        VORPcore.NotifyRightTip(_source, _U("furnNotSoldInvalid"), 4000)
-    end
-
-    TriggerClientEvent('bcc-housing:SellOwnedFurnMenu', _source, houseId, wholeFurnTable)
-end)
-
+-- Event to handle ledger updates for houses
 RegisterServerEvent('bcc-housing:LedgerHandling')
 AddEventHandler('bcc-housing:LedgerHandling', function(amountToInsert, houseid)
-    local _source = source
-    local character = VORPcore.getUser(_source).getUsedCharacter
-    local amountToInsertNumber = tonumber(amountToInsert)
-    local houseIdNumber = tonumber(houseid)
+    local _source = source                                       -- Get the source of the event
+    local character = VORPcore.getUser(_source).getUsedCharacter -- Get the character object for the player
+    local amountToInsertNumber = tonumber(amountToInsert)        -- Convert the amount to a number
+    local houseIdNumber = tonumber(houseid)                      -- Convert the house ID to a number
 
-    devPrint("Handling ledger for amount: " .. tostring(amountToInsertNumber) .. " and house ID: " .. tostring(houseIdNumber))
+    devPrint("Handling ledger for amount: " ..
+    tostring(amountToInsertNumber) .. " and house ID: " .. tostring(houseIdNumber))
 
+    -- Validate the input data
     if not amountToInsertNumber or not houseIdNumber then
         devPrint("Invalid input data. Amount: " .. tostring(amountToInsert) .. " House ID: " .. tostring(houseid))
         return
     end
 
+    -- Query the database to get the current ledger and tax amount for the house
     MySQL.query("SELECT ledger, tax_amount FROM bcchousing WHERE houseid = ?", { houseIdNumber }, function(result)
         if result and #result > 0 then
-            local ledger = tonumber(result[1].ledger)
-            local tax_amount = tonumber(result[1].tax_amount)
-            local maxInsertAmount = tax_amount - ledger
+            local ledger = tonumber(result[1].ledger)                               -- Get the current ledger amount
+            local tax_amount = tonumber(result[1].tax_amount)                       -- Get the current tax amount
+            local maxInsertAmount = tax_amount - ledger                             -- Calculate the maximum amount that can be inserted
 
-            local insertionAmount = math.min(amountToInsertNumber, maxInsertAmount)
+            local insertionAmount = math.min(amountToInsertNumber, maxInsertAmount) -- Determine the actual amount to insert
 
             if insertionAmount > 0 then
+                -- Check if the player has enough money
                 if character.money >= insertionAmount then
-                    character.removeCurrency(0, insertionAmount)
-                    MySQL.update("UPDATE bcchousing SET ledger = ledger + ? WHERE houseid = ?", { insertionAmount, houseIdNumber }, function(affectedRows)
+                    character.removeCurrency(0, insertionAmount) -- Deduct the money from the player's account
+                    -- Update the ledger in the database
+                    MySQL.update("UPDATE bcchousing SET ledger = ledger + ? WHERE houseid = ?",
+                        { insertionAmount, houseIdNumber }, function(affectedRows)
                         if affectedRows > 0 then
-                            VORPcore.NotifyLeft(_source, _U("ledgerAmountInesrted") .. " $" .. insertionAmount, "", "inventory_items", "money_moneystack", 5000)
+                            -- Notify the player of the successful ledger update
+                            VORPcore.NotifyLeft(_source, _U("ledgerAmountInesrted") .. " $" .. insertionAmount, "",
+                                "inventory_items", "money_moneystack", 5000)
                         else
-                            VORPcore.NotifyLeft(_source, _U("ledgerUpdateFailed"), "", "scoretimer_textures", "scoretimer_generic_cross", 5000)
+                            -- Notify the player if the ledger update failed
+                            VORPcore.NotifyLeft(_source, _U("ledgerUpdateFailed"), "", "scoretimer_textures",
+                                "scoretimer_generic_cross", 5000)
                         end
                     end)
                 else
-                    VORPcore.NotifyLeft(_source, _U("noMoney"), "", "scoretimer_textures", "scoretimer_generic_cross", 5000)
+                    -- Notify the player if they do not have enough money
+                    VORPcore.NotifyLeft(_source, _U("noMoney"), "", "scoretimer_textures", "scoretimer_generic_cross",
+                        5000)
                 end
             else
-                VORPcore.NotifyLeft(_source, "Maximum amount of money is already stored", "", "menu_textures", "menu_icon_alert", 5000)
+                -- Notify the player if the maximum amount of money is already stored
+                VORPcore.NotifyLeft(_source, "Maximum amount of money is already stored", "", "menu_textures",
+                    "menu_icon_alert", 5000)
             end
         else
+            -- Notify the player if no house was found
             VORPcore.NotifyLeft(_source, _U("noHouseFound"), "", "scoretimer_textures", "scoretimer_generic_cross", 5000)
         end
     end)
 end)
 
+-- Event to check the ledger balance of a house
 RegisterServerEvent('bcc-housing:CheckLedger')
 AddEventHandler('bcc-housing:CheckLedger', function(houseid)
-    local _source = source
+    local _source = source                                                                     -- Get the source of the event
     devPrint("Checking ledger for house ID: " .. tostring(houseid))
-    local param = { ['houseid'] = houseid }
-    local result = MySQL.query.await("SELECT * FROM bcchousing WHERE houseid=@houseid", param)
+    local param = { ['houseid'] = houseid }                                                    -- Set up the parameters for the query
+    local result = MySQL.query.await("SELECT * FROM bcchousing WHERE houseid=@houseid", param) -- Query the database for the house's ledger
     if #result > 0 then
-        VORPcore.NotifyLeft(_source, tostring(result[1].ledger) .. '/' .. tostring(result[1].tax_amount), "", "menu_textures", "menu_icon_alert", 5000)
+        -- Notify the player of the current ledger balance and tax amount
+        VORPcore.NotifyLeft(_source, tostring(result[1].ledger) .. '/' .. tostring(result[1].tax_amount), "",
+            "menu_textures", "menu_icon_alert", 5000)
     end
 end)
 
+-- Event to retrieve house ID and perform actions based on the context
 RegisterServerEvent('bcc-housing:getHouseId')
 AddEventHandler('bcc-housing:getHouseId', function(context, houseId)
-    local src = source
-    local user = VORPcore.getUser(src)
-    local character = user.getUsedCharacter
+    local src = source                      -- Get the source of the event
+    local user = VORPcore.getUser(src)      -- Get the user object for the player
+    local character = user.getUsedCharacter -- Get the character object for the player
 
     if character then
-        local charIdentifier = character.charIdentifier
-        devPrint("getHouseId event triggered with charidentifier: " .. tostring(charIdentifier) .. " for House ID: " .. tostring(houseId))
+        local charIdentifier = character.charIdentifier -- Get the character identifier
+        devPrint("getHouseId event triggered with charidentifier: " ..
+        tostring(charIdentifier) .. " for House ID: " .. tostring(houseId))
 
         if houseId then
+            -- Query the database to retrieve house data based on the house ID
             MySQL.query("SELECT * FROM bcchousing WHERE houseid = @houseid", { ['@houseid'] = houseId }, function(result)
                 if result and #result > 0 then
-                    local houseData = result[1]
+                    local houseData = result[1] -- Get the house data from the query result
                     local hasAccess = false
 
+                    -- Check if the player is the owner of the house
                     if tostring(houseData.charidentifier) == tostring(charIdentifier) then
                         devPrint("Player is the owner of house ID: " .. tostring(houseId))
                         hasAccess = true
                     else
+                        -- Check if the player is allowed access to the house
                         local allowedIds = json.decode(houseData.allowed_ids) or {}
                         for _, id in ipairs(allowedIds) do
                             if tostring(id) == tostring(charIdentifier) then
@@ -490,151 +296,95 @@ AddEventHandler('bcc-housing:getHouseId', function(context, houseId)
                         end
                     end
 
+                    -- Perform actions based on the context provided
                     if hasAccess then
                         if context == 'inv' then
-                            devPrint("Opening house inventory for House ID: " .. tostring(houseId) .. " and character ID: " .. tostring(charIdentifier))
+                            devPrint("Opening house inventory for House ID: " ..
+                            tostring(houseId) .. " and character ID: " .. tostring(charIdentifier))
                             TriggerClientEvent('bcc-housing:receiveHouseIdinv', src, houseId)
                         elseif context == 'access' then
-                            devPrint("Granting access to House ID: " .. tostring(houseId) .. " for character ID: " .. tostring(charIdentifier))
+                            devPrint("Granting access to House ID: " ..
+                            tostring(houseId) .. " for character ID: " .. tostring(charIdentifier))
                             TriggerClientEvent('bcc-housing:receiveHouseId', src, houseId)
                         elseif context == 'removeAccess' then
-                            devPrint("Opening Remove access to House ID: " .. tostring(houseId) .. " for character ID: " .. tostring(charIdentifier))
+                            devPrint("Opening Remove access to House ID: " ..
+                            tostring(houseId) .. " for character ID: " .. tostring(charIdentifier))
                             TriggerClientEvent('bcc-housing:receiveHouseIdremove', src, houseId)
                         end
                     else
+                        -- Notify the client if the player does not have access to the house
                         devPrint("Player does not have access to the house ID: " .. tostring(houseId))
                         TriggerClientEvent('bcc-housing:receiveHouseId', src, nil)
                     end
                 else
+                    -- Notify the client if no house was found
                     devPrint("Error: No results found for house ID: " .. tostring(houseId))
                     TriggerClientEvent('bcc-housing:receiveHouseId', src, nil)
                 end
             end)
         else
+            -- Notify the client if no house ID was provided
             devPrint("Error: No house ID provided")
             TriggerClientEvent('bcc-housing:receiveHouseId', src, nil)
         end
     else
+        -- Notify the client if no character was found
         devPrint("Error: No character found for source: " .. tostring(src))
         TriggerClientEvent('bcc-housing:receiveHouseId', src, nil)
     end
 end)
 
+-- Event to get the owner of a house based on the house ID
 RegisterServerEvent('bcc-housing:getHouseOwner')
 AddEventHandler('bcc-housing:getHouseOwner', function(houseId)
-    local src = source
-    local user = VORPcore.getUser(src)
-    local character = user.getUsedCharacter
+    local src = source                      -- Get the source of the event
+    local user = VORPcore.getUser(src)      -- Get the user object for the player
+    local character = user.getUsedCharacter -- Get the character object for the player
 
     if character then
-        local charIdentifier = character.charIdentifier
-        devPrint("getHouseOwner event triggered with charidentifier: " .. tostring(charIdentifier) .. " for House ID: " .. tostring(houseId))
+        local charIdentifier = character.charIdentifier -- Get the character identifier
+        devPrint("getHouseOwner event triggered with charidentifier: " ..
+        tostring(charIdentifier) .. " for House ID: " .. tostring(houseId))
 
         if houseId then
+            -- Query the database to retrieve house data based on the house ID
             MySQL.query("SELECT * FROM bcchousing WHERE houseid = @houseid", { ['@houseid'] = houseId }, function(result)
                 if result and #result > 0 then
-                    local houseData = result[1]
+                    local houseData = result[1] -- Get the house data from the query result
                     local isOwner = tostring(houseData.charidentifier) == tostring(charIdentifier)
 
-                    devPrint("Owner of House ID: " .. tostring(houseId) .. " is charidentifier: " .. tostring(houseData.charidentifier))
+                    -- Notify the client about the house owner
+                    devPrint("Owner of House ID: " ..
+                    tostring(houseId) .. " is charidentifier: " .. tostring(houseData.charidentifier))
                     TriggerClientEvent('bcc-housing:receiveHouseOwner', src, houseId, isOwner)
                 else
+                    -- Notify the client if no house was found
                     devPrint("Error: No results found for house ID: " .. tostring(houseId))
                     TriggerClientEvent('bcc-housing:receiveHouseOwner', src, houseId, nil)
                 end
             end)
         else
+            -- Notify the client if no house ID was provided
             devPrint("Error: No house ID provided")
             TriggerClientEvent('bcc-housing:receiveHouseOwner', src, houseId, nil)
         end
     else
+        -- Notify the client if no character was found
         devPrint("Error: No character found for source: " .. tostring(src))
         TriggerClientEvent('bcc-housing:receiveHouseOwner', src, houseId, nil)
     end
 end)
 
-RegisterServerEvent('bcc-housing:getPlayersWithAccess')
-AddEventHandler('bcc-housing:getPlayersWithAccess', function(houseId)
-    local src = source
-    devPrint("Fetching players with access for House ID: " .. tostring(houseId))
+-- Event to check if a house exists in the database
+RegisterNetEvent('bcc-housing:CheckIfHouseExists')
+AddEventHandler('bcc-housing:CheckIfHouseExists', function(houseId)
+    local src = source -- Get the source of the event
 
-    -- Query to fetch allowed character IDs for the house
-    MySQL.query("SELECT allowed_ids FROM bcchousing WHERE houseid = @houseid", { ['@houseid'] = houseId }, function(result)
-        if result and #result > 0 then
-            local allowedIds = json.decode(result[1].allowed_ids)
-            if allowedIds and #allowedIds > 0 then
-                -- Convert the allowed IDs list into a comma-separated string for the SQL query
-                local allowedIdsString = table.concat(allowedIds, ',')
-                
-                -- Fetching detailed character information from the database
-                MySQL.query("SELECT * FROM characters WHERE charidentifier IN (" .. allowedIdsString .. ")", {}, function(characterDetails)
-                    if characterDetails and #characterDetails > 0 then
-                        for _, character in ipairs(characterDetails) do
-                            devPrint("Character found: ID=" .. character.charidentifier .. ", Name=" .. character.firstname .. " " .. character.lastname)
-                        end
-                        -- Send character details back to the client
-                        TriggerClientEvent('bcc-housing:ReceivePlayersWithAccess', src, characterDetails)
-                    else
-                        devPrint("No character details found for the allowed IDs")
-                        TriggerClientEvent('bcc-housing:ReceivePlayersWithAccess', src, {})
-                    end
-                end)
-            else
-                devPrint("No allowed IDs found for House ID: " .. tostring(houseId))
-                TriggerClientEvent('bcc-housing:ReceivePlayersWithAccess', src, {})
-            end
-        else
-            devPrint("No players found with access to house ID: " .. tostring(houseId))
-            TriggerClientEvent('bcc-housing:ReceivePlayersWithAccess', src, {})
-        end
-    end)
-end)
-
-RegisterServerEvent('bcc-housing:RemovePlayerAccess')
-AddEventHandler('bcc-housing:RemovePlayerAccess', function(houseId, playerId)
-    local src = source
-    devPrint("Starting removal of player access. House ID: " .. tostring(houseId) .. ", Player ID: " .. tostring(playerId))
-
-    -- Query to get the current list of allowed IDs for the house
-    MySQL.query("SELECT allowed_ids FROM bcchousing WHERE houseid = @houseid", { ['@houseid'] = houseId }, function(result)
-        if result and #result > 0 then
-            local allowedIds = json.decode(result[1].allowed_ids) or {}
-            devPrint("Current allowed IDs: " .. json.encode(allowedIds))
-
-            -- Searching and removing the player ID from the allowed IDs list
-            local found = false
-            for i, id in ipairs(allowedIds) do
-                if id == playerId then
-                    table.remove(allowedIds, i)
-                    found = true
-                    devPrint("Found and removed player ID from allowed list. Updated list: " .. json.encode(allowedIds))
-                    break
-                end
-            end
-
-            if not found then
-                devPrint("Player ID not found in allowed list, nothing to remove.")
-                TriggerClientEvent('bcc-housing:PlayerAccessRemovalFailed', src, houseId, playerId, "Player ID not in allowed list.")
-                return
-            end
-
-            -- Updating the allowed IDs list in the database
-            MySQL.update("UPDATE bcchousing SET allowed_ids = @allowedids WHERE houseid = @houseid", {
-                ['@allowedids'] = json.encode(allowedIds),
-                ['@houseid'] = houseId
-            }, function(affectedRows)
-                if affectedRows > 0 then
-                    devPrint("Removed player access successfully for Player ID: " .. tostring(playerId))
-                    TriggerClientEvent('bcc-housing:ClientRecHouseLoad', src)
-                    VORPcore.NotifyRightTip(src, "Removed player access successfully for Player ID: " .. tostring(playerId))
-                else
-                    devPrint("Failed to update database with new allowed IDs list.")
-                    VORPcore.NotifyRightTip(src, "Update failed, please try again.", 4000)
-                end
-            end)
-        else
-            devPrint("No house found with ID: " .. tostring(houseId) .. " or allowed_ids is empty.")
-            VORPcore.NotifyRightTip(src, "No such house ID or empty allowed list.", 4000)
-        end
-    end)
+    -- Query the database to check if the house ID exists
+    MySQL.Async.fetchScalar('SELECT houseid FROM bcchousing WHERE houseid = @houseid', { ['@houseid'] = houseId },
+        function(result)
+            local exists = result ~= nil -- Determine if the house exists
+            -- Notify the client about the house's existence status
+            TriggerClientEvent('bcc-housing:HouseExistenceChecked', src, exists, houseId)
+        end)
 end)

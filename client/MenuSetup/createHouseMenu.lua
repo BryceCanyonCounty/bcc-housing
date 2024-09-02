@@ -283,7 +283,7 @@ function CreateHouseMenu(tp, refresh)
     if refresh then
         BCCHousingMenu:Close() -- Close the current menu before reopening
     end
-    tp = tp or false -- Default to false if tp isn't provided
+    tp = tp or false           -- Default to false if tp isn't provided
     print("Adjusted tp in CreateHouseMenu:", tp)
     -- Close any existing menus, assuming BCCHousingMenu is your FeatherMenu instance
     BCCHousingMenu:Close()
@@ -353,7 +353,7 @@ function CreateHouseMenu(tp, refresh)
         slot = "footer",
         style = {}
     })
-    
+
     createHouseMenu:RegisterElement('button', {
         label = _U("Confirm"),
         slot = "footer",
@@ -557,6 +557,7 @@ function setTaxAmount()
     })
 end
 
+---Set Inventory limit function
 function setInvLimit(houseId)
     if BCCHousingMenu then
         BCCHousingMenu:Close() -- Ensure no other menus are open
@@ -663,7 +664,7 @@ function confirmCreation(globalHouseData)
     --print("Sending data to server:", tpHouse, globalHouseData.owner, globalHouseData.radius, globalHouseData.doors, globalHouseData.houseCoords, globalHouseData.invLimit, globalHouseData.ownerSource, globalHouseData.taxAmount)
 end
 
-RegisterNetEvent('bcc-housing:ClientRecHouseLoad',
-    function(recOwnerSource) --Used to load houses after given one or given access so you dont have to relog to gain access
-        TriggerServerEvent('bcc-housing:CheckIfHasHouse', recOwnerSource)
-    end)
+--Used to load houses after given one or given access so you dont have to relog to gain access
+RegisterNetEvent('bcc-housing:ClientRecHouseLoad', function(recOwnerSource)
+    TriggerServerEvent('bcc-housing:CheckIfHasHouse', recOwnerSource)
+end)

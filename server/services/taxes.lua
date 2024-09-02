@@ -13,7 +13,8 @@ CreateThread(function() --Tax handling
             exports.oxmysql:execute("DELETE FROM bcchousing WHERE houseid=@houseid", param)
             Discord:sendMessage(_U("houseIdWebhook") .. tostring(v.houseid), _U("taxPaidFailedWebhook"))
           else
-            exports.oxmysql:execute("UPDATE bcchousing SET ledger=ledger-@taxamount, taxes_collected='true' WHERE houseid=@houseid", param)
+            exports.oxmysql:execute(
+            "UPDATE bcchousing SET ledger=ledger-@taxamount, taxes_collected='true' WHERE houseid=@houseid", param)
             Discord:sendMessage(_U("houseIdWebhook") .. tostring(v.houseid), _U("taxPaidWebhook"))
           end
         end

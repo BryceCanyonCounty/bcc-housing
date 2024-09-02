@@ -2,6 +2,7 @@
 VORPcore = exports.vorp_core:GetCore()
 
 BccUtils = exports['bcc-utils'].initiate()
+
 Discord = BccUtils.Discord.setup(Config.WebhookLink, Config.WebhookTitle, Config.WebhookAvatar)
 
 DbUpdated = false -- Use this to stop taxes from running till db has been made
@@ -14,13 +15,13 @@ RegisterServerEvent('bcc-housing:GetPlayers')
 AddEventHandler('bcc-housing:GetPlayers', function()
     local _source = source
     local data = {}
-    local players = GetPlayers()  -- Fetch all current players on the server
+    local players = GetPlayers() -- Fetch all current players on the server
 
     if players and #players > 0 then
         for _, playerId in ipairs(players) do
             local User = VORPcore.getUser(playerId)
             if User then
-                local Character = User.getUsedCharacter  -- Calling the method correctly
+                local Character = User.getUsedCharacter -- Calling the method correctly
                 if Character then
                     -- Check if firstname and lastname are not nil and provide default values if they are
                     local firstname = Character.firstname or "Unknown"
@@ -45,7 +46,7 @@ RegisterServerEvent("bcc-housing:getPlayersInfo")
 AddEventHandler("bcc-housing:getPlayersInfo", function()
     local _source = source
     if not table.contains(PlayersTable, _source) then
-        table.insert(PlayersTable, _source)  -- Prevent duplicate entries
+        table.insert(PlayersTable, _source) -- Prevent duplicate entries
     end
 end)
 
@@ -62,9 +63,17 @@ end
 if Config.DevMode then
     -- Helper function for debugging
     function devPrint(message)
-        print("^1[DEV] ^0" .. message)
+        print("^1[DEV MODE] ^4" .. message)
     end
 else
     -- Define devPrint as a no-op function if DevMode is not enabled
     function devPrint(message) end
 end
+
+RegisterServerEvent('bcc-housing:ServerSideRssStop', function()
+    MySQL.update("UPDATE bcchousing SET player_source_spawnedfurn='none'")
+end)
+
+AddEventHandler('playerDropped', function()
+    DelSpawnedFurn(source) --This will trigger the function inside furniture.lua
+end)

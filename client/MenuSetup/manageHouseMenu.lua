@@ -6,7 +6,6 @@ RegisterNetEvent('bcc-housing:ReceiveAccessibleHouses')
 AddEventHandler('bcc-housing:ReceiveAccessibleHouses', function(accessibleHouses)
     devPrint("Received accessible houses list from server")
     PlayerAccessibleHouses = accessibleHouses
-    
 end)
 
 -- Function to check if the player has access to a specific house
@@ -41,7 +40,8 @@ AddEventHandler('bcc-housing:receiveHouseId', function(houseId)
         showAccessMenu(houseId)
     else
         devPrint("No house found associated with your character")
-        VORPcore.NotifyLeft("No house found associated with your character.", "", "scoretimer_textures", "scoretimer_generic_cross", 5000)
+        VORPcore.NotifyLeft("No house found associated with your character.", "", "scoretimer_textures",
+            "scoretimer_generic_cross", 5000)
     end
 end)
 
@@ -53,7 +53,8 @@ AddEventHandler('bcc-housing:receiveHouseIdremove', function(houseId)
         showRemoveAccessMenu(houseId)
     else
         devPrint("No house found associated with your character")
-        VORPcore.NotifyLeft("No house found associated with your character.", "", "scoretimer_textures", "scoretimer_generic_cross", 5000)
+        VORPcore.NotifyLeft("No house found associated with your character.", "", "scoretimer_textures",
+            "scoretimer_generic_cross", 5000)
     end
 end)
 
@@ -62,7 +63,7 @@ function afterGivingAccess(houseId, playerId, playerServerId, completion)
         TriggerServerEvent('bcc-housing:NewPlayerGivenAccess', playerId, houseId, playerServerId)
         -- Assume this is handled and a response is sent back from the server
         -- Simulating a response callback for the sake of example
-        completion(true, "Access granted successfully.")  -- Call completion with success and message
+        completion(true, "Access granted successfully.") -- Call completion with success and message
     else
         completion(false, "Missing necessary information for granting access.")
     end
@@ -152,12 +153,12 @@ function PlayerListMenuForRemoveAccess(houseId, callback, context)
 
     -- Asynchronous call to get players with access
     GetPlayersWithAccess(houseId, function(rplayers)
-        devPrint("Number of players with access: " .. #rplayers)  -- This will print the count of players fetched
+        devPrint("Number of players with access: " .. #rplayers) -- This will print the count of players fetched
 
         if #rplayers == 0 then
             devPrint("No players to display in menu")
             -- Consider what action to take if no players are available
-            return  -- Optionally return if no players are available to display
+            return -- Optionally return if no players are available to display
         end
 
         local playerListRemoveMenuPage = BCCHousingMenu:RegisterPage("bcc-housing:playerListRemoveMenuPage")
@@ -173,9 +174,9 @@ function PlayerListMenuForRemoveAccess(houseId, callback, context)
         })
 
         for k, v in pairs(rplayers) do
-            devPrint("Adding button for player ID: " .. tostring(v.charidentifier))  -- Ensure charidentifier is correct
+            devPrint("Adding button for player ID: " .. tostring(v.charidentifier)) -- Ensure charidentifier is correct
             playerListRemoveMenuPage:RegisterElement("button", {
-                label = v.firstname .. " " .. v.lastname,  -- Displaying player's name
+                label = v.firstname .. " " .. v.lastname,                           -- Displaying player's name
                 style = {}
             }, function()
                 afterRemoveAccess(houseId, v.charidentifier)
@@ -211,13 +212,11 @@ function PlayerListMenuForRemoveAccess(houseId, callback, context)
     end)
 end
 
--- Handler to open the housing main menu
 AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
     devPrint("Opening housing main menu for House ID: " .. tostring(houseId) .. ", Is Owner: " .. tostring(isOwner))
     TriggerEvent('bcc-housing:MenuClose')
     BCCHousingMenu:Close()
 
-    -- Register the main page for Housing
     local housingMainMenu = BCCHousingMenu:RegisterPage("bcc-housing:MainPage")
     housingMainMenu:RegisterElement('header', {
         value = _U("creationMenuName"),
@@ -229,7 +228,6 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
         style = {}
     })
 
-    -- Add button to open house inventory
     housingMainMenu:RegisterElement('button', {
         label = _U("houseInv"),
         style = {}
@@ -266,7 +264,7 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
         end)
 
         housingMainMenu:RegisterElement('button', {
-            label = "Remove Access",
+            label = _U("removeAccess"),
             style = {}
         }, function()
             devPrint("Requesting house ID for removing access for House ID: " .. tostring(houseId))
@@ -278,6 +276,20 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
             style = {}
         }, function()
             FurnitureMenu(houseId)
+        end)
+
+        housingMainMenu:RegisterElement('button', {
+            label = _U("sellHouse"),
+            style = {}
+        }, function()
+            sellHouseConfirmation(houseId)
+        end)
+
+        housingMainMenu:RegisterElement('button', {
+            label = "Sell house to a player",
+            style = {}
+        }, function()
+            sellHouseToPlayer(houseId)
         end)
     end
 
@@ -300,9 +312,19 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
     end)
 
     housingMainMenu:RegisterElement('bottomline', {
-        style = {}
+        style = {},
+        slot = "footer"
     })
 
+    housingMainMenu:RegisterElement("html", {
+        value = {
+            [[
+                <img width="750px" height="108px" style="margin: 0 auto;" src="https://i.ibb.co/vvX3DB1/550x185logo.png" />
+
+            ]]
+        },
+        slot = "footer"
+    })
     BCCHousingMenu:Open({ startupPage = housingMainMenu })
 end)
 
@@ -371,11 +393,10 @@ AddEventHandler('bcc-housing:addLedger', function(houseId, isOwner)
     })
 
     AddLedgerPage:RegisterElement('button', {
-        label = "Back",
+        label = _U("backButton"),
         slot = "footer",
         style = {}
     }, function()
-        -- Reopen the menu with the correct ownership status
         TriggerEvent('bcc-housing:openmenu', houseId, isOwner)
     end)
 

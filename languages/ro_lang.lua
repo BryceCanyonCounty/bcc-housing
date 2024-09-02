@@ -155,5 +155,19 @@ Locales["ro_lang"] = {
 	changeHouseTaxes_desc = 'Schimba suma taxelor pe care casa trebuie sa le plateasca.',
 	housesDeleted = 'Casa stearsa!',
 	backButton = 'Inapoi',
-	placeFurniture = 'Aseaza Mobila'
+	placeFurniture = 'Aseaza Mobila',
+	noHouseFound = 'Nu a fost gasita nicio casa',
+	sellHouse = 'Vinde Casa',
+	removeAccess = 'Elimina Accesul',
+	enteringPrivate = 'Intri pe o proprietate privata!',
+	onPrivate = 'Esti pe o proprietate privata',
+	leavingPrivate = 'Parasesti proprietatea privata!',
+	houseDealer = 'Dealer de Case',
+	collectFromDealer = 'Colectează Banii din Vanzarea Casei',
+	houseSaleMoney = 'Bani din Vanzarea Casei',
+	noHouseSold = 'Nicio casa nu a fost vanduta.',
+	collectMoney = 'Colecteaza Banii',
+	houseId = 'ID Casa: ',
+    soldFor = ' | Vanduta pentru: ',
+	
 }
