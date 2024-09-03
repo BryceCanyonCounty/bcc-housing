@@ -58,10 +58,10 @@ RegisterServerEvent('bcc-housing:HotelBought', function(hotelTable)
     end
 end)
 
-CreateThread(function()   --registering all inventories
+CreateThread(function() --registering all inventories
     for k, v in pairs(Config.Hotels) do
-        Wait(50)  -- Slight delay to ensure proper removal before registration
-        
+        Wait(50)        -- Slight delay to ensure proper removal before registration
+
         -- Register inventory for the hotel
         local data = {
             id = 'bcc-housinginv:' .. tostring(v.hotelId),

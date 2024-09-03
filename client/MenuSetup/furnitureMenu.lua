@@ -54,7 +54,7 @@ function FurnitureMenu(houseId)
         sound = {
             action = "SELECT",
             soundset = "RDRO_Character_Creator_Sounds"
-       }
+        }
     })
 end
 
@@ -149,13 +149,11 @@ function buyFurnitureMenu(houseId)
         sound = {
             action = "SELECT",
             soundset = "RDRO_Character_Creator_Sounds"
-       }
+        }
     })
 end
 
 function IndFurnitureTypeMenu(type, houseId)
-    BCCHousingMenu:Close() -- Close any existing Feather menus
-
     local furnConfigTable = Config.Furniture[type]
     if not furnConfigTable then
         print("Error: Invalid furniture type '" .. type .. "'. Available types are:")
@@ -182,10 +180,11 @@ function IndFurnitureTypeMenu(type, houseId)
             label = v.displayName .. " - $" .. tostring(v.costToBuy),
             style = {}
         }, function()
-            PlaceFurnitureIntoWorldMenu(v.propModel, v.costToBuy, v.displayName, v.sellFor)
+            PlaceFurnitureIntoWorldPrompt(v.propModel, v.costToBuy, v.displayName, v.sellFor)        
+            BCCHousingMenu:Close()
         end)
     end
-    
+
     furnitureTypeMenu:RegisterElement('line', {
         slot = "footer",
         style = {}
@@ -209,113 +208,249 @@ function IndFurnitureTypeMenu(type, houseId)
         sound = {
             action = "SELECT",
             soundset = "RDRO_Character_Creator_Sounds"
-       }
+        }
     })
 end
+local MoveForwardPrompt, MoveBackwardPrompt, MoveLeftPrompt, MoveRightPrompt, MoveUpPrompt, MoveDownPrompt
+local RotateYawPrompt, RotateYawLeftPrompt, RotatePitchPrompt, RotateBackwardPrompt, RotateRightPrompt, RotateLeftPrompt
+local IncreasePrecisionPrompt, DecreasePrecisionPrompt, ConfirmPrompt, CancelPrompt
+local FurnitureGroup = GetRandomIntInRange(0, 0xffffff)
 
-function PlaceFurnitureIntoWorldMenu(model, cost, displayName, sellPrice)
-    menuCheck = true
+function StartFurniturePlacementPrompts()
+    -- Register movement prompts
+    MoveForwardPrompt = PromptRegisterBegin()
+    PromptSetControlAction(MoveForwardPrompt, 0xCEFD9220) -- E
+    PromptSetText(MoveForwardPrompt, CreateVarString(10, 'LITERAL_STRING', "Move Forward"))
+    PromptSetStandardMode(MoveForwardPrompt, true)
+    PromptSetGroup(MoveForwardPrompt, FurnitureGroup, 0)
+    PromptRegisterEnd(MoveForwardPrompt)
+
+    MoveBackwardPrompt = PromptRegisterBegin()
+    PromptSetControlAction(MoveBackwardPrompt, 0xE30CD707) -- R
+    PromptSetText(MoveBackwardPrompt, CreateVarString(10, 'LITERAL_STRING', "Move Backward"))
+    PromptSetStandardMode(MoveBackwardPrompt, true)
+    PromptSetGroup(MoveBackwardPrompt, FurnitureGroup, 0)
+    PromptRegisterEnd(MoveBackwardPrompt)
+
+    MoveLeftPrompt = PromptRegisterBegin()
+    PromptSetControlAction(MoveLeftPrompt, 0xA65EBAB4) -- A
+    PromptSetText(MoveLeftPrompt, CreateVarString(10, 'LITERAL_STRING', "Move Left"))
+    PromptSetStandardMode(MoveLeftPrompt, true)
+    PromptSetGroup(MoveLeftPrompt, FurnitureGroup, 0)
+    PromptRegisterEnd(MoveLeftPrompt)
+
+    MoveRightPrompt = PromptRegisterBegin()
+    PromptSetControlAction(MoveRightPrompt, 0xDEB34313) -- D
+    PromptSetText(MoveRightPrompt, CreateVarString(10, 'LITERAL_STRING', "Move Right"))
+    PromptSetStandardMode(MoveRightPrompt, true)
+    PromptSetGroup(MoveRightPrompt, FurnitureGroup, 0)
+    PromptRegisterEnd(MoveRightPrompt)
+
+    MoveUpPrompt = PromptRegisterBegin()
+    PromptSetControlAction(MoveUpPrompt, 0x6319DB71) -- Q
+    PromptSetText(MoveUpPrompt, CreateVarString(10, 'LITERAL_STRING', "Move Up"))
+    PromptSetStandardMode(MoveUpPrompt, true)
+    PromptSetGroup(MoveUpPrompt, FurnitureGroup, 0)
+    PromptRegisterEnd(MoveUpPrompt)
+
+    MoveDownPrompt = PromptRegisterBegin()
+    PromptSetControlAction(MoveDownPrompt, 0x05CA7C52) -- E
+    PromptSetText(MoveDownPrompt, CreateVarString(10, 'LITERAL_STRING', "Move Down"))
+    PromptSetStandardMode(MoveDownPrompt, true)
+    PromptSetGroup(MoveDownPrompt, FurnitureGroup, 0)
+    PromptRegisterEnd(MoveDownPrompt)
+
+    -- Register rotation prompts
+    RotateYawPrompt = PromptRegisterBegin()
+    PromptSetControlAction(RotateYawPrompt, 0x05CA7C52) -- UP
+    PromptSetText(RotateYawPrompt, CreateVarString(10, 'LITERAL_STRING', "Rotate Right"))
+    PromptSetStandardMode(RotateYawPrompt, true)
+    PromptSetGroup(RotateYawPrompt, FurnitureGroup, 1)
+    PromptRegisterEnd(RotateYawPrompt)
+
+    RotateYawLeftPrompt = PromptRegisterBegin()
+    PromptSetControlAction(RotateYawLeftPrompt, 0x6319DB71) -- DOWN
+    PromptSetText(RotateYawLeftPrompt, CreateVarString(10, 'LITERAL_STRING', "Rotate Left"))
+    PromptSetStandardMode(RotateYawLeftPrompt, true)
+    PromptSetGroup(RotateYawLeftPrompt, FurnitureGroup, 1)
+    PromptRegisterEnd(RotateYawLeftPrompt)
+
+    RotatePitchPrompt = PromptRegisterBegin()
+    PromptSetControlAction(RotatePitchPrompt, 0xCEFD9220) -- E
+    PromptSetText(RotatePitchPrompt, CreateVarString(10, 'LITERAL_STRING', "Rotate Pitch Forward"))
+    PromptSetStandardMode(RotatePitchPrompt, true)
+    PromptSetGroup(RotatePitchPrompt, FurnitureGroup, 1)
+    PromptRegisterEnd(RotatePitchPrompt)
+
+    RotateBackwardPrompt = PromptRegisterBegin()
+    PromptSetControlAction(RotateBackwardPrompt, 0xE30CD707) -- r
+    PromptSetText(RotateBackwardPrompt, CreateVarString(10, 'LITERAL_STRING', "Rotate Pitch Backward"))
+    PromptSetStandardMode(RotateBackwardPrompt, true)
+    PromptSetGroup(RotateBackwardPrompt, FurnitureGroup, 1)
+    PromptRegisterEnd(RotateBackwardPrompt)
+    
+    RotateRightPrompt = PromptRegisterBegin()
+    PromptSetControlAction(RotateRightPrompt, 0xDEB34313) -- RIGHT
+    PromptSetText(RotateRightPrompt, CreateVarString(10, 'LITERAL_STRING', "Rotate Yaw Right"))
+    PromptSetStandardMode(RotateRightPrompt, true)
+    PromptSetGroup(RotateRightPrompt, FurnitureGroup, 1)
+    PromptRegisterEnd(RotateRightPrompt)
+    
+    RotateLeftPrompt = PromptRegisterBegin()
+    PromptSetControlAction(RotateLeftPrompt, 0xA65EBAB4) -- LEFT
+    PromptSetText(RotateLeftPrompt, CreateVarString(10, 'LITERAL_STRING', "Rotate Yaw Left"))
+    PromptSetStandardMode(RotateLeftPrompt, true)
+    PromptSetGroup(RotateLeftPrompt, FurnitureGroup, 1)
+    PromptRegisterEnd(RotateLeftPrompt)
+
+    IncreasePrecisionPrompt = PromptRegisterBegin()
+    PromptSetControlAction(IncreasePrecisionPrompt, 0xB238FE0B)
+    PromptSetText(IncreasePrecisionPrompt, CreateVarString(10, 'LITERAL_STRING', "Increase Precision"))
+    PromptSetStandardMode(IncreasePrecisionPrompt, true)
+    PromptSetGroup(IncreasePrecisionPrompt, FurnitureGroup, 2)
+    PromptRegisterEnd(IncreasePrecisionPrompt)
+
+    DecreasePrecisionPrompt = PromptRegisterBegin()
+    PromptSetControlAction(DecreasePrecisionPrompt, 0x8FFC75D6)
+    PromptSetText(DecreasePrecisionPrompt, CreateVarString(10, 'LITERAL_STRING', "Decrease Precision"))
+    PromptSetStandardMode(DecreasePrecisionPrompt, true)
+    PromptSetGroup(DecreasePrecisionPrompt, FurnitureGroup, 2)
+    PromptRegisterEnd(DecreasePrecisionPrompt)
+
+    -- Register confirmation and cancel prompts
+    ConfirmPrompt = PromptRegisterBegin()
+    PromptSetControlAction(ConfirmPrompt, 0xD9D0E1C0) -- Enter
+    PromptSetText(ConfirmPrompt, CreateVarString(10, 'LITERAL_STRING', "Confirm Placement"))
+    PromptSetStandardMode(ConfirmPrompt, true)
+    PromptSetGroup(ConfirmPrompt, FurnitureGroup, 3)
+    PromptRegisterEnd(ConfirmPrompt)
+
+    CancelPrompt = PromptRegisterBegin()
+    PromptSetControlAction(CancelPrompt, 0x156F7119) -- Backspace
+    PromptSetText(CancelPrompt, CreateVarString(10, 'LITERAL_STRING', "Cancel Placement"))
+    PromptSetStandardMode(CancelPrompt, true)
+    PromptSetGroup(CancelPrompt, FurnitureGroup, 3)
+    PromptRegisterEnd(CancelPrompt)
+
+end
+
+function PlaceFurnitureIntoWorldPrompt(model, cost, displayName, sellPrice)
     local playerPed = PlayerPedId()
     local placementCoords = GetEntityCoords(playerPed)
-    local createdObject = CreateObject(model, placementCoords.x, placementCoords.y + 2, placementCoords.z, true, true,
-        true)
+    local createdObject = CreateObject(model, placementCoords.x, placementCoords.y + 1, placementCoords.z, true, true, true)
     SetEntityCollision(createdObject, false, true)
     TriggerEvent('bcc-housing:CheckIfInRadius', createdObject)
 
     local amountToMove = 0.1 -- default movement precision
 
-    local furniturePlacementMenu = BCCHousingMenu:RegisterPage('furniture_placement_menu')
+    -- Notify player of controls
+    VORPcore.NotifyRightTip("Furniture controls", 5000)
 
-    furniturePlacementMenu:RegisterElement('header', {
-        value = _U("placeFurniture"),
-        slot = 'header',
-        style = {}
-    })
+    -- Main loop for handling prompt inputs
+    Citizen.CreateThread(function()
+        StartFurniturePlacementPrompts()
+        while true do
+            Citizen.Wait(0)
+            PromptSetEnabled(ConfirmPrompt, true)
+            PromptSetEnabled(CancelPrompt, true)
+            -- Set active group for this frame
+            PromptSetActiveGroupThisFrame(FurnitureGroup, CreateVarString(10, 'LITERAL_STRING', "Movement Controls"), 4, 0, 0, 0)
+            PromptSetEnabled(MoveForwardPrompt, true)
+            PromptSetEnabled(MoveBackwardPrompt, true)
+            PromptSetEnabled(MoveLeftPrompt, true)
+            PromptSetEnabled(MoveRightPrompt, true)
+            PromptSetEnabled(MoveUpPrompt, true)
+            PromptSetEnabled(MoveDownPrompt, true)
+            PromptSetEnabled(RotateYawPrompt, true)
+            PromptSetEnabled(RotateYawLeftPrompt, true)
+            PromptSetEnabled(RotatePitchPrompt, true)        -- Added
+            PromptSetEnabled(RotateBackwardPrompt, true)    -- Added
+            PromptSetEnabled(RotateRightPrompt, true)       -- Added
+            PromptSetEnabled(RotateLeftPrompt, true)        -- Added
+            PromptSetEnabled(IncreasePrecisionPrompt, true)
+            PromptSetEnabled(DecreasePrecisionPrompt, true)
 
-    furniturePlacementMenu:RegisterElement('line', {
-        slot = "header",
-        style = {}
-    })
+            if Citizen.InvokeNative(0xC92AC953F0A982AE, MoveForwardPrompt) then
+                MoveFurniture(createdObject, "forward", amountToMove)
+            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, MoveBackwardPrompt) then
+                MoveFurniture(createdObject, "backward", amountToMove)
+            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, MoveLeftPrompt) then
+                MoveFurniture(createdObject, "left", amountToMove)
+            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, MoveRightPrompt) then
+                MoveFurniture(createdObject, "right", amountToMove)
+            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, MoveUpPrompt) then
+                MoveFurniture(createdObject, "up", amountToMove)
+            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, MoveDownPrompt) then
+                MoveFurniture(createdObject, "down", amountToMove)
+            end
 
-    -- Slider for adjustment precision
-    furniturePlacementMenu:RegisterElement('slider', {
-        label = _U("amountToMove"),
-        slot = 'header',
-        start = 0.2,
-        min = 0,
-        max = 10,
-        steps = 0.1,
-        value = amountToMove
-    }, function(data)
-        amountToMove = data.value
-    end)
+            -- Handle rotation prompts
+            if Citizen.InvokeNative(0xC92AC953F0A982AE, RotateYawPrompt) then
+                MoveFurniture(createdObject, "rotateYaw", amountToMove)
+            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, RotateYawLeftPrompt) then
+                MoveFurniture(createdObject, "rotateYawLeft", amountToMove)
+            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, RotatePitchPrompt) then
+                MoveFurniture(createdObject, "rotatepitch", amountToMove)
+            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, RotateBackwardPrompt) then
+                MoveFurniture(createdObject, "rotatebackward", amountToMove)
+            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, RotateRightPrompt) then
+                MoveFurniture(createdObject, "rotateright", amountToMove)
+            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, RotateLeftPrompt) then
+                MoveFurniture(createdObject, "rotateleft", amountToMove)
+            end
 
-    -- Movement controls
-    local directions = { 'forward', 'backward', 'left', 'right', 'up', 'down', 'rotatepitch', 'rotatebackward',
-        'rotateright', 'rotateleft', 'rotateYaw', 'rotateYawLeft' }
-    for _, direction in ipairs(directions) do
-        furniturePlacementMenu:RegisterElement('button', {
-            label = _U(direction),
-            style = {}
-        }, function()
-            MoveFurniture(createdObject, direction, amountToMove)
-        end)
-    end
+            -- Adjust precision
+            if Citizen.InvokeNative(0xC92AC953F0A982AE, IncreasePrecisionPrompt) then
+                amountToMove = amountToMove + 0.1
+                VORPcore.NotifyRightTip("Movement precision increased to " .. amountToMove, 1000)
+            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, DecreasePrecisionPrompt) then
+                amountToMove = amountToMove - 0.1
+                VORPcore.NotifyRightTip("Movement precision decreased to " .. amountToMove, 1000)
+            end
 
-    furniturePlacementMenu:RegisterElement('line', {
-        slot = "footer",
-        style = {}
-    })
+            -- Confirm placement
+            if Citizen.InvokeNative(0xC92AC953F0A982AE, ConfirmPrompt) then
+                SetEntityCollision(createdObject, true, true)
+                if ConfirmFurniturePlacement(createdObject, model, cost, displayName, sellPrice) then
+                    FreezeEntityPosition(createdObject, true)
+                    TriggerServerEvent('bcc-housing:SaveFurnitureData', {
+                        model = model,
+                        coords = GetEntityCoords(createdObject),
+                        heading = GetEntityHeading(createdObject)
+                    })
+                else
+                    DeleteObject(createdObject)
+                    VORPcore.NotifyRightTip(_U("toFar"), 4000)
+                end
+                break -- Exit loop
+            end
 
-    -- Confirm placement
-    furniturePlacementMenu:RegisterElement('button', {
-        label = _U("Confirm"),
-        slot = "footer",
-        style = {}
-    }, function()
-        SetEntityCollision(createdObject, true, true)
-        if ConfirmFurniturePlacement(createdObject, model, cost, displayName, sellPrice) then
-            FreezeEntityPosition(createdObject, true)
-            BCCHousingMenu:Close()
-            -- Successful placement handling
-            TriggerServerEvent('bcc-housing:SaveFurnitureData', {
-                model = model,
-                coords = GetEntityCoords(createdObject),
-                heading = GetEntityHeading(createdObject)
-            })
-        else
-            DeleteObject(createdObject)
-            BCCHousingMenu:Close()
-            VORPcore.NotifyRightTip(_U("toFar"), 4000)
+            -- Cancel placement
+            if Citizen.InvokeNative(0xC92AC953F0A982AE, CancelPrompt) then
+                DeleteObject(createdObject)
+                VORPcore.NotifyRightTip(_U("placementCanceled"), 4000)
+                break -- Exit loop
+            end
         end
-    end)
 
-    -- Register a back button
-    furniturePlacementMenu:RegisterElement('button', {
-        label = _U("backButton"),
-        slot = "footer",
-        style = {}
-    }, function()
-        DeleteObject(createdObject)
-        TriggerEvent('bcc-housing:openmenu')
+        -- Cleanup prompts after loop ends
+        PromptDelete(MoveForwardPrompt)
+        PromptDelete(MoveBackwardPrompt)
+        PromptDelete(MoveLeftPrompt)
+        PromptDelete(MoveRightPrompt)
+        PromptDelete(MoveUpPrompt)
+        PromptDelete(MoveDownPrompt)
+        PromptDelete(RotateYawPrompt)
+        PromptDelete(RotateYawLeftPrompt)
+        PromptDelete(RotatePitchPrompt)        -- Added
+        PromptDelete(RotateBackwardPrompt)    -- Added
+        PromptDelete(RotateRightPrompt)       -- Added
+        PromptDelete(RotateLeftPrompt)        -- Added
+        PromptDelete(IncreasePrecisionPrompt)
+        PromptDelete(DecreasePrecisionPrompt)
+        PromptDelete(ConfirmPrompt)
+        PromptDelete(CancelPrompt)
     end)
-
-    furniturePlacementMenu:RegisterElement('bottomline', {
-        slot = "footer",
-        style = {}
-    })
-    BCCHousingMenu:Open({
-        cursorFocus = false,
-        menuFocus = true,
-        startupPage = furniturePlacementMenu,
-        sound = {
-             action = "SELECT",
-             soundset = "RDRO_Character_Creator_Sounds"
-        }
-    })
-    --BCCHousingMenu:Open({
-        --startupPage = furniturePlacementMenu
-    --})
 end
 
 function MoveFurniture(obj, direction, moveAmount)
@@ -366,7 +501,7 @@ function ConfirmFurniturePlacement(obj, model, cost, displayName, sellPrice)
     return false
 end
 
-function closeToHouse(object) -- make sure the obj is close to house before placing
+function closeToHouse(object)
     local coords = GetEntityCoords(object)
     local compCoords = HouseCoords
     local radius = tonumber(HouseRadius)
@@ -388,10 +523,8 @@ function closeToHouse(object) -- make sure the obj is close to house before plac
 end
 
 RegisterNetEvent('bcc-housing:ClientFurnBought', function(furnitureCreatedTable, entId)
-    -- Assuming `furnObj` should be the furniture entity created by the player
     local furnObj = NetworkGetEntityFromNetworkId(entId)
 
-    -- Make sure the furniture entity is valid before inserting it into the table
     if DoesEntityExist(furnObj) then
         table.insert(CreatedFurniture, furnObj)
     else
@@ -400,13 +533,11 @@ RegisterNetEvent('bcc-housing:ClientFurnBought', function(furnitureCreatedTable,
         return
     end
 
-    -- Insert furniture details into the database
     TriggerServerEvent('bcc-housing:InsertFurnitureIntoDB', furnitureCreatedTable, HouseId)
 
     -- Store the furniture entity for potential deletion later
     TriggerServerEvent('bcc-housing:StoreFurnForDeletion', entId, HouseId)
 
-    -- Notify the player that the furniture has been placed
     VORPcore.NotifyRightTip(_U("furnPlaced"), 4000)
 end)
 
@@ -429,7 +560,7 @@ function SellFurniture(furniture)
     TriggerServerEvent('bcc-housing:SellFurniture', furniture)
 end
 
-function SellOwnedFurnitureMenu(houseId,furnTable)
+function SellOwnedFurnitureMenu(houseId, furnTable)
     devPrint("Opening SellOwnedFurnitureMenu with houseId: " .. tostring(houseId))
 
     -- Close any previously opened menus
@@ -456,7 +587,8 @@ function SellOwnedFurnitureMenu(houseId,furnTable)
                 local sold = false
                 for idx, entity in ipairs(CreatedFurniture) do
                     local storedFurnCoord = GetEntityCoords(entity)
-                    local dist = Vdist(storedFurnCoord.x, storedFurnCoord.y, storedFurnCoord.z, v.coords.x, v.coords.y, v.coords.z)
+                    local dist = Vdist(storedFurnCoord.x, storedFurnCoord.y, storedFurnCoord.z, v.coords.x, v.coords.y,
+                        v.coords.z)
                     if dist < 1.0 then -- Check if the distance is less than 1 meter
                         DeleteEntity(entity)
                         table.remove(CreatedFurniture, idx)
@@ -510,7 +642,7 @@ function SellOwnedFurnitureMenu(houseId,furnTable)
         sound = {
             action = "SELECT",
             soundset = "RDRO_Character_Creator_Sounds"
-       }
+        }
     })
 end
 

@@ -1,37 +1,38 @@
-fx_version "adamant"
-games {"rdr3"}
-rdr3_warning "I acknowledge that this is a prerelease build of RedM, and I am aware my resources *will* become incompatible once RedM ships."
-lua54 "yes"
+fx_version 'adamant'
+games {'rdr3'}
+rdr3_warning 'I acknowledge that this is a prerelease build of RedM, and I am aware my resources *will* become incompatible once RedM ships.'
+lua54 'yes'
 
-author 'BCC'
+author 'BCC Team'
 
 description 'Advanced Housing Script: A comprehensive and customizable system for managing player houses.'
 
 shared_scripts {
-  "config.lua",
-  "locale.lua",
+  'config.lua',
+  'locale.lua',
   'languages/*.lua'
 }
 
 client_scripts {
-  "client/functions.lua",
-  "client/MainHousing.lua",
-  "client/MenuSetup/*.lua",
-  'client/furnitureSpawning.lua'
+  'client/functions.lua',
+  'client/MainHousing.lua',
+  'client/propertyCheck.lua',
+  'client/furnitureSpawning.lua',
+  'client/MenuSetup/*.lua',
 }
 
 server_scripts {
-  "@oxmysql/lib/MySQL.lua",
+  '@oxmysql/lib/MySQL.lua',
   'server/helpers/functions.lua',
   'server/services/dbupdater.lua',
   'server/helpers/*.lua',
   'server/services/*.lua',
-  "server/main.lua"
+  'server/main.lua'
 }
 
 files {
-  "stream/Siddin3.ymap",
-  "stream/Siddin4.ymap",
+  'stream/Siddin3.ymap',
+  'stream/Siddin4.ymap',
 }
 
 dependency {

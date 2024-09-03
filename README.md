@@ -20,7 +20,13 @@
 - House owners can buy furniture and place it around thier house!
 - House owners can sell the furniture they bought!
 - House owners can give and/or remove access to players
-- When players approach a house, they will receive a notification indicating that they have entered private property. 
+- When players approach a house, they will receive a notification indicating that they have entered private property.
+- Ability to purchase the house specified in the configuration.
+- Option to sell the house directly from the house menu.
+- Collect proceeds from house sales through the house dealer.
+- Players can now sell their house to another player at a price set in the config.
+- When selling a house to another player, the seller has the option to include or exclude the inventory.
+- No need for players to relog when buying or selling houses.
 - Easy to translate!
 - In depth webhooks!
 - Built in hotel system!
