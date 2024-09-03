@@ -46,4 +46,4 @@ dependency {
 
 -- u can set doors but if u set one with an id first it will break so u have to set one without an id first then add id doors
 
-version '1.0.7'
+version '1.1.0'
