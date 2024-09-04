@@ -29,12 +29,13 @@ AddEventHandler('bcc-housing:buyHouse', function(houseCoords)
                             ['@ledger'] = house.ledger,
                             ['@tax_amount'] = house.taxAmount,
                             ['@tpInt'] = house.tpInt,
-                            ['@tpInstance'] = house.tpInstance
+                            ['@tpInstance'] = house.tpInstance,
+                            ['@uniqueName'] = house.uniqueName
                         }
 
                         -- Insert the new house into the database
                         MySQL.insert.await(
-                            "INSERT INTO `bcchousing` (`charidentifier`, `house_coords`, `house_radius_limit`, `furniture`, `doors`, `allowed_ids`, `invlimit`, `player_source_spawnedfurn`, `taxes_collected`, `ledger`, `tax_amount`, `tpInt`, `tpInstance`) VALUES (@charidentifier, @house_coords, @house_radius_limit, @furniture, @doors, @allowed_ids, @invlimit, @player_source_spawnedfurn, @taxes_collected, @ledger, @tax_amount, @tpInt, @tpInstance)",
+                            "INSERT INTO `bcchousing` (`charidentifier`, `house_coords`, `house_radius_limit`, `furniture`, `doors`, `allowed_ids`, `invlimit`, `player_source_spawnedfurn`, `taxes_collected`, `ledger`, `tax_amount`, `tpInt`, `tpInstance`, `uniqueName`) VALUES (@charidentifier, @house_coords, @house_radius_limit, @furniture, @doors, @allowed_ids, @invlimit, @player_source_spawnedfurn, @taxes_collected, @ledger, @tax_amount, @tpInt, @tpInstance, @uniqueName)",
                             parameters, function(result) end)
 
                         -- Deduct the money from the player

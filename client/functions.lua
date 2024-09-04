@@ -64,14 +64,12 @@ end
 
 function showManageOpt(x, y, z, houseId)
     local PromptGroup = BccUtils.Prompts:SetupPromptGroup()
-    local firstprompt = PromptGroup:RegisterPrompt(_U("openOwnerManage"), Config.keys.manage, 1, 1, true, 'hold',
-        { timedeventhash = "MEDIUM_TIMED_EVENT" })
+    local ManageHousePrompt = PromptGroup:RegisterPrompt(_U("openOwnerManage"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
 
-    devPrint("Setting up manage options for House ID: " ..
-        tostring(houseId) .. " at coordinates: " .. tostring(x) .. ", " .. tostring(y) .. ", " .. tostring(z))
-
+    devPrint("Setting up manage options for House ID: " .. tostring(houseId) .. " at coordinates: " .. tostring(x) .. ", " .. tostring(y) .. ", " .. tostring(z))
     -- Variable to track if the house exists
     local houseExists = false
+    --local checkingComplete = false
 
     -- Check if the house exists on the server
     TriggerServerEvent('bcc-housing:CheckIfHouseExists', houseId)
@@ -83,7 +81,7 @@ function showManageOpt(x, y, z, houseId)
             houseExists = exists
             if not exists then
                 devPrint("House ID " .. tostring(houseId) .. " no longer exists. Deleting prompt.")
-                firstprompt:DeletePrompt()
+                ManageHousePrompt:DeletePrompt()
                 --BreakHandleLoop = true -- Break the loop
             end
         end
@@ -104,7 +102,7 @@ function showManageOpt(x, y, z, houseId)
             if dist < 2 then
                 PromptGroup:ShowGroup(_U("house"))
 
-                if firstprompt:HasCompleted() then
+                if ManageHousePrompt:HasCompleted() then
                     devPrint("Prompt completed. Opening housing management menu for House ID: " .. tostring(houseId))
                     TriggerServerEvent('bcc-housing:getHouseOwner', houseId)
                 end
@@ -146,7 +144,6 @@ end)
 -- Receive House Owner Information
 RegisterNetEvent('bcc-housing:receiveHouseOwner')
 AddEventHandler('bcc-housing:receiveHouseOwner', function(houseId, isOwner)
-    devPrint("Received house owner information for House ID: " ..
-        tostring(houseId) .. ", Is Owner: " .. tostring(isOwner))
+    devPrint("Received house owner information for House ID: " .. tostring(houseId) .. ", Is Owner: " .. tostring(isOwner))
     TriggerEvent('bcc-housing:openmenu', houseId, isOwner)
 end)

@@ -18,7 +18,8 @@ AddEventHandler('bcc-housing:CreationDBInsert',
                 ['invlimit'] = invLimit,
                 ['taxes'] = taxes,
                 ['tpInt'] = 0,
-                ['tpInstance'] = 0
+                ['tpInstance'] = 0,
+                ['uniqueName'] = 'none'
             }
         else
             -- If a teleport house is provided, set up the parameters with teleport info
@@ -30,7 +31,8 @@ AddEventHandler('bcc-housing:CreationDBInsert',
                 ['invlimit'] = invLimit,
                 ['taxes'] = taxes,
                 ['tpInt'] = tpHouse,
-                ['tpInstance'] = 52324 + _source -- Generate a unique teleport instance based on the source
+                ['tpInstance'] = 52324 + _source, -- Generate a unique teleport instance based on the source
+                ['uniqueName'] = 'none'
             }
         end
 
@@ -39,7 +41,7 @@ AddEventHandler('bcc-housing:CreationDBInsert',
         if #result < Config.Setup.MaxHousePerChar then
             -- If the character can own more houses, insert the new house into the database
             MySQL.insert(
-            "INSERT INTO bcchousing ( `charidentifier`,`house_radius_limit`,`doors`,`house_coords`,`invlimit`,`tax_amount`,`tpInt`,`tpInstance` ) VALUES ( @charidentifier,@radius,@doors,@houseCoords,@invlimit,@taxes,@tpInt,@tpInstance )",
+            "INSERT INTO bcchousing ( `charidentifier`,`house_radius_limit`,`doors`,`house_coords`,`invlimit`,`tax_amount`,`tpInt`,`tpInstance`, `uniqueName` ) VALUES ( @charidentifier,@radius,@doors,@houseCoords,@invlimit,@taxes,@tpInt,@tpInstance, @uniqueName )",
                 param)
 
             -- Notify Discord about the new house creation

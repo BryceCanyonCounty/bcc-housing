@@ -2,7 +2,7 @@ local purchasedHouses = {}
 
 Citizen.CreateThread(function()
     local HouseDealerPrompt = BccUtils.Prompts:SetupPromptGroup()
-    local collectMoneyPrompt = HouseDealerPrompt:RegisterPrompt(_U("collectFromDealer"), Config.keys.collect, 1, 1, true,
+    local collectMoneyPrompt = HouseDealerPrompt:RegisterPrompt(_U("collectFromDealer"), BccUtils.Keys[Config.keys.collect], 1, 1, true,
         'hold', { timedeventhash = 'MEDIUM_TIMED_EVENT' })
 
     for _, dealer in pairs(Config.houseDealer) do
@@ -41,7 +41,7 @@ CreateThread(function()
     -- Request the purchased houses list from the server when the resource starts
     TriggerServerEvent('bcc-housing:getPurchasedHouses')
     local PromptGroup = BccUtils.Prompt:SetupPromptGroup() -- Setup Prompt Group
-    local BuyHousePrompt = PromptGroup:RegisterPrompt("More Info", Config.keys.buy, 1, 1, true, 'hold', {
+    local BuyHousePrompt = PromptGroup:RegisterPrompt("More Info", BccUtils.Keys[Config.keys.buy], 1, 1, true, 'hold', {
         timedeventhash = "MEDIUM_TIMED_EVENT"
     }) -- Register your first prompt
     

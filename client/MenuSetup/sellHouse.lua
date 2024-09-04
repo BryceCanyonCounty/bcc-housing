@@ -228,7 +228,7 @@ function GetNearbyPlayers()
             local distance = #(playerCoords - targetCoords)
             if distance < 3.0 then
                 table.insert(nearbyPlayers, { id = GetPlayerServerId(player), distance = distance })
-                debugPrint("Found nearby player:", GetPlayerServerId(player))
+                devPrint("Found nearby player:", GetPlayerServerId(player))
             end
         end
     end

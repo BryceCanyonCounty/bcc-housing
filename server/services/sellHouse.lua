@@ -1,90 +1,84 @@
 -- Event to handle the selling of a house
 RegisterServerEvent('bcc-housing:sellHouse')
 AddEventHandler('bcc-housing:sellHouse', function(houseId)
-    local src = source                              -- Get the source of the event
-    local User = VORPcore.getUser(src)              -- Get the user object for the player
-    local Character = User.getUsedCharacter         -- Get the character object for the player
-    local charIdentifier = Character.charIdentifier -- Get the character identifier
+    local src = source
+    local User = VORPcore.getUser(src)
+    local Character = User.getUsedCharacter
+    local charIdentifier = Character.charIdentifier
 
-    devPrint("Sell house event triggered for houseId: " ..
-    tostring(houseId) .. " by player with charIdentifier: " .. tostring(charIdentifier))
+    devPrint("Sell house event triggered for houseId: " .. tostring(houseId) .. " by player with charIdentifier: " .. tostring(charIdentifier))
 
     -- Query the database to find the house based on houseId
     MySQL.query('SELECT * FROM bcchousing WHERE houseid = ?', { houseId }, function(result)
         if result and #result > 0 then
-            local houseData = result[1] -- Get the house data from the query result
+            local houseData = result[1]
             devPrint("House found in database: " .. json.encode(houseData))
 
-            -- Check if the player is the owner of the house
             if houseData.charidentifier == tostring(charIdentifier) then
                 devPrint("Player is the owner of the house with houseId: " .. tostring(houseId))
 
-                -- Find the corresponding house configuration
+                -- Find the corresponding house configuration by uniqueName
                 local houseConfig = nil
                 for _, h in pairs(Config.HousesForSale) do
-                    if h.houseCoords == json.decode(houseData.house_coords) then
+                    if h.uniqueName == houseData.uniqueName then
                         houseConfig = h
                         devPrint("Matching house configuration found: " .. json.encode(houseConfig))
                         break
                     end
                 end
 
-                -- Set the sell price based on the house configuration
-                local sellPrice = Config.DefaultSellPrice -- Use the value from Config
-                if houseConfig and houseConfig.canSell then
-                    sellPrice = houseConfig.sellPrice or 50000
-                end
-                devPrint("Sell price set to: $" .. tostring(sellPrice))
-
-                -- Remove the house from the database
-                MySQL.update('DELETE FROM bcchousing WHERE houseid = ?', { houseData.houseid })
-                devPrint("House deleted from database with houseId: " .. tostring(houseData.houseid))
-
-                -- Insert the transaction into the `bcchousing_transactions` table
-                local params = {
-                    ['@houseid'] = houseData.houseid,
-                    ['@identifier'] = charIdentifier,
-                    ['@amount'] = sellPrice
-                }
-                MySQL.insert(
-                'INSERT INTO bcchousing_transactions (houseid, identifier, amount) VALUES (@houseid, @identifier, @amount)',
-                    params)
-                devPrint("House sale transaction inserted into `bcchousing_transactions` table: " .. json.encode(params))
-
-                -- Notify the player that the house was sold
-                VORPcore.NotifyAvanced(src, "Successfully sold for $" .. sellPrice, "inventory_items", "money_billstack",
-                    "COLOR_GREEN", 4000)
-                devPrint("Player notified of successful house sale.")
-
-                -- Send a message to Discord
-                Discord:sendMessage("House sold by charIdentifier: " ..
-                tostring(charIdentifier) ..
-                "\nHouse ID: " .. tostring(houseId) .. " was sold for $" .. tostring(sellPrice))
-
-                -- Trigger the client-side prompt for collecting money
                 if houseConfig then
-                    TriggerClientEvent('bcc-housing:showCollectMoneyPrompt', src, houseConfig.menuCoords.x,
-                        houseConfig.menuCoords.y, houseConfig.menuCoords.z, houseId, sellPrice)
+                    if houseConfig.canSell then
+                        local sellPrice = houseConfig.sellPrice
+                        devPrint("Sell price set to: $" .. tostring(sellPrice))
+
+                        -- Remove the house from the database
+                        MySQL.update('DELETE FROM bcchousing WHERE houseid = ?', { houseData.houseid })
+                        devPrint("House deleted from database with houseId: " .. tostring(houseData.houseid))
+
+                        -- Insert the transaction into the `bcchousing_transactions` table
+                        local params = {
+                            ['@houseid'] = houseData.houseid,
+                            ['@identifier'] = charIdentifier,
+                            ['@amount'] = sellPrice
+                        }
+                        MySQL.insert('INSERT INTO bcchousing_transactions (houseid, identifier, amount) VALUES (@houseid, @identifier, @amount)', params)
+                        devPrint("House sale transaction inserted into `bcchousing_transactions` table: " .. json.encode(params))
+
+                        -- Notify the player that the house was sold
+                        VORPcore.NotifyAvanced(src, "Successfully sold for $" .. sellPrice, "inventory_items", "money_billstack", "COLOR_GREEN", 4000)
+                        devPrint("Player notified of successful house sale.")
+
+                        -- Send a message to Discord
+                        Discord:sendMessage("House sold by charIdentifier: " .. tostring(charIdentifier) .. "\nHouse ID: " .. tostring(houseId) .. " was sold for $" .. tostring(sellPrice))
+
+                        -- Trigger the client-side prompt for collecting money
+                        TriggerClientEvent('bcc-housing:showCollectMoneyPrompt', src, houseConfig.menuCoords.x, houseConfig.menuCoords.y, houseConfig.menuCoords.z, houseId, sellPrice)
+
+                        -- Trigger the client-side handler to update the UI or perform other actions
+                        TriggerClientEvent('bcc-housing:OwnsHouseClientHandler', src, houseData, false)
+
+                        -- Stop the property check on the client side
+                        TriggerClientEvent('bcc-housing:StopPropertyCheck', src)
+
+                        -- Clear the blips for the sold house
+                        TriggerClientEvent('bcc-housing:clearBlips', src, houseId)
+
+                        -- Reinitialize checks if necessary
+                        TriggerClientEvent('bcc-housing:ReinitializeChecksAfterSale', src)
+                    else
+                        devPrint("House with uniqueName: " .. tostring(houseData.uniqueName) .. " cannot be sold.")
+                        VORPcore.NotifyAvanced(src, "This house cannot be sold.", "generic_textures", "cross", "COLOR_RED", 4000)
+                    end
+                else
+                    devPrint("House configuration missing for uniqueName: " .. tostring(houseData.uniqueName))
+                    VORPcore.NotifyAvanced(src, "House configuration missing. Please contact an admin.", "generic_textures", "cross", "COLOR_RED", 4000)
                 end
-
-                -- Trigger the client-side handler to update the UI or perform other actions
-                TriggerClientEvent('bcc-housing:OwnsHouseClientHandler', src, houseData, false) -- false indicates the house is no longer owned
-
-                -- Stop the property check on the client side
-                TriggerClientEvent('bcc-housing:StopPropertyCheck', src)
-
-                -- Clear the blips for the sold house
-                TriggerClientEvent('bcc-housing:clearBlips', src, houseId)
-
-                -- Reinitialize checks if necessary
-                TriggerClientEvent('bcc-housing:ReinitializeChecksAfterSale', src)
             else
-                -- Notify the player if they are not the owner of the house
                 devPrint("Player is not the owner of the house with houseId: " .. tostring(houseId))
                 VORPcore.NotifyAvanced(src, "You do not own this house.", "generic_textures", "cross", "COLOR_RED", 4000)
             end
         else
-            -- Notify the player if no house was found
             devPrint("No house found in database for houseId: " .. tostring(houseId))
             VORPcore.NotifyAvanced(src, "House not found.", "generic_textures", "cross", "COLOR_RED", 4000)
         end
@@ -131,7 +125,7 @@ AddEventHandler('bcc-housing:sellHouseToPlayerWithInventory', function(houseId, 
                         ['@amount'] = salePrice
                     }
                     MySQL.insert(
-                    'INSERT INTO bcc_transactions (houseid, identifier, amount) VALUES (@houseid, @identifier, @amount)',
+                    'INSERT INTO bcchousing_transactions (houseid, identifier, amount) VALUES (@houseid, @identifier, @amount)',
                         params)
 
                     -- Notify both players
@@ -206,7 +200,7 @@ AddEventHandler('bcc-housing:sellHouseToPlayerWithoutInventory', function(houseI
                         ['@amount'] = salePrice
                     }
                     MySQL.insert(
-                    'INSERT INTO bcc_transactions (houseid, identifier, amount) VALUES (@houseid, @identifier, @amount)',
+                    'INSERT INTO bcchousing_transactions (houseid, identifier, amount) VALUES (@houseid, @identifier, @amount)',
                         params)
 
                     -- Notify both players
