@@ -37,7 +37,7 @@ AddEventHandler('bcc-housing:buyHouse', function(houseCoords)
                                     -- After house insert, get the inserted house's unique ID to update its doors
                                     MySQL.Async.fetchScalar("SELECT houseid FROM bcchousing WHERE house_coords = ?",
                                         { houseCoordsJson }, function(houseId)
-                                        insertHouseDoors(house.doors, Character.charIdentifier, houseId)
+                                        insertHouseDoors(house.doors, Character.charIdentifier, houseId, house.uniqueName)
                                     end)
                                 else
                                     print("Error: Failed to insert house into bcchousing.")
@@ -60,6 +60,7 @@ AddEventHandler('bcc-housing:buyHouse', function(houseCoords)
                             " was purchased for $" ..
                             tostring(house.price) .. "\nCharacter Name: " .. Character.firstname .. " " .. Character
                             .lastname)
+							
                         -- Trigger the client-side to reload the house data
                         TriggerClientEvent('bcc-housing:ClientRecHouseLoad', src)
                     else
@@ -77,11 +78,21 @@ AddEventHandler('bcc-housing:buyHouse', function(houseCoords)
 end)
 
 -- Function to insert doors into the doorlocks table and update the bcchousing table
-function insertHouseDoors(doors, charidentifier, houseId)
+function insertHouseDoors(doors, charidentifier, houseId, uniqueName)
     local doorIds = {} -- Store door ids to update the house later
-    -- Check if doors exist in the house configuration
-    if doors and #doors > 0 then
-        for _, door in pairs(doors) do
+
+    -- Get the house configuration from the uniqueName to ensure correct doors are inserted
+    local houseConfig = nil
+    for _, house in pairs(Config.HousesForSale) do
+        if house.uniqueName == uniqueName then
+            houseConfig = house
+            break
+        end
+    end
+
+    if houseConfig and houseConfig.doors and #houseConfig.doors > 0 then
+        -- Insert each door specific to the house's unique configuration
+        for _, door in pairs(houseConfig.doors) do
             local doorinfo = door.doorinfo
             local locked = door.locked and 'true' or 'false'
             local jobsAllowed = '[]' -- Default no jobs allowed
@@ -97,7 +108,7 @@ function insertHouseDoors(doors, charidentifier, houseId)
                     table.insert(doorIds, doorId)
 
                     -- Once all doors are inserted, update the house with the door IDs
-                    if #doorIds == #doors then
+                    if #doorIds == #houseConfig.doors then
                         local doorIdsJson = json.encode(doorIds)
                         MySQL.Async.execute("UPDATE bcchousing SET doors = ? WHERE houseid = ?", { doorIdsJson, houseId },
                             function(affectedRows)
