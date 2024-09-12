@@ -20,7 +20,7 @@ AddEventHandler('bcc-housing:buyHouse', function(houseCoords)
                             ['@charidentifier'] = Character.charIdentifier,
                             ['@house_coords'] = houseCoordsJson,
                             ['@house_radius_limit'] = house.houseRadiusLimit,
-                            ['@doors'] = house.doors,
+                            ['@doors'] = '[]', -- Placeholder for doors, to be updated after insertion
                             ['@invlimit'] = house.invLimit,
                             ['@tax_amount'] = house.taxAmount,
                             ['@tpInt'] = house.tpInt,
@@ -29,9 +29,21 @@ AddEventHandler('bcc-housing:buyHouse', function(houseCoords)
                         }
 
                         -- Insert the new house into the database
-                        MySQL.insert.await(
+                        MySQL.Async.execute(
                             "INSERT INTO `bcchousing` (`charidentifier`, `house_coords`, `house_radius_limit`, `doors`, `invlimit`, `tax_amount`, `tpInt`, `tpInstance`, `uniqueName`) VALUES (@charidentifier, @house_coords, @house_radius_limit, @doors, @invlimit, @tax_amount, @tpInt, @tpInstance, @uniqueName)",
-                            parameters, function(result) end)
+                            parameters, function(rowsChanged)
+                                -- After house purchase, handle door insertion
+                                if rowsChanged > 0 then
+                                    -- After house insert, get the inserted house's unique ID to update its doors
+                                    MySQL.Async.fetchScalar("SELECT houseid FROM bcchousing WHERE house_coords = ?",
+                                        { houseCoordsJson }, function(houseId)
+                                        insertHouseDoors(house.doors, Character.charIdentifier, houseId)
+                                    end)
+                                else
+                                    print("Error: Failed to insert house into bcchousing.")
+                                end
+                            end
+                        )
 
                         -- Deduct the money from the player
                         Character.removeCurrency(0, house.price)
@@ -48,7 +60,6 @@ AddEventHandler('bcc-housing:buyHouse', function(houseCoords)
                             " was purchased for $" ..
                             tostring(house.price) .. "\nCharacter Name: " .. Character.firstname .. " " .. Character
                             .lastname)
-
                         -- Trigger the client-side to reload the house data
                         TriggerClientEvent('bcc-housing:ClientRecHouseLoad', src)
                     else
@@ -64,6 +75,46 @@ AddEventHandler('bcc-housing:buyHouse', function(houseCoords)
         end
     end
 end)
+
+-- Function to insert doors into the doorlocks table and update the bcchousing table
+function insertHouseDoors(doors, charidentifier, houseId)
+    local doorIds = {} -- Store door ids to update the house later
+    -- Check if doors exist in the house configuration
+    if doors and #doors > 0 then
+        for _, door in pairs(doors) do
+            local doorinfo = door.doorinfo
+            local locked = door.locked and 'true' or 'false'
+            local jobsAllowed = '[]' -- Default no jobs allowed
+            local keyItem = 'none'   -- Default key item
+            local idsAllowed = '[' .. charidentifier .. ']'
+
+            -- Insert door into the `doorlocks` table
+            MySQL.Async.insert(
+                "INSERT INTO `doorlocks` (`doorinfo`, `jobsallowedtoopen`, `keyitem`, `locked`, `ids_allowed`) VALUES (?, ?, ?, ?, ?)",
+                { doorinfo, jobsAllowed, keyItem, locked, idsAllowed }, function(doorId)
+                    -- Debug: print the values to be inserted
+                    devPrint("Door inserted with ID:", doorId)
+                    table.insert(doorIds, doorId)
+
+                    -- Once all doors are inserted, update the house with the door IDs
+                    if #doorIds == #doors then
+                        local doorIdsJson = json.encode(doorIds)
+                        MySQL.Async.execute("UPDATE bcchousing SET doors = ? WHERE houseid = ?", { doorIdsJson, houseId },
+                            function(affectedRows)
+                                if affectedRows > 0 then
+                                    devPrint("Updated house with door IDs:", doorIdsJson)
+                                else
+                                    devPrint("Failed to update house with door IDs.")
+                                end
+                            end)
+                    end
+                end
+            )
+        end
+    else
+        devPrint("No doors found for the house.")
+    end
+end
 
 -- Event to retrieve all purchased houses
 RegisterNetEvent('bcc-housing:getPurchasedHouses')

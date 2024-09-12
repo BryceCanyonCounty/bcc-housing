@@ -249,9 +249,23 @@ Config = {
             uniqueName = "cabin_braitwaite",       -- Unique identifier for the house you can use any name make sure you dont use duplicates
             houseCoords = vector3(-2370.77587890625, 471.5861511230469, 132.2300262451172),
             houseRadiusLimit = 50,
-            doors = '[]',                     -- Leave this like it is atm
+            doors = {
+                --Make sure you add the exact door from doorhashes.lua (you can find that in bcc-doorlocks in client folder)
+                -- Do not copy the entire line from doorhashes
+                -- Example if we have this line 
+                --[1610014965] = {1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25},
+                -- We need to copy only whats between {...}
+                -- 1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25
+                {
+                    doorinfo = '[1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25]', locked = true
+                },
+                --if the house have more than one door copy the above same as these below
+                --{
+                    --doorinfo = '[1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25]', locked = true
+                --},
+
+            },
             invLimit = 1000,
-            taxesCollected = 'false',         -- Taxes have not been collected
             taxAmount = 1000,
             tpInt = 0,
             tpInstance = 0,
