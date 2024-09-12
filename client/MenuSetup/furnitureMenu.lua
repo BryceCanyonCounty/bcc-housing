@@ -1,5 +1,15 @@
+local MoveForwardPrompt, MoveBackwardPrompt, MoveLeftPrompt, MoveRightPrompt, MoveUpPrompt, MoveDownPrompt
+local RotateYawPrompt, RotateYawLeftPrompt, RotatePitchPrompt, RotateBackwardPrompt, RotateRightPrompt, RotateLeftPrompt
+local IncreasePrecisionPrompt, DecreasePrecisionPrompt, ConfirmPrompt, CancelPrompt
+local FurnitureGroup = GetRandomIntInRange(0, 0xffffff)
+
 function FurnitureMenu(houseId)
-    BCCHousingMenu:Close() -- Ensures any previously opened menu is closed
+    BCCHousingMenu:Close() -- Close any previously opened menus
+
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
+
     local furnitureMainMenu = BCCHousingMenu:RegisterPage("bcc-housing-furniture-menu")
 
     -- Header for the furniture menu
@@ -59,7 +69,12 @@ function FurnitureMenu(houseId)
 end
 
 function buyFurnitureMenu(houseId)
-    BCCHousingMenu:Close() -- Ensures any previously opened menu is closed
+    BCCHousingMenu:Close() -- Close any previously opened menus
+
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
+    
     local buyFurnitureMenu = BCCHousingMenu:RegisterPage("bcc-housing-furniture-menu")
 
     -- Header for the furniture menu
@@ -154,6 +169,12 @@ function buyFurnitureMenu(houseId)
 end
 
 function IndFurnitureTypeMenu(type, houseId)
+    BCCHousingMenu:Close() -- Close any previously opened menus
+
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
+
     local furnConfigTable = Config.Furniture[type]
     if not furnConfigTable then
         print("Error: Invalid furniture type '" .. type .. "'. Available types are:")
@@ -180,7 +201,7 @@ function IndFurnitureTypeMenu(type, houseId)
             label = v.displayName .. " - $" .. tostring(v.costToBuy),
             style = {}
         }, function()
-            PlaceFurnitureIntoWorldPrompt(v.propModel, v.costToBuy, v.displayName, v.sellFor)        
+            PlaceFurnitureIntoWorldPrompt(v.propModel, v.costToBuy, v.displayName, v.sellFor)
             BCCHousingMenu:Close()
         end)
     end
@@ -211,12 +232,25 @@ function IndFurnitureTypeMenu(type, houseId)
         }
     })
 end
-local MoveForwardPrompt, MoveBackwardPrompt, MoveLeftPrompt, MoveRightPrompt, MoveUpPrompt, MoveDownPrompt
-local RotateYawPrompt, RotateYawLeftPrompt, RotatePitchPrompt, RotateBackwardPrompt, RotateRightPrompt, RotateLeftPrompt
-local IncreasePrecisionPrompt, DecreasePrecisionPrompt, ConfirmPrompt, CancelPrompt
-local FurnitureGroup = GetRandomIntInRange(0, 0xffffff)
 
 function StartFurniturePlacementPrompts()
+    -- Debug: Check if BccUtils is loaded
+    if BccUtils then
+        print("BccUtils initialized successfully")
+    else
+        print("Error: BccUtils not initialized")
+    end
+    if BccUtils and BccUtils.Keys then
+        print("Keys table exists")
+    else
+        print("Error: Keys table not found in BccUtils")
+    end
+
+    if BccUtils and BccUtils.Keys and BccUtils.Keys['R'] then
+        PromptSetControlAction(MoveForwardPrompt, BccUtils.Keys['R'])
+    else
+        print("Error: Key 'R' not found in Keys table")
+    end
     -- Register movement prompts
     MoveForwardPrompt = PromptRegisterBegin()
     PromptSetControlAction(MoveForwardPrompt, BccUtils.Keys['R'])
@@ -288,14 +322,14 @@ function StartFurniturePlacementPrompts()
     PromptSetStandardMode(RotateBackwardPrompt, true)
     PromptSetGroup(RotateBackwardPrompt, FurnitureGroup, 1)
     PromptRegisterEnd(RotateBackwardPrompt)
-    
+
     RotateRightPrompt = PromptRegisterBegin()
     PromptSetControlAction(RotateRightPrompt, BccUtils.Keys['RIGHT'])
     PromptSetText(RotateRightPrompt, CreateVarString(10, 'LITERAL_STRING', _U("rotateright")))
     PromptSetStandardMode(RotateRightPrompt, true)
     PromptSetGroup(RotateRightPrompt, FurnitureGroup, 1)
     PromptRegisterEnd(RotateRightPrompt)
-    
+
     RotateLeftPrompt = PromptRegisterBegin()
     PromptSetControlAction(RotateLeftPrompt, BccUtils.Keys['LEFT'])
     PromptSetText(RotateLeftPrompt, CreateVarString(10, 'LITERAL_STRING', _U("rotateleft")))
@@ -336,7 +370,8 @@ end
 function PlaceFurnitureIntoWorldPrompt(model, cost, displayName, sellPrice)
     local playerPed = PlayerPedId()
     local placementCoords = GetEntityCoords(playerPed)
-    local createdObject = CreateObject(model, placementCoords.x, placementCoords.y + 1, placementCoords.z, true, true, true)
+    local createdObject = CreateObject(model, placementCoords.x, placementCoords.y + 1, placementCoords.z, true, true,
+        true)
     SetEntityCollision(createdObject, false, true)
     TriggerEvent('bcc-housing:CheckIfInRadius', createdObject)
 
@@ -349,11 +384,14 @@ function PlaceFurnitureIntoWorldPrompt(model, cost, displayName, sellPrice)
     Citizen.CreateThread(function()
         StartFurniturePlacementPrompts()
         while true do
+            local playerPed = PlayerPedId()
+            if IsEntityDead(playerPed) then goto END end
             Citizen.Wait(0)
             PromptSetEnabled(ConfirmPrompt, true)
             PromptSetEnabled(CancelPrompt, true)
             -- Set active group for this frame
-            PromptSetActiveGroupThisFrame(FurnitureGroup, CreateVarString(10, 'LITERAL_STRING', _U("movementControls")), 4, 0, 0, 0)
+            PromptSetActiveGroupThisFrame(FurnitureGroup, CreateVarString(10, 'LITERAL_STRING', _U("movementControls")),
+                4, 0, 0, 0)
             PromptSetEnabled(MoveForwardPrompt, true)
             PromptSetEnabled(MoveBackwardPrompt, true)
             PromptSetEnabled(MoveLeftPrompt, true)
@@ -362,10 +400,10 @@ function PlaceFurnitureIntoWorldPrompt(model, cost, displayName, sellPrice)
             PromptSetEnabled(MoveDownPrompt, true)
             PromptSetEnabled(RotateYawPrompt, true)
             PromptSetEnabled(RotateYawLeftPrompt, true)
-            PromptSetEnabled(RotatePitchPrompt, true)        -- Added
-            PromptSetEnabled(RotateBackwardPrompt, true)    -- Added
-            PromptSetEnabled(RotateRightPrompt, true)       -- Added
-            PromptSetEnabled(RotateLeftPrompt, true)        -- Added
+            PromptSetEnabled(RotatePitchPrompt, true)    -- Added
+            PromptSetEnabled(RotateBackwardPrompt, true) -- Added
+            PromptSetEnabled(RotateRightPrompt, true)    -- Added
+            PromptSetEnabled(RotateLeftPrompt, true)     -- Added
             PromptSetEnabled(IncreasePrecisionPrompt, true)
             PromptSetEnabled(DecreasePrecisionPrompt, true)
 
@@ -430,6 +468,7 @@ function PlaceFurnitureIntoWorldPrompt(model, cost, displayName, sellPrice)
                 VORPcore.NotifyRightTip(_U("placementCanceled"), 4000)
                 break -- Exit loop
             end
+            :: END ::
         end
 
         -- Cleanup prompts after loop ends
@@ -441,10 +480,10 @@ function PlaceFurnitureIntoWorldPrompt(model, cost, displayName, sellPrice)
         PromptDelete(MoveDownPrompt)
         PromptDelete(RotateYawPrompt)
         PromptDelete(RotateYawLeftPrompt)
-        PromptDelete(RotatePitchPrompt)        -- Added
-        PromptDelete(RotateBackwardPrompt)    -- Added
-        PromptDelete(RotateRightPrompt)       -- Added
-        PromptDelete(RotateLeftPrompt)        -- Added
+        PromptDelete(RotatePitchPrompt)    -- Added
+        PromptDelete(RotateBackwardPrompt) -- Added
+        PromptDelete(RotateRightPrompt)    -- Added
+        PromptDelete(RotateLeftPrompt)     -- Added
         PromptDelete(IncreasePrecisionPrompt)
         PromptDelete(DecreasePrecisionPrompt)
         PromptDelete(ConfirmPrompt)
@@ -561,9 +600,11 @@ end
 
 function SellOwnedFurnitureMenu(houseId, furnTable)
     devPrint("Opening SellOwnedFurnitureMenu with houseId: " .. tostring(houseId))
+    BCCHousingMenu:Close() -- Close any previously opened menus
 
-    -- Close any previously opened menus
-    BCCHousingMenu:Close()
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
 
     -- Initialize the sell furniture menu page
     local sellFurnMenu = BCCHousingMenu:RegisterPage("bcc-housing-sell-furniture-menu")

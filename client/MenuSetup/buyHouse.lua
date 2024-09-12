@@ -2,13 +2,11 @@ local purchasedHouses = {}
 
 Citizen.CreateThread(function()
     local HouseDealerPrompt = BccUtils.Prompts:SetupPromptGroup()
-    local collectMoneyPrompt = HouseDealerPrompt:RegisterPrompt(_U("collectFromDealer"), BccUtils.Keys[Config.keys.collect], 1, 1, true,
-        'hold', { timedeventhash = 'MEDIUM_TIMED_EVENT' })
+    local collectMoneyPrompt = HouseDealerPrompt:RegisterPrompt(_U("collectFromDealer"), BccUtils.Keys[Config.keys.collect], 1, 1, true, 'hold', { timedeventhash = 'MEDIUM_TIMED_EVENT' })
 
     for _, dealer in pairs(Config.houseDealer) do
         if dealer.CreateNPC then
-            dealerPed = BccUtils.Ped:Create('A_M_O_SDUpperClass_01', dealer.NpcCoords.x, dealer.NpcCoords.y,
-                dealer.NpcCoords.z - 1, 0, 'world', false)
+            dealerPed = BccUtils.Ped:Create('A_M_O_SDUpperClass_01', dealer.NpcCoords.x, dealer.NpcCoords.y, dealer.NpcCoords.z - 1, 0, 'world', false)
             dealerPed:Freeze()
             dealerPed:SetHeading(dealer.NpcHeading)
             dealerPed:Invincible()
@@ -21,6 +19,9 @@ Citizen.CreateThread(function()
 
     while true do
         Wait(1)
+        local playerPed = PlayerPedId()
+
+        if IsEntityDead(playerPed) then goto END end
         for _, dealer in pairs(Config.houseDealer) do
             local playerCoords = GetEntityCoords(PlayerPedId())
             local dist = #(playerCoords - dealer.NpcCoords)
@@ -34,22 +35,24 @@ Citizen.CreateThread(function()
                 end
             end
         end
+        ::END::
     end
 end)
 
 CreateThread(function()
     -- Request the purchased houses list from the server when the resource starts
     TriggerServerEvent('bcc-housing:getPurchasedHouses')
-    local PromptGroup = BccUtils.Prompt:SetupPromptGroup() -- Setup Prompt Group
-    local BuyHousePrompt = PromptGroup:RegisterPrompt("More Info", BccUtils.Keys[Config.keys.buy], 1, 1, true, 'hold', {
-        timedeventhash = "MEDIUM_TIMED_EVENT"
-    }) -- Register your first prompt
-    
+    local PromptGroup = BccUtils.Prompt:SetupPromptGroup()
+    local BuyHousePrompt = PromptGroup:RegisterPrompt("More Info", BccUtils.Keys[Config.keys.buy], 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })                                                                                                               -- Register your first prompt
+
     while true do
         Wait(0) -- Run the loop continuously
 
         local playerCoords = GetEntityCoords(PlayerPedId())
+        local playerPed = PlayerPedId()
 
+        if IsEntityDead(playerPed) then goto END end
+        
         for _, house in pairs(Config.HousesForSale) do
             local isPurchased = false
 
@@ -67,19 +70,17 @@ CreateThread(function()
                 HouseBlips[house.name] = nil
             elseif not isPurchased then
                 local distance = GetDistanceBetweenCoords(playerCoords, house.menuCoords, true)
-                
+
                 -- Only create blips if forSaleBlips is true and blip hasn't been created yet
                 if house.forSaleBlips and not HouseBlips[house.name] then
                     local houseSaleBlip = BccUtils.Blips:SetBlip(house.name, house.saleBlipSprite, 0.2, house.menuCoords.x, house.menuCoords.y, house.menuCoords.z)
+                    
                     HouseBlips[house.name] = houseSaleBlip
-                    -- Add a modifier to the blip
-                    Citizen.InvokeNative(0x662D364ABF16DE2F, houseSaleBlip:Get(), joaat(house.saleBlipModifier)) -- WHITE
-                    -- Potential additions for the next BCC-Utils update:
-                    -- The following lines could be utilized to enhance blip management for house sales:
-                    -- local blipModifier = BccUtils.Blips:AddBlipModifier(houseSaleBlip, house.saleBlipModifier)
-                    -- blipModifier:ApplyModifier()
+                    
+                    local blipModifier = BccUtils.Blips:AddBlipModifier(houseSaleBlip, house.saleBlipModifier)
+                    blipModifier:ApplyModifier()
                 end
-                
+
                 if distance < 2 then
                     PromptGroup:ShowGroup("Price : $" .. house.price)
                     if BuyHousePrompt:HasCompleted() then
@@ -91,6 +92,7 @@ CreateThread(function()
                 end
             end
         end
+        ::END::
     end
 end)
 
@@ -112,6 +114,10 @@ end)
 
 AddEventHandler('bcc-housing:openCollectMoneyMenu', function()
     devPrint("Opening collect money menu")
+
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
 
     -- Request the list of sold houses from the server
     TriggerServerEvent('bcc-housing:requestSoldHouses')
@@ -180,6 +186,10 @@ end)
 
 AddEventHandler('bcc-housing:openBuyHouseMenu', function(house)
     devPrint("Opening buy house menu for house with coordinates: " .. tostring(house.houseCoords))
+
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
 
     local buyHouseMenu = BCCHousingMenu:RegisterPage("bcc-housing:BuyHousePage")
 

@@ -7,7 +7,11 @@ function sellHouseConfirmation(houseId)
     if BCCHousingMenu then
         BCCHousingMenu:Close()
     end
-
+    
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
+    
     local sellHouseConfirmation = BCCHousingMenu:RegisterPage("sell_house_page_confirmation")
 
     sellHouseConfirmation:RegisterElement('header', {
@@ -80,6 +84,10 @@ function sellHouseToPlayer(houseId)
         BCCHousingMenu:Close()
     end
 
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
+    
     local sellHouseToPlayer = BCCHousingMenu:RegisterPage("sell_house_toPlayer_page")
 
     sellHouseToPlayer:RegisterElement('header', {
@@ -138,6 +146,11 @@ function sellHouseToPlayer(houseId)
 end
 
 function OpenSellHouseToPlayerMenu(houseId, withInventory)
+
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
+    
     local nearbyPlayers = GetNearbyPlayers()
     local sellHouseToPlayerMenu = BCCHousingMenu:RegisterPage("sell_house_player_select")
 
@@ -175,6 +188,10 @@ function OpenSellHouseToPlayerMenu(houseId, withInventory)
 end
 
 function OpenConfirmSellHouseMenu(houseId, targetPlayerId, targetPlayerName, withInventory)
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
+    
     local confirmMenu = BCCHousingMenu:RegisterPage("confirmSellHouseMenu")
     local salePrice = Config.DefaultSellPricetoPlayer -- Get the sale price from your config
 
