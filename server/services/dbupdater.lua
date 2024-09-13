@@ -29,6 +29,7 @@ CreateThread(function()
     -- Add tpInt and tpInstance columns to bcchousing if they don't exist
     MySQL.query.await("ALTER TABLE `bcchousing` ADD COLUMN IF NOT EXISTS `tpInt` int(10) DEFAULT 0")
     MySQL.query.await("ALTER TABLE `bcchousing` ADD COLUMN IF NOT EXISTS `tpInstance` int(10) DEFAULT 0")
+	MySQL.query.await("ALTER TABLE `bcchousing` ADD COLUMN IF NOT EXISTS `uniqueName` VARCHAR(255) NOT NULL")
 
     -- Create the bcchousing_transactions table if it doesn't exist
     MySQL.query.await([[

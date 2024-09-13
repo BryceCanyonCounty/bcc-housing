@@ -10,7 +10,11 @@ function AdminManagementMenu(allHouses)
     if BCCHousingMenu then
         BCCHousingMenu:Close() -- Ensure no other menus are open
     end
-
+    
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
+    
     local adminMenuPage = BCCHousingMenu:RegisterPage('admin_management_menu_page')
 
     adminMenuPage:RegisterElement('header', {
@@ -60,7 +64,11 @@ function AdminManagementMenuHouseChose(houseInfo)
     if BCCHousingMenu then
         BCCHousingMenu:Close()
     end
-
+    
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
+    
     local houseOptionsPage = BCCHousingMenu:RegisterPage('house_options_page')
 
     houseOptionsPage:RegisterElement('header', {
@@ -152,6 +160,10 @@ function deleteHouse(houseInfo)
         return
     end
 
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
+    
     if BCCHousingMenu then
         BCCHousingMenu:Close()
     end
@@ -218,6 +230,10 @@ function changeHouseRadius(houseInfo)
         BCCHousingMenu:Close()
     end
 
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
+    
     local changeRadiusPage = BCCHousingMenu:RegisterPage("set_radius_page")
     changeRadiusPage:RegisterElement('header', {
         value = _U("setRadius"),
@@ -294,6 +310,10 @@ function changeHouseTaxes(houseInfo)
         BCCHousingMenu:Close()
     end
 
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
+    
     local changeHouseTaxesPage = BCCHousingMenu:RegisterPage("set_tax_amount_page")
 
     changeHouseTaxesPage:RegisterElement('header', {
@@ -371,6 +391,10 @@ function changeHouseInventory(houseInfo)
         BCCHousingMenu:Close() -- Ensure no other menus are open
     end
 
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
+    
     local changeHouseInventoryPage = BCCHousingMenu:RegisterPage('inventory_limit_page')
     local inventoryLimit = nil
 

@@ -1,5 +1,15 @@
+local MoveForwardPrompt, MoveBackwardPrompt, MoveLeftPrompt, MoveRightPrompt, MoveUpPrompt, MoveDownPrompt
+local RotateYawPrompt, RotateYawLeftPrompt, RotatePitchPrompt, RotateBackwardPrompt, RotateRightPrompt, RotateLeftPrompt
+local IncreasePrecisionPrompt, DecreasePrecisionPrompt, ConfirmPrompt, CancelPrompt
+local FurnitureGroup = GetRandomIntInRange(0, 0xffffff)
+
 function FurnitureMenu(houseId)
-    BCCHousingMenu:Close() -- Ensures any previously opened menu is closed
+    BCCHousingMenu:Close() -- Close any previously opened menus
+
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
+
     local furnitureMainMenu = BCCHousingMenu:RegisterPage("bcc-housing-furniture-menu")
 
     -- Header for the furniture menu
@@ -59,7 +69,12 @@ function FurnitureMenu(houseId)
 end
 
 function buyFurnitureMenu(houseId)
-    BCCHousingMenu:Close() -- Ensures any previously opened menu is closed
+    BCCHousingMenu:Close() -- Close any previously opened menus
+
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
+    
     local buyFurnitureMenu = BCCHousingMenu:RegisterPage("bcc-housing-furniture-menu")
 
     -- Header for the furniture menu
@@ -154,6 +169,12 @@ function buyFurnitureMenu(houseId)
 end
 
 function IndFurnitureTypeMenu(type, houseId)
+    BCCHousingMenu:Close() -- Close any previously opened menus
+
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
+
     local furnConfigTable = Config.Furniture[type]
     if not furnConfigTable then
         print("Error: Invalid furniture type '" .. type .. "'. Available types are:")
@@ -180,7 +201,7 @@ function IndFurnitureTypeMenu(type, houseId)
             label = v.displayName .. " - $" .. tostring(v.costToBuy),
             style = {}
         }, function()
-            PlaceFurnitureIntoWorldPrompt(v.propModel, v.costToBuy, v.displayName, v.sellFor)        
+            PlaceFurnitureIntoWorldPrompt(v.propModel, v.costToBuy, v.displayName, v.sellFor)
             BCCHousingMenu:Close()
         end)
     end
@@ -211,133 +232,146 @@ function IndFurnitureTypeMenu(type, houseId)
         }
     })
 end
-local MoveForwardPrompt, MoveBackwardPrompt, MoveLeftPrompt, MoveRightPrompt, MoveUpPrompt, MoveDownPrompt
-local RotateYawPrompt, RotateYawLeftPrompt, RotatePitchPrompt, RotateBackwardPrompt, RotateRightPrompt, RotateLeftPrompt
-local IncreasePrecisionPrompt, DecreasePrecisionPrompt, ConfirmPrompt, CancelPrompt
-local FurnitureGroup = GetRandomIntInRange(0, 0xffffff)
 
 function StartFurniturePlacementPrompts()
+    -- Debug: Check if BccUtils is loaded
+    if BccUtils then
+        print("BccUtils initialized successfully")
+    else
+        print("Error: BccUtils not initialized")
+    end
+    if BccUtils and BccUtils.Keys then
+        print("Keys table exists")
+    else
+        print("Error: Keys table not found in BccUtils")
+    end
+
+    if BccUtils and BccUtils.Keys and BccUtils.Keys['R'] then
+        PromptSetControlAction(MoveForwardPrompt, BccUtils.Keys['R'])
+    else
+        print("Error: Key 'R' not found in Keys table")
+    end
     -- Register movement prompts
     MoveForwardPrompt = PromptRegisterBegin()
-    PromptSetControlAction(MoveForwardPrompt, 0xCEFD9220) -- E
-    PromptSetText(MoveForwardPrompt, CreateVarString(10, 'LITERAL_STRING', "Move Forward"))
+    PromptSetControlAction(MoveForwardPrompt, BccUtils.Keys['R'])
+    PromptSetText(MoveForwardPrompt, CreateVarString(10, 'LITERAL_STRING', _U("forward")))
     PromptSetStandardMode(MoveForwardPrompt, true)
     PromptSetGroup(MoveForwardPrompt, FurnitureGroup, 0)
     PromptRegisterEnd(MoveForwardPrompt)
 
     MoveBackwardPrompt = PromptRegisterBegin()
-    PromptSetControlAction(MoveBackwardPrompt, 0xE30CD707) -- R
-    PromptSetText(MoveBackwardPrompt, CreateVarString(10, 'LITERAL_STRING', "Move Backward"))
+    PromptSetControlAction(MoveBackwardPrompt, BccUtils.Keys['E'])
+    PromptSetText(MoveBackwardPrompt, CreateVarString(10, 'LITERAL_STRING', _U("backward")))
     PromptSetStandardMode(MoveBackwardPrompt, true)
     PromptSetGroup(MoveBackwardPrompt, FurnitureGroup, 0)
     PromptRegisterEnd(MoveBackwardPrompt)
 
     MoveLeftPrompt = PromptRegisterBegin()
-    PromptSetControlAction(MoveLeftPrompt, 0xA65EBAB4) -- A
-    PromptSetText(MoveLeftPrompt, CreateVarString(10, 'LITERAL_STRING', "Move Left"))
+    PromptSetControlAction(MoveLeftPrompt, BccUtils.Keys['LEFT'])
+    PromptSetText(MoveLeftPrompt, CreateVarString(10, 'LITERAL_STRING', _U("left")))
     PromptSetStandardMode(MoveLeftPrompt, true)
     PromptSetGroup(MoveLeftPrompt, FurnitureGroup, 0)
     PromptRegisterEnd(MoveLeftPrompt)
 
     MoveRightPrompt = PromptRegisterBegin()
-    PromptSetControlAction(MoveRightPrompt, 0xDEB34313) -- D
-    PromptSetText(MoveRightPrompt, CreateVarString(10, 'LITERAL_STRING', "Move Right"))
+    PromptSetControlAction(MoveRightPrompt, BccUtils.Keys['RIGHT'])
+    PromptSetText(MoveRightPrompt, CreateVarString(10, 'LITERAL_STRING', _U("right")))
     PromptSetStandardMode(MoveRightPrompt, true)
     PromptSetGroup(MoveRightPrompt, FurnitureGroup, 0)
     PromptRegisterEnd(MoveRightPrompt)
 
     MoveUpPrompt = PromptRegisterBegin()
-    PromptSetControlAction(MoveUpPrompt, 0x6319DB71) -- Q
-    PromptSetText(MoveUpPrompt, CreateVarString(10, 'LITERAL_STRING', "Move Up"))
+    PromptSetControlAction(MoveUpPrompt, BccUtils.Keys['UP'])
+    PromptSetText(MoveUpPrompt, CreateVarString(10, 'LITERAL_STRING', _U("up")))
     PromptSetStandardMode(MoveUpPrompt, true)
     PromptSetGroup(MoveUpPrompt, FurnitureGroup, 0)
     PromptRegisterEnd(MoveUpPrompt)
 
     MoveDownPrompt = PromptRegisterBegin()
-    PromptSetControlAction(MoveDownPrompt, 0x05CA7C52) -- E
-    PromptSetText(MoveDownPrompt, CreateVarString(10, 'LITERAL_STRING', "Move Down"))
+    PromptSetControlAction(MoveDownPrompt, BccUtils.Keys['DOWN'])
+    PromptSetText(MoveDownPrompt, CreateVarString(10, 'LITERAL_STRING', _U("down")))
     PromptSetStandardMode(MoveDownPrompt, true)
     PromptSetGroup(MoveDownPrompt, FurnitureGroup, 0)
     PromptRegisterEnd(MoveDownPrompt)
 
     -- Register rotation prompts
     RotateYawPrompt = PromptRegisterBegin()
-    PromptSetControlAction(RotateYawPrompt, 0x05CA7C52) -- UP
-    PromptSetText(RotateYawPrompt, CreateVarString(10, 'LITERAL_STRING', "Rotate Right"))
+    PromptSetControlAction(RotateYawPrompt, BccUtils.Keys['UP'])
+    PromptSetText(RotateYawPrompt, CreateVarString(10, 'LITERAL_STRING', _U("rotateYaw")))
     PromptSetStandardMode(RotateYawPrompt, true)
     PromptSetGroup(RotateYawPrompt, FurnitureGroup, 1)
     PromptRegisterEnd(RotateYawPrompt)
 
     RotateYawLeftPrompt = PromptRegisterBegin()
-    PromptSetControlAction(RotateYawLeftPrompt, 0x6319DB71) -- DOWN
-    PromptSetText(RotateYawLeftPrompt, CreateVarString(10, 'LITERAL_STRING', "Rotate Left"))
+    PromptSetControlAction(RotateYawLeftPrompt, BccUtils.Keys['DOWN'])
+    PromptSetText(RotateYawLeftPrompt, CreateVarString(10, 'LITERAL_STRING', _U("rotateYawLeft")))
     PromptSetStandardMode(RotateYawLeftPrompt, true)
     PromptSetGroup(RotateYawLeftPrompt, FurnitureGroup, 1)
     PromptRegisterEnd(RotateYawLeftPrompt)
 
     RotatePitchPrompt = PromptRegisterBegin()
-    PromptSetControlAction(RotatePitchPrompt, 0xCEFD9220) -- E
-    PromptSetText(RotatePitchPrompt, CreateVarString(10, 'LITERAL_STRING', "Rotate Pitch Forward"))
+    PromptSetControlAction(RotatePitchPrompt, BccUtils.Keys['E'])
+    PromptSetText(RotatePitchPrompt, CreateVarString(10, 'LITERAL_STRING', _U("rotatepitch")))
     PromptSetStandardMode(RotatePitchPrompt, true)
     PromptSetGroup(RotatePitchPrompt, FurnitureGroup, 1)
     PromptRegisterEnd(RotatePitchPrompt)
 
     RotateBackwardPrompt = PromptRegisterBegin()
-    PromptSetControlAction(RotateBackwardPrompt, 0xE30CD707) -- r
-    PromptSetText(RotateBackwardPrompt, CreateVarString(10, 'LITERAL_STRING', "Rotate Pitch Backward"))
+    PromptSetControlAction(RotateBackwardPrompt, BccUtils.Keys['R'])
+    PromptSetText(RotateBackwardPrompt, CreateVarString(10, 'LITERAL_STRING', _U("rotatebackward")))
     PromptSetStandardMode(RotateBackwardPrompt, true)
     PromptSetGroup(RotateBackwardPrompt, FurnitureGroup, 1)
     PromptRegisterEnd(RotateBackwardPrompt)
-    
+
     RotateRightPrompt = PromptRegisterBegin()
-    PromptSetControlAction(RotateRightPrompt, 0xDEB34313) -- RIGHT
-    PromptSetText(RotateRightPrompt, CreateVarString(10, 'LITERAL_STRING', "Rotate Yaw Right"))
+    PromptSetControlAction(RotateRightPrompt, BccUtils.Keys['RIGHT'])
+    PromptSetText(RotateRightPrompt, CreateVarString(10, 'LITERAL_STRING', _U("rotateright")))
     PromptSetStandardMode(RotateRightPrompt, true)
     PromptSetGroup(RotateRightPrompt, FurnitureGroup, 1)
     PromptRegisterEnd(RotateRightPrompt)
-    
+
     RotateLeftPrompt = PromptRegisterBegin()
-    PromptSetControlAction(RotateLeftPrompt, 0xA65EBAB4) -- LEFT
-    PromptSetText(RotateLeftPrompt, CreateVarString(10, 'LITERAL_STRING', "Rotate Yaw Left"))
+    PromptSetControlAction(RotateLeftPrompt, BccUtils.Keys['LEFT'])
+    PromptSetText(RotateLeftPrompt, CreateVarString(10, 'LITERAL_STRING', _U("rotateleft")))
     PromptSetStandardMode(RotateLeftPrompt, true)
     PromptSetGroup(RotateLeftPrompt, FurnitureGroup, 1)
     PromptRegisterEnd(RotateLeftPrompt)
 
     IncreasePrecisionPrompt = PromptRegisterBegin()
-    PromptSetControlAction(IncreasePrecisionPrompt, 0xB238FE0B)
-    PromptSetText(IncreasePrecisionPrompt, CreateVarString(10, 'LITERAL_STRING', "Increase Precision"))
+    PromptSetControlAction(IncreasePrecisionPrompt, BccUtils.Keys['UP'])
+    PromptSetText(IncreasePrecisionPrompt, CreateVarString(10, 'LITERAL_STRING', _U("increasePrecision")))
     PromptSetStandardMode(IncreasePrecisionPrompt, true)
     PromptSetGroup(IncreasePrecisionPrompt, FurnitureGroup, 2)
     PromptRegisterEnd(IncreasePrecisionPrompt)
 
     DecreasePrecisionPrompt = PromptRegisterBegin()
-    PromptSetControlAction(DecreasePrecisionPrompt, 0x8FFC75D6)
-    PromptSetText(DecreasePrecisionPrompt, CreateVarString(10, 'LITERAL_STRING', "Decrease Precision"))
+    PromptSetControlAction(DecreasePrecisionPrompt, BccUtils.Keys['DOWN'])
+    PromptSetText(DecreasePrecisionPrompt, CreateVarString(10, 'LITERAL_STRING', _U("decreasePrecision")))
     PromptSetStandardMode(DecreasePrecisionPrompt, true)
     PromptSetGroup(DecreasePrecisionPrompt, FurnitureGroup, 2)
     PromptRegisterEnd(DecreasePrecisionPrompt)
 
     -- Register confirmation and cancel prompts
     ConfirmPrompt = PromptRegisterBegin()
-    PromptSetControlAction(ConfirmPrompt, 0xD9D0E1C0) -- Enter
-    PromptSetText(ConfirmPrompt, CreateVarString(10, 'LITERAL_STRING', "Confirm Placement"))
+    PromptSetControlAction(ConfirmPrompt, BccUtils.Keys['SPACEBAR'])
+    PromptSetText(ConfirmPrompt, CreateVarString(10, 'LITERAL_STRING', _U("confirmPlacement")))
     PromptSetStandardMode(ConfirmPrompt, true)
     PromptSetGroup(ConfirmPrompt, FurnitureGroup, 3)
     PromptRegisterEnd(ConfirmPrompt)
 
     CancelPrompt = PromptRegisterBegin()
-    PromptSetControlAction(CancelPrompt, 0x156F7119) -- Backspace
-    PromptSetText(CancelPrompt, CreateVarString(10, 'LITERAL_STRING', "Cancel Placement"))
+    PromptSetControlAction(CancelPrompt, BccUtils.Keys['BACKSPACE'])
+    PromptSetText(CancelPrompt, CreateVarString(10, 'LITERAL_STRING', _U("cancelPlacement")))
     PromptSetStandardMode(CancelPrompt, true)
     PromptSetGroup(CancelPrompt, FurnitureGroup, 3)
     PromptRegisterEnd(CancelPrompt)
-
 end
 
 function PlaceFurnitureIntoWorldPrompt(model, cost, displayName, sellPrice)
     local playerPed = PlayerPedId()
     local placementCoords = GetEntityCoords(playerPed)
-    local createdObject = CreateObject(model, placementCoords.x, placementCoords.y + 1, placementCoords.z, true, true, true)
+    local createdObject = CreateObject(model, placementCoords.x, placementCoords.y + 1, placementCoords.z, true, true,
+        true)
     SetEntityCollision(createdObject, false, true)
     TriggerEvent('bcc-housing:CheckIfInRadius', createdObject)
 
@@ -350,11 +384,14 @@ function PlaceFurnitureIntoWorldPrompt(model, cost, displayName, sellPrice)
     Citizen.CreateThread(function()
         StartFurniturePlacementPrompts()
         while true do
+            local playerPed = PlayerPedId()
+            if IsEntityDead(playerPed) then goto END end
             Citizen.Wait(0)
             PromptSetEnabled(ConfirmPrompt, true)
             PromptSetEnabled(CancelPrompt, true)
             -- Set active group for this frame
-            PromptSetActiveGroupThisFrame(FurnitureGroup, CreateVarString(10, 'LITERAL_STRING', "Movement Controls"), 4, 0, 0, 0)
+            PromptSetActiveGroupThisFrame(FurnitureGroup, CreateVarString(10, 'LITERAL_STRING', _U("movementControls")),
+                4, 0, 0, 0)
             PromptSetEnabled(MoveForwardPrompt, true)
             PromptSetEnabled(MoveBackwardPrompt, true)
             PromptSetEnabled(MoveLeftPrompt, true)
@@ -363,10 +400,10 @@ function PlaceFurnitureIntoWorldPrompt(model, cost, displayName, sellPrice)
             PromptSetEnabled(MoveDownPrompt, true)
             PromptSetEnabled(RotateYawPrompt, true)
             PromptSetEnabled(RotateYawLeftPrompt, true)
-            PromptSetEnabled(RotatePitchPrompt, true)        -- Added
-            PromptSetEnabled(RotateBackwardPrompt, true)    -- Added
-            PromptSetEnabled(RotateRightPrompt, true)       -- Added
-            PromptSetEnabled(RotateLeftPrompt, true)        -- Added
+            PromptSetEnabled(RotatePitchPrompt, true)    -- Added
+            PromptSetEnabled(RotateBackwardPrompt, true) -- Added
+            PromptSetEnabled(RotateRightPrompt, true)    -- Added
+            PromptSetEnabled(RotateLeftPrompt, true)     -- Added
             PromptSetEnabled(IncreasePrecisionPrompt, true)
             PromptSetEnabled(DecreasePrecisionPrompt, true)
 
@@ -402,10 +439,10 @@ function PlaceFurnitureIntoWorldPrompt(model, cost, displayName, sellPrice)
             -- Adjust precision
             if Citizen.InvokeNative(0xC92AC953F0A982AE, IncreasePrecisionPrompt) then
                 amountToMove = amountToMove + 0.1
-                VORPcore.NotifyRightTip("Movement precision increased to " .. amountToMove, 1000)
+                VORPcore.NotifyRightTip(_U("movementIncreased") .. amountToMove, 1000)
             elseif Citizen.InvokeNative(0xC92AC953F0A982AE, DecreasePrecisionPrompt) then
                 amountToMove = amountToMove - 0.1
-                VORPcore.NotifyRightTip("Movement precision decreased to " .. amountToMove, 1000)
+                VORPcore.NotifyRightTip(_U("movementDecreased") .. amountToMove, 1000)
             end
 
             -- Confirm placement
@@ -431,6 +468,7 @@ function PlaceFurnitureIntoWorldPrompt(model, cost, displayName, sellPrice)
                 VORPcore.NotifyRightTip(_U("placementCanceled"), 4000)
                 break -- Exit loop
             end
+            :: END ::
         end
 
         -- Cleanup prompts after loop ends
@@ -442,10 +480,10 @@ function PlaceFurnitureIntoWorldPrompt(model, cost, displayName, sellPrice)
         PromptDelete(MoveDownPrompt)
         PromptDelete(RotateYawPrompt)
         PromptDelete(RotateYawLeftPrompt)
-        PromptDelete(RotatePitchPrompt)        -- Added
-        PromptDelete(RotateBackwardPrompt)    -- Added
-        PromptDelete(RotateRightPrompt)       -- Added
-        PromptDelete(RotateLeftPrompt)        -- Added
+        PromptDelete(RotatePitchPrompt)    -- Added
+        PromptDelete(RotateBackwardPrompt) -- Added
+        PromptDelete(RotateRightPrompt)    -- Added
+        PromptDelete(RotateLeftPrompt)     -- Added
         PromptDelete(IncreasePrecisionPrompt)
         PromptDelete(DecreasePrecisionPrompt)
         PromptDelete(ConfirmPrompt)
@@ -562,9 +600,11 @@ end
 
 function SellOwnedFurnitureMenu(houseId, furnTable)
     devPrint("Opening SellOwnedFurnitureMenu with houseId: " .. tostring(houseId))
+    BCCHousingMenu:Close() -- Close any previously opened menus
 
-    -- Close any previously opened menus
-    BCCHousingMenu:Close()
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
 
     -- Initialize the sell furniture menu page
     local sellFurnMenu = BCCHousingMenu:RegisterPage("bcc-housing-sell-furniture-menu")

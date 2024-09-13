@@ -150,7 +150,9 @@ end
 function PlayerListMenuForRemoveAccess(houseId, callback, context)
     devPrint("Opening player list menu for removing access to House ID: " .. tostring(houseId))
     BCCHousingMenu:Close()
-
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
     -- Asynchronous call to get players with access
     GetPlayersWithAccess(houseId, function(rplayers)
         devPrint("Number of players with access: " .. #rplayers) -- This will print the count of players fetched
@@ -214,8 +216,10 @@ end
 
 AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
     devPrint("Opening housing main menu for House ID: " .. tostring(houseId) .. ", Is Owner: " .. tostring(isOwner))
-    TriggerEvent('bcc-housing:MenuClose')
-    BCCHousingMenu:Close()
+
+    if HandlePlayerDeathAndCloseMenu() then
+        return -- Skip opening the menu if the player is dead
+    end
 
     local housingMainMenu = BCCHousingMenu:RegisterPage("bcc-housing:MainPage")
     housingMainMenu:RegisterElement('header', {

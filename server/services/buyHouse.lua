@@ -7,10 +7,10 @@ AddEventHandler('bcc-housing:buyHouse', function(houseCoords)
     local houseCoordsJson = json.encode(houseCoords) -- Encode the house coordinates for database comparison
 
     for _, house in pairs(Config.HousesForSale) do
-        if #(house.houseCoords - houseCoords) < 0.1 then -- Check if the coordinates match
+        if house.uniqueName and #(house.houseCoords - houseCoords) < 0.1 then -- Check if the coordinates match and house has uniqueName
             if Character.money >= house.price then
-                -- Check if the house already exists in the database by checking the coordinates
-                MySQL.query('SELECT * FROM bcchousing WHERE house_coords = ?', { houseCoordsJson }, function(result)
+                -- Check if the house already exists in the database by checking the unique name
+                MySQL.query('SELECT * FROM bcchousing WHERE uniqueName = ?', { house.uniqueName }, function(result)
                     if not result[1] then
                         -- Clear the blips for the house that is being purchased
                         TriggerClientEvent('bcc-housing:clearBlips', src, house.houseId)
@@ -20,29 +20,37 @@ AddEventHandler('bcc-housing:buyHouse', function(houseCoords)
                             ['@charidentifier'] = Character.charIdentifier,
                             ['@house_coords'] = houseCoordsJson,
                             ['@house_radius_limit'] = house.houseRadiusLimit,
-                            ['@furniture'] = house.furniture,
-                            ['@doors'] = house.doors,
-                            ['@allowed_ids'] = house.allowedIds,
+                            ['@doors'] = '[]', -- Placeholder for doors, to be updated after insertion
                             ['@invlimit'] = house.invLimit,
-                            ['@player_source_spawnedfurn'] = house.playerSourceSpawnedFurn,
-                            ['@taxes_collected'] = house.taxesCollected,
-                            ['@ledger'] = house.ledger,
                             ['@tax_amount'] = house.taxAmount,
                             ['@tpInt'] = house.tpInt,
-                            ['@tpInstance'] = house.tpInstance
+                            ['@tpInstance'] = house.tpInstance,
+                            ['@uniqueName'] = house.uniqueName
                         }
 
                         -- Insert the new house into the database
-                        MySQL.insert.await(
-                            "INSERT INTO `bcchousing` (`charidentifier`, `house_coords`, `house_radius_limit`, `furniture`, `doors`, `allowed_ids`, `invlimit`, `player_source_spawnedfurn`, `taxes_collected`, `ledger`, `tax_amount`, `tpInt`, `tpInstance`) VALUES (@charidentifier, @house_coords, @house_radius_limit, @furniture, @doors, @allowed_ids, @invlimit, @player_source_spawnedfurn, @taxes_collected, @ledger, @tax_amount, @tpInt, @tpInstance)",
-                            parameters, function(result) end)
+                        MySQL.Async.execute(
+                            "INSERT INTO `bcchousing` (`charidentifier`, `house_coords`, `house_radius_limit`, `doors`, `invlimit`, `tax_amount`, `tpInt`, `tpInstance`, `uniqueName`) VALUES (@charidentifier, @house_coords, @house_radius_limit, @doors, @invlimit, @tax_amount, @tpInt, @tpInstance, @uniqueName)",
+                            parameters, function(rowsChanged)
+                                -- After house purchase, handle door insertion
+                                if rowsChanged > 0 then
+                                    -- After house insert, get the inserted house's unique ID to update its doors
+                                    MySQL.Async.fetchScalar("SELECT houseid FROM bcchousing WHERE house_coords = ?",
+                                        { houseCoordsJson }, function(houseId)
+                                        insertHouseDoors(house.doors, Character.charIdentifier, houseId, house.uniqueName)
+                                    end)
+                                else
+                                    print("Error: Failed to insert house into bcchousing.")
+                                end
+                            end
+                        )
 
                         -- Deduct the money from the player
                         Character.removeCurrency(0, house.price)
 
                         -- Notify the player that the house was purchased
                         TriggerClientEvent('bcc-housing:housePurchased', src, houseCoords)
-                        VORPcore.NotifyAvanced(src, "You have successfully purchased for $" .. house.price, "inventory_items", "money_billstack", "COLOR_GREEN", 4000)
+                        VORPcore.NotifyAvanced(src, "You have successfully purchased " .. house.name .. " for $" .. house.price, "inventory_items", "money_billstack", "COLOR_GREEN", 4000)
 
                         -- Send a message to Discord
                         Discord:sendMessage("House purchased by charIdentifier: " ..
@@ -52,7 +60,7 @@ AddEventHandler('bcc-housing:buyHouse', function(houseCoords)
                             " was purchased for $" ..
                             tostring(house.price) .. "\nCharacter Name: " .. Character.firstname .. " " .. Character
                             .lastname)
-
+							
                         -- Trigger the client-side to reload the house data
                         TriggerClientEvent('bcc-housing:ClientRecHouseLoad', src)
                     else
@@ -69,21 +77,70 @@ AddEventHandler('bcc-housing:buyHouse', function(houseCoords)
     end
 end)
 
+-- Function to insert doors into the doorlocks table and update the bcchousing table
+function insertHouseDoors(doors, charidentifier, houseId, uniqueName)
+    local doorIds = {} -- Store door ids to update the house later
+
+    -- Get the house configuration from the uniqueName to ensure correct doors are inserted
+    local houseConfig = nil
+    for _, house in pairs(Config.HousesForSale) do
+        if house.uniqueName == uniqueName then
+            houseConfig = house
+            break
+        end
+    end
+
+    if houseConfig and houseConfig.doors and #houseConfig.doors > 0 then
+        -- Insert each door specific to the house's unique configuration
+        for _, door in pairs(houseConfig.doors) do
+            local doorinfo = door.doorinfo
+            local locked = door.locked and 'true' or 'false'
+            local jobsAllowed = '[]' -- Default no jobs allowed
+            local keyItem = 'none'   -- Default key item
+            local idsAllowed = '[' .. charidentifier .. ']'
+
+            -- Insert door into the `doorlocks` table
+            MySQL.Async.insert(
+                "INSERT INTO `doorlocks` (`doorinfo`, `jobsallowedtoopen`, `keyitem`, `locked`, `ids_allowed`) VALUES (?, ?, ?, ?, ?)",
+                { doorinfo, jobsAllowed, keyItem, locked, idsAllowed }, function(doorId)
+                    -- Debug: print the values to be inserted
+                    devPrint("Door inserted with ID:", doorId)
+                    table.insert(doorIds, doorId)
+
+                    -- Once all doors are inserted, update the house with the door IDs
+                    if #doorIds == #houseConfig.doors then
+                        local doorIdsJson = json.encode(doorIds)
+                        MySQL.Async.execute("UPDATE bcchousing SET doors = ? WHERE houseid = ?", { doorIdsJson, houseId },
+                            function(affectedRows)
+                                if affectedRows > 0 then
+                                    devPrint("Updated house with door IDs:", doorIdsJson)
+                                else
+                                    devPrint("Failed to update house with door IDs.")
+                                end
+                            end)
+                    end
+                end
+            )
+        end
+    else
+        devPrint("No doors found for the house.")
+    end
+end
+
 -- Event to retrieve all purchased houses
 RegisterNetEvent('bcc-housing:getPurchasedHouses')
 AddEventHandler('bcc-housing:getPurchasedHouses', function()
     local src = source         -- Get the source of the event
     local purchasedHouses = {} -- Initialize a table to hold purchased houses
 
-    -- Query the database for all purchased houses
-    MySQL.query('SELECT house_coords FROM bcchousing', {}, function(results)
+    -- Query the database for all purchased houses by uniqueName
+    MySQL.query('SELECT uniqueName FROM bcchousing', {}, function(results)
         if #results > 0 then
             for _, house in ipairs(results) do
-                local houseCoords = json.decode(house.house_coords)                                     -- Decode the house coordinates
-                if houseCoords and type(houseCoords) == "table" then
-                    table.insert(purchasedHouses, vector3(houseCoords.x, houseCoords.y, houseCoords.z)) -- Insert the coordinates into the table
-                else
-                    print("Error: house_coords is not a valid table or couldn't be decoded")
+                for _, configHouse in pairs(Config.HousesForSale) do
+                    if house.uniqueName == configHouse.uniqueName then
+                        table.insert(purchasedHouses, configHouse.houseCoords) -- Insert the house coordinates from config
+                    end
                 end
             end
         end

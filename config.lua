@@ -87,7 +87,7 @@ Config = {
     -- Furnitures
     Furniture = {
         chairs = {
-            { propModel = 'p_chair14x',  displayName = 'Gardenchar',          costToBuy = 50, sellFor = 30 },
+            { propModel = 'p_chair14x',  displayName = 'Gardenchair',         costToBuy = 50, sellFor = 30 },
             { propModel = 'p_chair11x',  displayName = 'Chair',               costToBuy = 50, sellFor = 30 },
             { propModel = 'p_chair04x',  displayName = 'Woodchair',           costToBuy = 50, sellFor = 30 },
             { propModel = 'p_chair05x',  displayName = 'Woodchair 1',         costToBuy = 50, sellFor = 30 },
@@ -246,32 +246,42 @@ Config = {
     DefaultSellPricetoPlayer = 50000, -- Default sell price for houses to a player
     HousesForSale = {
         {
-            charIdentifier = '0',  -- This will be set when the house is purchased
+            uniqueName = "cabin_braitwaite",       -- Unique identifier for the house you can use any name make sure you dont use duplicates
             houseCoords = vector3(-2370.77587890625, 471.5861511230469, 132.2300262451172),
             houseRadiusLimit = 50,
-            furniture = 'none',  -- Default to none unless specified
-            doors = '[]',  -- Default to empty array unless specified
-            allowedIds = 'none',  -- No one else allowed by default
-            invLimit = 10000,
-            playerSourceSpawnedFurn = 'none',  -- No player spawned furniture yet
-            taxesCollected = 'false',  -- Taxes have not been collected
-            ledger = 0,
+            doors = {
+                --Make sure you add the exact door from doorhashes.lua (you can find that in bcc-doorlocks in client folder)
+                -- Do not copy the entire line from doorhashes
+                -- Example if we have this line 
+                --[1610014965] = {1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25},
+                -- We need to copy only whats between {...}
+                -- 1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25
+                {
+                    doorinfo = '[1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25]', locked = true
+                },
+                --if the house have more than one door copy the above same as these below
+                --{
+                    --doorinfo = '[1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25]', locked = true
+                --},
+
+            },
+            invLimit = 1000,
             taxAmount = 1000,
             tpInt = 0,
             tpInstance = 0,
             menuCoords = vector3(-2375.032958984375, 476.5924987792969, 131.42164611816406),
-            price = 80000,  -- The price of the house
-            sellPrice = 55000,  -- Amount received when selling the house
-            name = "House near Little Creek River",  -- Name of the house for display
+            price = 80000,                       -- The price of the house
+            sellPrice = 55000,                   -- Amount received when selling the house
+            name = "House near Little Creek River", -- Name of the house for display
             forSaleBlips = true,
             saleBlipSprite = 'blip_ambient_quartermaster',
             saleBlipModifier = 'BLIP_MODIFIER_MP_COLOR_20',
-            canSell = true,  -- Whether the player can sell the house later
+            canSell = true, -- Whether the player can sell the house later               -- Whether the player can sell the house later
             showmarker = true,
         },
-    },   
+    },
     houseDealer = {
-        { 
+        {
             houseDealerBlip = true,
             CreateNPC = true,
             NpcCoords = vector3(-800.7, -1203.84, 44.19),

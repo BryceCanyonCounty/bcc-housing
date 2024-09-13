@@ -64,11 +64,11 @@ end
 
 function showManageOpt(x, y, z, houseId)
     local PromptGroup = BccUtils.Prompts:SetupPromptGroup()
-    local firstprompt = PromptGroup:RegisterPrompt(_U("openOwnerManage"), Config.keys.manage, 1, 1, true, 'hold',
-        { timedeventhash = "MEDIUM_TIMED_EVENT" })
+    local ManageHousePrompt = PromptGroup:RegisterPrompt(_U("openOwnerManage"), BccUtils.Keys[Config.keys.manage], 1, 1,
+        true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
 
     devPrint("Setting up manage options for House ID: " ..
-        tostring(houseId) .. " at coordinates: " .. tostring(x) .. ", " .. tostring(y) .. ", " .. tostring(z))
+    tostring(houseId) .. " at coordinates: " .. tostring(x) .. ", " .. tostring(y) .. ", " .. tostring(z))
 
     -- Variable to track if the house exists
     local houseExists = false
@@ -83,38 +83,46 @@ function showManageOpt(x, y, z, houseId)
             houseExists = exists
             if not exists then
                 devPrint("House ID " .. tostring(houseId) .. " no longer exists. Deleting prompt.")
-                firstprompt:DeletePrompt()
-                --BreakHandleLoop = true -- Break the loop
+                ManageHousePrompt:DeletePrompt()
+                --BreakHandleLoop = true -- Break the loop if the house no longer exists
             end
         end
     end)
 
-    while true do
-        Wait(5)
-        if BreakHandleLoop then
-            devPrint("Breaking handle loop for House ID: " .. tostring(houseId))
-            break -- Exit the loop if the handle loop is broken
-        end
+    Citizen.CreateThread(function()
+        while true do
+            local playerPed = PlayerPedId()
 
-        -- Only proceed if the house exists
-        if houseExists then
-            local plc = GetEntityCoords(PlayerPedId())
-            local dist = GetDistanceBetweenCoords(plc.x, plc.y, plc.z, x, y, z, true)
+            if IsEntityDead(playerPed) then goto END end
 
-            if dist < 2 then
-                PromptGroup:ShowGroup(_U("house"))
-
-                if firstprompt:HasCompleted() then
-                    devPrint("Prompt completed. Opening housing management menu for House ID: " .. tostring(houseId))
-                    TriggerServerEvent('bcc-housing:getHouseOwner', houseId)
-                end
-            elseif dist > 200 then
-                Wait(2000)
+            -- Break the loop if handle loop is broken
+            if BreakHandleLoop then
+                devPrint("Breaking handle loop for House ID: " .. tostring(houseId))
+                break
             end
-        else
-            Wait(1000) -- Wait a bit before checking again if the house exists
+
+            -- Only proceed if the house exists
+            if houseExists then
+                local plc = GetEntityCoords(playerPed)
+                local dist = GetDistanceBetweenCoords(plc.x, plc.y, plc.z, x, y, z, true)
+
+                if dist < 2 then
+                    PromptGroup:ShowGroup(_U("house"))
+
+                    if ManageHousePrompt:HasCompleted() then
+                        devPrint("Prompt completed. Opening housing management menu for House ID: " .. tostring(houseId))
+                        TriggerServerEvent('bcc-housing:getHouseOwner', houseId)
+                    end
+                elseif dist > 200 then
+                    Wait(2000) -- If far from house, reduce the frequency of checks
+                end
+            else
+                Wait(1000) -- Wait before checking again if the house exists
+            end
+            ::END::
+            Citizen.Wait(5) -- Delay loop execution to prevent excessive CPU usage
         end
-    end
+    end)
 end
 
 --- Cleanup/ deletion on leave ----
@@ -147,6 +155,29 @@ end)
 RegisterNetEvent('bcc-housing:receiveHouseOwner')
 AddEventHandler('bcc-housing:receiveHouseOwner', function(houseId, isOwner)
     devPrint("Received house owner information for House ID: " ..
-        tostring(houseId) .. ", Is Owner: " .. tostring(isOwner))
+    tostring(houseId) .. ", Is Owner: " .. tostring(isOwner))
     TriggerEvent('bcc-housing:openmenu', houseId, isOwner)
 end)
+
+function HandlePlayerDeathAndCloseMenu()
+    local playerPed = PlayerPedId()
+
+    -- Check if the player is already dead
+    if IsEntityDead(playerPed) then
+        BCCHousingMenu:Close() -- Close the menu if the player is dead
+        return true            -- Return true to indicate the player is dead and the menu was closed
+    end
+
+    -- If the player is not dead, start monitoring for death while the menu is open
+    CreateThread(function()
+        while true do
+            if IsEntityDead(playerPed) then
+                BCCHousingMenu:Close() -- Close the menu if the player dies while in the menu
+                return                 -- Stop the loop since the player is dead and the menu is closed
+            end
+            Wait(1000)                 -- Check every second
+        end
+    end)
+
+    return false -- Return false to indicate the player is alive and the menu can open
+end

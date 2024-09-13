@@ -24,8 +24,6 @@ client_scripts {
 server_scripts {
   '@oxmysql/lib/MySQL.lua',
   'server/helpers/functions.lua',
-  'server/services/dbupdater.lua',
-  'server/helpers/*.lua',
   'server/services/*.lua',
   'server/main.lua'
 }
@@ -46,4 +44,4 @@ dependency {
 
 -- u can set doors but if u set one with an id first it will break so u have to set one without an id first then add id doors
 
-version '1.1.0'
+version '1.2.0'
