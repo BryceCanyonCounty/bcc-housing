@@ -177,9 +177,9 @@ function IndFurnitureTypeMenu(type, houseId)
 
     local furnConfigTable = Config.Furniture[type]
     if not furnConfigTable then
-        print("Error: Invalid furniture type '" .. type .. "'. Available types are:")
+        devPrint("Error: Invalid furniture type '" .. type .. "'. Available types are:")
         for key in pairs(Config.Furniture) do
-            print(" - " .. key)
+            devPrint(" - " .. key)
         end
         return -- Exit the function if the type is invalid
     end
@@ -236,20 +236,20 @@ end
 function StartFurniturePlacementPrompts()
     -- Debug: Check if BccUtils is loaded
     if BccUtils then
-        print("BccUtils initialized successfully")
+        devPrint("BccUtils initialized successfully")
     else
-        print("Error: BccUtils not initialized")
+        devPrint("Error: BccUtils not initialized")
     end
     if BccUtils and BccUtils.Keys then
-        print("Keys table exists")
+        devPrint("Keys table exists")
     else
-        print("Error: Keys table not found in BccUtils")
+        devPrint("Error: Keys table not found in BccUtils")
     end
 
     if BccUtils and BccUtils.Keys and BccUtils.Keys['R'] then
         PromptSetControlAction(MoveForwardPrompt, BccUtils.Keys['R'])
     else
-        print("Error: Key 'R' not found in Keys table")
+        devPrint("Error: Key 'R' not found in Keys table")
     end
     -- Register movement prompts
     MoveForwardPrompt = PromptRegisterBegin()
@@ -378,7 +378,7 @@ function PlaceFurnitureIntoWorldPrompt(model, cost, displayName, sellPrice)
     local amountToMove = 0.1 -- default movement precision
 
     -- Notify player of controls
-    VORPcore.NotifyRightTip("Furniture controls", 5000)
+    VORPcore.NotifyRightTip(_U('furnitureControls'), 5000)
 
     -- Main loop for handling prompt inputs
     Citizen.CreateThread(function()
@@ -587,13 +587,13 @@ end)
 
 -- Function to trigger server event
 function GetOwnedFurniture(houseId)
-    print("Requesting furniture for house ID:", houseId) -- Debug print
+    devPrint("Requesting furniture for house ID:", houseId) -- Debug print
     TriggerServerEvent('bcc-housing:GetOwnerFurniture', houseId)
 end
 
 -- Helper function to handle the sale of furniture (implement as needed)
 function SellFurniture(furniture)
-    print("Selling furniture:", furniture.model)
+    devPrint("Selling furniture:", furniture.model)
     -- You can add server event here to handle the backend sale process
     TriggerServerEvent('bcc-housing:SellFurniture', furniture)
 end
@@ -633,7 +633,6 @@ function SellOwnedFurnitureMenu(houseId, furnTable)
                         DeleteEntity(entity)
                         table.remove(CreatedFurniture, idx)
                         TriggerServerEvent('bcc-housing:FurnSoldRemoveFromTable', v, houseId, furnTable, k)
-                        --VORPcore.NotifyRightTip(_U("furnSold"), 4000)
                         sold = true
                         break
                     end
@@ -645,7 +644,7 @@ function SellOwnedFurnitureMenu(houseId, furnTable)
         end
     else
         sellFurnMenu:RegisterElement('textdisplay', {
-            value = "No furniture Available",
+            value = _U('noFurnAvailable'),
             slot = 'content',
             style = {}
         })

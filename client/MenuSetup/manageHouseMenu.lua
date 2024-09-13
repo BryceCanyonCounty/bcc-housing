@@ -28,7 +28,7 @@ AddEventHandler('bcc-housing:receiveHouseIdinv', function(houseId)
         TriggerServerEvent('bcc-house:OpenHouseInv', houseId)
     else
         devPrint("No access to this house ID: " .. tostring(houseId))
-        VORPcore.NotifyLeft("No access to this house.", "", "scoretimer_textures", "scoretimer_generic_cross", 5000)
+        VORPcore.NotifyLeft(_U('noAccessToHouse'), "", "scoretimer_textures", "scoretimer_generic_cross", 5000)
     end
 end)
 
@@ -40,8 +40,7 @@ AddEventHandler('bcc-housing:receiveHouseId', function(houseId)
         showAccessMenu(houseId)
     else
         devPrint("No house found associated with your character")
-        VORPcore.NotifyLeft("No house found associated with your character.", "", "scoretimer_textures",
-            "scoretimer_generic_cross", 5000)
+        VORPcore.NotifyLeft(_U('noHouseFound'), "", "scoretimer_textures", "scoretimer_generic_cross", 5000)
     end
 end)
 
@@ -53,8 +52,7 @@ AddEventHandler('bcc-housing:receiveHouseIdremove', function(houseId)
         showRemoveAccessMenu(houseId)
     else
         devPrint("No house found associated with your character")
-        VORPcore.NotifyLeft("No house found associated with your character.", "", "scoretimer_textures",
-            "scoretimer_generic_cross", 5000)
+        VORPcore.NotifyLeft(_U('noHouseFound'), "", "scoretimer_textures", "scoretimer_generic_cross", 5000)
     end
 end)
 
@@ -63,9 +61,9 @@ function afterGivingAccess(houseId, playerId, playerServerId, completion)
         TriggerServerEvent('bcc-housing:NewPlayerGivenAccess', playerId, houseId, playerServerId)
         -- Assume this is handled and a response is sent back from the server
         -- Simulating a response callback for the sake of example
-        completion(true, "Access granted successfully.") -- Call completion with success and message
+        completion(true, _U('accessGranted')) -- Call completion with success and message
     else
-        completion(false, "Missing necessary information for granting access.")
+        completion(false, _U('missingInfos'))
     end
 end
 
@@ -140,7 +138,7 @@ function PlayerListMenuForGiveAccess(houseId, callback, context)
 
     playerListGiveMenuPage:RegisterElement('textdisplay', {
         slot = "footer",
-        value = "Select player from this list to own this house or to have access",
+        value = _U('selectPlayerFromList'),
         style = {}
     })
 
@@ -165,7 +163,7 @@ function PlayerListMenuForRemoveAccess(houseId, callback, context)
 
         local playerListRemoveMenuPage = BCCHousingMenu:RegisterPage("bcc-housing:playerListRemoveMenuPage")
         playerListRemoveMenuPage:RegisterElement("header", {
-            value = "Remove Access",
+            value = _U('removeAccess'),
             slot = "header",
             style = {}
         })
@@ -206,7 +204,7 @@ function PlayerListMenuForRemoveAccess(houseId, callback, context)
 
         playerListRemoveMenuPage:RegisterElement('textdisplay', {
             slot = "footer",
-            value = "Select player from this list to remove access",
+            value = _U('selectPlayerToRemove'),
             style = {}
         })
 
@@ -290,7 +288,7 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
         end)
 
         housingMainMenu:RegisterElement('button', {
-            label = "Sell house to a player",
+            label = _U('sellHouseToPlayer'),
             style = {}
         }, function()
             sellHouseToPlayer(houseId)
@@ -320,15 +318,16 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
         slot = "footer"
     })
 
-    housingMainMenu:RegisterElement("html", {
-        value = {
-            [[
-                <img width="750px" height="108px" style="margin: 0 auto;" src="https://i.ibb.co/vvX3DB1/550x185logo.png" />
-
-            ]]
-        },
-        slot = "footer"
-    })
+    if Config.UseImageAtBottomMenu then
+        housingMainMenu:RegisterElement("html", {
+            value = {
+                string.format([[
+                    <img width="750px" height="108px" style="margin: 0 auto;" src="%s" />
+                ]], Config.HouseImageURL)
+            },
+            slot = "footer"
+        })
+    end
     BCCHousingMenu:Open({ startupPage = housingMainMenu })
 end)
 

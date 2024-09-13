@@ -76,7 +76,7 @@ function PlayerListMenu(houseId, callback, context)
     })
 
     TextDisplay = playerListMenupage:RegisterElement('textdisplay', {
-        value = "Select player from this list to own this house or to have access",
+        value = _U('selectPlayerFromList'),
         style = {}
     })
 
@@ -129,7 +129,7 @@ function doorCreationMenu()
             label = _U("doorId") .. door.id, -- Assuming each door has a unique 'id'
             style = {}
         }, function()
-            print("Selected door with ID:", door.id)
+            devPrint("Selected door with ID:", door.id)
         end)
     end
 
@@ -273,7 +273,7 @@ function HouseManagementMenu(allHouses)
     end)
 
     HouseManagementList:RegisterElement('button', {
-        label = "Manage All Houses",
+        label = _U('manageAllHouses'),
         style = {}
     }, function()
         TriggerServerEvent('bcc-housing:AdminGetAllHouses')
@@ -344,7 +344,7 @@ function CreateHouseMenu(tp, refresh)
         style = {}
     }, function()
         globalHouseData.houseCoords = GetEntityCoords(PlayerPedId())
-        --print("house coords set to:", globalHouseData.houseCoords)
+        devPrint("house coords set to:", globalHouseData.houseCoords)
         VORPcore.NotifyRightTip(_U("houseCoordsSet"), 4000)
     end)
 
@@ -447,10 +447,10 @@ function setRadius()
         -- Check the input value for validity
         if data.value and tonumber(data.value) and tonumber(data.value) > 0 then
             globalHouseData.radius = tonumber(data.value) -- Correctly assign to globalHouseData
-            --print("Radius set to:", globalHouseData.radius)
+            devPrint("Radius set to:", globalHouseData.radius)
         else
             globalHouseData.radius = nil -- Ensure radius is nil if input is invalid
-            --print("Invalid input for amount.")
+            devPrint("Invalid input for amount.")
         end
     end)
 
@@ -535,10 +535,10 @@ function setTaxAmount()
         -- Validate the input from the user
         if data.value and tonumber(data.value) and tonumber(data.value) > 0 then
             globalHouseData.taxAmount = tonumber(data.value) -- Correctly update globalHouseData for tax amount
-            --print("Tax amount set to:", globalHouseData.taxAmount)
+            devPrint("Tax amount set to:", globalHouseData.taxAmount)
         else
             globalHouseData.taxAmount = nil -- Reset if invalid input
-            --print("Invalid input for tax amount.")
+            devPrint("Invalid input for tax amount.")
         end
     end)
 
@@ -622,14 +622,14 @@ function setInvLimit(houseId)
         -- Validate the input from the user
         if data.value and tonumber(data.value) and tonumber(data.value) > 0 then
             globalHouseData.invLimit = tonumber(data.value)
-            --print("Inventory limit set to:", globalHouseData.invLimit)
+            devPrint("Inventory limit set to:", globalHouseData.invLimit)
         else
             globalHouseData.invLimit = nil
-            --print("Invalid input for inventory limit.")
+            devPrint("Invalid input for inventory limit.")
         end
     end)
 
-    inventoryLimitPage:RegisterElement('bottomline', {
+    inventoryLimitPage:RegisterElement('line', {
         slot = "footer",
         style = {}
     })
@@ -645,7 +645,7 @@ function setInvLimit(houseId)
             CreateHouseMenu(tpHouse) -- Optionally navigate back to the house creation menu
             VORPcore.NotifyRightTip(_U("invLimitSet"), 4000)
         else
-            --print("Error: Inventory limit not set or invalid.")
+            devPrint("Error: Inventory limit not set or invalid.")
             VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
         end
     end)
@@ -679,11 +679,11 @@ end
 -- Confirm House Creation function
 function confirmCreation(globalHouseData)
     if not globalHouseData then
-        print("Error: Data object is nil")
+        devPrint("Error: Data object is nil")
         return
     end
     if not globalHouseData.owner or not globalHouseData.radius or not globalHouseData.doors or not globalHouseData.houseCoords or not globalHouseData.invLimit or not globalHouseData.ownerSource or not globalHouseData.taxAmount then
-        print("Error: One or more required fields are missing in the data object")
+        devPrint("Error: One or more required fields are missing in the data object")
         return
     end
     local tpHouse = false
@@ -695,7 +695,7 @@ function confirmCreation(globalHouseData)
         globalHouseData.doors, globalHouseData.houseCoords, globalHouseData.invLimit, globalHouseData.ownerSource,
         globalHouseData.taxAmount)
     -- Debug to confirm data contents
-    --print("Sending data to server:", tpHouse, globalHouseData.owner, globalHouseData.radius, globalHouseData.doors, globalHouseData.houseCoords, globalHouseData.invLimit, globalHouseData.ownerSource, globalHouseData.taxAmount)
+    devPrint("Sending data to server:", tpHouse, globalHouseData.owner, globalHouseData.radius, globalHouseData.doors, globalHouseData.houseCoords, globalHouseData.invLimit, globalHouseData.ownerSource, globalHouseData.taxAmount)
 end
 
 --Used to load houses after given one or given access so you dont have to relog to gain access

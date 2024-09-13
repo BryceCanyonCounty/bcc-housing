@@ -82,7 +82,7 @@ CreateThread(function()
                 end
 
                 if distance < 2 then
-                    PromptGroup:ShowGroup("Price : $" .. house.price)
+                    PromptGroup:ShowGroup(_U("buyPricePrompt") .. house.price)
                     if BuyHousePrompt:HasCompleted() then
                         TriggerEvent('bcc-housing:openBuyHouseMenu', house)
                     end
@@ -194,7 +194,7 @@ AddEventHandler('bcc-housing:openBuyHouseMenu', function(house)
     local buyHouseMenu = BCCHousingMenu:RegisterPage("bcc-housing:BuyHousePage")
 
     buyHouseMenu:RegisterElement('header', {
-        value = "Confirm House Purchase",
+        value = _U("confirmHousePurchase"),
         slot = 'header',
         style = {}
     })
@@ -212,18 +212,19 @@ AddEventHandler('bcc-housing:openBuyHouseMenu', function(house)
 
     local htmlContent = string.format([[
         <div style="text-align:center; margin: 20px;">
-                <p style="font-size:18px; margin-bottom: 10px;">Price: <strong style="color:#28A745;">$%d</strong></p>
-                <p style="font-size:18px; margin-bottom: 10px;">Sell Price: <strong style="color:#17A2B8;">$%d</strong></p>
-                <p style="font-size:18px; margin-bottom: 10px;">Can Sell: <strong style="color:#FFC107;">%s</strong></p>
-                <p style="font-size:18px; margin-bottom: 10px;">Inventory Limit: <strong>%d</strong></p>
-                <p style="font-size:18px; margin-bottom: 10px;">Tax Amount: <strong style="color:#DC3545;">$%d</strong></p>
+            <p style="font-size:18px; margin-bottom: 10px;">%s <strong style="color:#28A745;">$%d</strong></p>
+            <p style="font-size:18px; margin-bottom: 10px;">%s <strong style="color:#17A2B8;">$%d</strong></p>
+            <p style="font-size:18px; margin-bottom: 10px;">%s <strong style="color:#FFC107;">%s</strong></p>
+            <p style="font-size:18px; margin-bottom: 10px;">%s <strong>%d</strong></p>
+            <p style="font-size:18px; margin-bottom: 10px;">%s <strong style="color:#DC3545;">$%d</strong></p>
         </div>
     ]],
-        tonumber(house.price or 0),
-        tonumber(house.sellPrice or 0),
-        tostring(house.canSell and "Yes" or "No"),
-        tonumber(house.invLimit or 0),
-        tonumber(house.taxAmount or 0))
+        _U('listBuyPrice'), tonumber(house.price or 0), 
+        _U('listSellPrice'), tonumber(house.sellPrice or 0),
+        _U('listCanSell'), tostring(house.canSell and _U('Yes') or _U('No')),
+        _U('listInvLimit'), tonumber(house.invLimit or 0),
+        _U('listTaxAmount'), tonumber(house.taxAmount or 0)
+    )
 
     buyHouseMenu:RegisterElement("html", {
         value = { htmlContent },
@@ -241,7 +242,7 @@ AddEventHandler('bcc-housing:openBuyHouseMenu', function(house)
     })
 
     buyHouseMenu:RegisterElement('button', {
-        label = "Buy House for $" .. house.price,
+        label = _U('buyHouseFor') .. house.price,
         style = {},
         slot = "footer"
     }, function()
@@ -250,7 +251,7 @@ AddEventHandler('bcc-housing:openBuyHouseMenu', function(house)
     end)
 
     buyHouseMenu:RegisterElement('button', {
-        label = "Cancel",
+        label = _U('cancel'),
         style = {},
         slot = "footer"
     }, function()

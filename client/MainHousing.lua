@@ -74,22 +74,22 @@ end)
 RegisterNetEvent('bcc-housing:MainHotelHandler', function()
     devPrint("Initializing main hotel handler")
     local PromptGroup = BccUtils.Prompts:SetupPromptGroup()
-    local firstprompt = PromptGroup:RegisterPrompt(_U("promptBuy"), 0x760A9C6F, 1, 1, true, 'hold', {
+    local firstprompt = PromptGroup:RegisterPrompt(_U("promptBuy"), BccUtils.Keys[Config.keys.buy], 1, 1, true, 'hold', {
         timedeventhash = "MEDIUM_TIMED_EVENT"
     })
 
     local PromptGroup2 = BccUtils.Prompts:SetupPromptGroup()
-    local firstprompt2 = PromptGroup2:RegisterPrompt(_U("promptEnterHotel"), 0x760A9C6F, 1, 1, true, 'hold', {
+    local firstprompt2 = PromptGroup2:RegisterPrompt(_U("promptEnterHotel"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'hold', {
         timedeventhash = "MEDIUM_TIMED_EVENT"
     })
 
     local PromptGroup3 = BccUtils.Prompts:SetupPromptGroup()
-    local firstprompt3 = PromptGroup3:RegisterPrompt(_U("hotelInvName"), 0x760A9C6F, 1, 1, true, 'hold', {
+    local firstprompt3 = PromptGroup3:RegisterPrompt(_U("hotelInvName"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'hold', {
         timedeventhash = "MEDIUM_TIMED_EVENT"
     })
 
     local PromptGroup4 = BccUtils.Prompts:SetupPromptGroup()
-    local firstprompt4 = PromptGroup4:RegisterPrompt(_U("promptLeaveHotel"), 0x760A9C6F, 1, 1, true, 'hold', {
+    local firstprompt4 = PromptGroup4:RegisterPrompt(_U("promptLeaveHotel"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'hold', {
         timedeventhash = "MEDIUM_TIMED_EVENT"
     })
 

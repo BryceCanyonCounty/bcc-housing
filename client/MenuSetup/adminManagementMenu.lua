@@ -83,13 +83,12 @@ function AdminManagementMenuHouseChose(houseInfo)
     })
 
     local houseDetails = string.format(
-        "House ID: %s\nOwner ID: %s\nRadius: %s\nInventory Limit: %s\nTaxes: %s",
-        tostring(houseInfo.houseid) or "N/A",
-        tostring(houseInfo.charidentifier) or "N/A",
-        tostring(houseInfo.house_radius_limit) or "N/A",
-        tostring(houseInfo.invlimit) or "N/A",
-        tostring(houseInfo.tax_amount) or "N/A"
-    )
+        _U("houseDetailsHouseID", houseInfo.houseid and tostring(houseInfo.houseid) or "N/A") .. "\n" ..
+        _U("houseDetailsOwnerID", houseInfo.charidentifier and tostring(houseInfo.charidentifier) or "N/A") .. "\n" ..
+        _U("houseDetailsRadius", houseInfo.house_radius_limit and tostring(houseInfo.house_radius_limit) or "N/A") .. "\n" ..
+        _U("houseDetailsInvLimit", houseInfo.invlimit and tostring(houseInfo.invlimit) or "N/A") .. "\n" ..
+        _U("houseDetailsTaxes", houseInfo.tax_amount and tostring(houseInfo.tax_amount) or "N/A")
+    )    
 
     houseOptionsPage:RegisterElement('textdisplay', {
         value = houseDetails,

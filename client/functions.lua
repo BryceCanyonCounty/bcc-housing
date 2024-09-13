@@ -64,11 +64,9 @@ end
 
 function showManageOpt(x, y, z, houseId)
     local PromptGroup = BccUtils.Prompts:SetupPromptGroup()
-    local ManageHousePrompt = PromptGroup:RegisterPrompt(_U("openOwnerManage"), BccUtils.Keys[Config.keys.manage], 1, 1,
-        true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+    local ManageHousePrompt = PromptGroup:RegisterPrompt(_U("openOwnerManage"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
 
-    devPrint("Setting up manage options for House ID: " ..
-    tostring(houseId) .. " at coordinates: " .. tostring(x) .. ", " .. tostring(y) .. ", " .. tostring(z))
+    devPrint("Setting up manage options for House ID: " .. tostring(houseId) .. " at coordinates: " .. tostring(x) .. ", " .. tostring(y) .. ", " .. tostring(z))
 
     -- Variable to track if the house exists
     local houseExists = false
@@ -154,8 +152,7 @@ end)
 -- Receive House Owner Information
 RegisterNetEvent('bcc-housing:receiveHouseOwner')
 AddEventHandler('bcc-housing:receiveHouseOwner', function(houseId, isOwner)
-    devPrint("Received house owner information for House ID: " ..
-    tostring(houseId) .. ", Is Owner: " .. tostring(isOwner))
+    devPrint("Received house owner information for House ID: " .. tostring(houseId) .. ", Is Owner: " .. tostring(isOwner))
     TriggerEvent('bcc-housing:openmenu', houseId, isOwner)
 end)
 

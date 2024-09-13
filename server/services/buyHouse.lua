@@ -6,6 +6,16 @@ AddEventHandler('bcc-housing:buyHouse', function(houseCoords)
     local Character = User.getUsedCharacter          -- Get the character object for the player
     local houseCoordsJson = json.encode(houseCoords) -- Encode the house coordinates for database comparison
 
+    -- Check how many houses the player currently owns
+    local param = { ['@charidentifier'] = Character.charIdentifier }
+    local result = MySQL.query.await("SELECT * FROM bcchousing WHERE charidentifier=@charidentifier", param)
+    
+    if #result >= Config.Setup.MaxHousePerChar then
+        -- Notify the player that they have reached the house limit
+        VORPcore.NotifyAvanced(src, _U('youOwnMaximum'), "generic_textures", "tick", "COLOR_RED", 4000)
+        return
+    end
+
     for _, house in pairs(Config.HousesForSale) do
         if house.uniqueName and #(house.houseCoords - houseCoords) < 0.1 then -- Check if the coordinates match and house has uniqueName
             if Character.money >= house.price then
@@ -40,7 +50,7 @@ AddEventHandler('bcc-housing:buyHouse', function(houseCoords)
                                         insertHouseDoors(house.doors, Character.charIdentifier, houseId, house.uniqueName)
                                     end)
                                 else
-                                    print("Error: Failed to insert house into bcchousing.")
+                                    devPrint("Error: Failed to insert house into bcchousing.")
                                 end
                             end
                         )
@@ -50,27 +60,21 @@ AddEventHandler('bcc-housing:buyHouse', function(houseCoords)
 
                         -- Notify the player that the house was purchased
                         TriggerClientEvent('bcc-housing:housePurchased', src, houseCoords)
-                        VORPcore.NotifyAvanced(src, "You have successfully purchased " .. house.name .. " for $" .. house.price, "inventory_items", "money_billstack", "COLOR_GREEN", 4000)
-
+                        VORPcore.NotifyAvanced(src, _U("housePurchaseSuccess", house.name, house.price), "inventory_items", "money_billstack", "COLOR_GREEN", 4000)
+                        
                         -- Send a message to Discord
-                        Discord:sendMessage("House purchased by charIdentifier: " ..
-                            tostring(Character.charIdentifier) ..
-                            "\nHouse: " ..
-                            house.name ..
-                            " was purchased for $" ..
-                            tostring(house.price) .. "\nCharacter Name: " .. Character.firstname .. " " .. Character
-                            .lastname)
+                        Discord:sendMessage("House purchased by charIdentifier: " .. tostring(Character.charIdentifier) .. "\nHouse: " .. house.name .. " was purchased for $" .. tostring(house.price) .. "\nCharacter Name: " .. Character.firstname .. " " .. Character.lastname)
 							
                         -- Trigger the client-side to reload the house data
                         TriggerClientEvent('bcc-housing:ClientRecHouseLoad', src)
                     else
                         -- Notify the player if the house has already been purchased
-                        VORPcore.NotifyAvanced(src, "This house has already been purchased by another player.", "generic_textures", "tick", "COLOR_PURE_WHITE", 4000)
+                        VORPcore.NotifyAvanced(src, _U("housePurchaseFailed"), "generic_textures", "tick", "COLOR_PURE_WHITE", 4000)
                     end
                 end)
             else
                 -- Notify the player if they do not have enough money
-                VORPcore.NotifyAvanced(src, "You do not have enough money to buy this house.", "generic_textures", "tick", "COLOR_RED", 4000)
+                VORPcore.NotifyAvanced(src, _U('notEnoughMoney'), "generic_textures", "tick", "COLOR_RED", 4000)
             end
             break
         end
