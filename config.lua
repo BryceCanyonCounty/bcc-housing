@@ -31,11 +31,13 @@ Config = {
     AdminManagementMenuCommand = 'HousingManager', --the name of the command for admins to manage all houses
     EnablePrivatePropertyCheck = true,             -- Set to true to enable, false to disable, this is for if you want to see a message that you enterd on a private property
     keys = {
-        manage = 0x760A9C6F,                        -- [G] Manage House
-        collect = 0x760A9C6F,                       -- [G] Collect money from selling house 
-        buy = 0x4CC0E2FE,                           -- [B] Buy house
+        manage = 'G',                        -- [G] Manage House
+        collect = 'G',                       -- [G] Collect money from selling house 
+        buy = 'B',                           -- [B] Buy house
     },
     -----------------------------------------------------
+    UseImageAtBottomMenu = true,
+    HouseImageURL = "https://i.ibb.co/JmYbdYx/yourlogo750x108.png", -- Add your desired image URL here
 
     -- Hotels
     Hotels = {

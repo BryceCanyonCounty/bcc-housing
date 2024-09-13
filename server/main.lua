@@ -15,4 +15,4 @@ RegisterServerEvent("bcc-housing:AdminCheck", function()
   end
 end)
 
-BccUtils.Versioner.checkRelease(GetCurrentResourceName(), 'https://github.com/BryceCanyonCounty/bcc-housing')
+BccUtils.Versioner.checkFile(GetCurrentResourceName(), 'https://github.com/BryceCanyonCounty/bcc-housing')

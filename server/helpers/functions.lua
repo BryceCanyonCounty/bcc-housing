@@ -36,7 +36,7 @@ AddEventHandler('bcc-housing:GetPlayers', function()
             end
         end
     else
-        print("No players returned from GetPlayers() or list is empty")
+        devPrint("No players returned from GetPlayers() or list is empty")
     end
     TriggerClientEvent("bcc-housing:SendPlayers", _source, data)
 end)

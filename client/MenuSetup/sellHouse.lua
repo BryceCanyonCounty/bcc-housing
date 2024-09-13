@@ -1,6 +1,6 @@
 function sellHouseConfirmation(houseId)
     if not houseId then
-        print("Error: houseInfo is nil")
+        devPrint("Error: houseInfo is nil")
         return
     end
 
@@ -15,13 +15,13 @@ function sellHouseConfirmation(houseId)
     local sellHouseConfirmation = BCCHousingMenu:RegisterPage("sell_house_page_confirmation")
 
     sellHouseConfirmation:RegisterElement('header', {
-        value = "Sell House",
+        value = _U('sellHouse'),
         slot = "header",
         style = {}
     })
 
     sellHouseConfirmation:RegisterElement('html', {
-        value = [[
+        value = string.format([[
             <div style="
                 text-align: center;
                 padding: 20px;
@@ -30,10 +30,10 @@ function sellHouseConfirmation(houseId)
                 margin: 0 auto;
             ">
                 <p style="font-size: 20px; font-weight: bold; margin: 0;">
-                    Are you sure you want to sell this house?
+                    %s
                 </p>
             </div>
-        ]],
+        ]], _U('sellConfirmationText')),  -- Using the localized text
         style = {}
     })
 
@@ -42,7 +42,7 @@ function sellHouseConfirmation(houseId)
         style = {}
     })
     sellHouseConfirmation:RegisterElement('button', {
-        label = "Yes",
+        label = _U('Yes'),
         slot = "footer",
         style = {}
     }, function()
@@ -51,7 +51,7 @@ function sellHouseConfirmation(houseId)
     end)
 
     sellHouseConfirmation:RegisterElement('button', {
-        label = "No",
+        label = _U('No'),
         slot = "footer",
         style = {}
     }, function()
@@ -64,7 +64,7 @@ function sellHouseConfirmation(houseId)
     })
 
     TextDisplay = sellHouseConfirmation:RegisterElement('textdisplay', {
-        value = "Sell this house? This action is irreversible",
+        value = _U('sellHouseIrreversible'),
         slot = "footer",
         style = {}
     })
@@ -76,7 +76,7 @@ end
 
 function sellHouseToPlayer(houseId)
     if not houseId then
-        print("Error: houseId is nil")
+        devPrint("Error: houseId is nil")
         return
     end
 
@@ -155,14 +155,14 @@ function OpenSellHouseToPlayerMenu(houseId, withInventory)
     local sellHouseToPlayerMenu = BCCHousingMenu:RegisterPage("sell_house_player_select")
 
     sellHouseToPlayerMenu:RegisterElement('header', {
-        value = "Select Player",
+        value = _U('selectPlayer'),
         slot = "header"
     })
 
     if #nearbyPlayers > 0 then
         for _, player in ipairs(nearbyPlayers) do
             sellHouseToPlayerMenu:RegisterElement('button', {
-                label = "Sell to " .. GetPlayerName(GetPlayerFromServerId(player.id)),
+                label = _U('sellTo') .. GetPlayerName(GetPlayerFromServerId(player.id)),
                 style = {}
             }, function()
                 OpenConfirmSellHouseMenu(houseId, player.id, GetPlayerName(GetPlayerFromServerId(player.id)),
@@ -171,13 +171,13 @@ function OpenSellHouseToPlayerMenu(houseId, withInventory)
         end
     else
         sellHouseToPlayerMenu:RegisterElement('textdisplay', {
-            value = "No nearby players found.",
+            value = _U('noNearbyFound'),
             style = { color = 'red', ['text-align'] = 'center', ['margin-top'] = '10px' }
         })
     end
 
     sellHouseToPlayerMenu:RegisterElement('button', {
-        label = "Back",
+        label = _U('backButton'),
         slot = "footer",
         style = {}
     }, function()
@@ -195,10 +195,13 @@ function OpenConfirmSellHouseMenu(houseId, targetPlayerId, targetPlayerName, wit
     local confirmMenu = BCCHousingMenu:RegisterPage("confirmSellHouseMenu")
     local salePrice = Config.DefaultSellPricetoPlayer -- Get the sale price from your config
 
-    confirmMenu:RegisterElement('header', { value = "Confirm Sale", slot = 'header' })
-
+    confirmMenu:RegisterElement('header', { 
+        value = _U('confirmSale'),
+        slot = 'header'
+    })
+    
     confirmMenu:RegisterElement('html', {
-        value = [[
+        value = string.format([[
             <div style="
                 text-align: center;
                 padding: 20px;
@@ -207,15 +210,15 @@ function OpenConfirmSellHouseMenu(houseId, targetPlayerId, targetPlayerName, wit
                 margin: 0 auto;
             ">
                 <p style="font-size: 20px; font-weight: bold; margin: 0;">
-                    Are you sure you want to sell the house to ]] .. targetPlayerName .. [[ for $]] .. salePrice .. [[?
+                    %s
                 </p>
             </div>
-        ]],
+        ]], string.format(_U('confirmSellText'), targetPlayerName, salePrice)),
         style = {}
     })
-
+    
     confirmMenu:RegisterElement('button', {
-        label = "Yes",
+        label = _U('Yes'),
         style = {}
     }, function()
         if withInventory then
@@ -226,7 +229,10 @@ function OpenConfirmSellHouseMenu(houseId, targetPlayerId, targetPlayerName, wit
         BCCHousingMenu:Close()
     end)
 
-    confirmMenu:RegisterElement('button', { label = "No", style = {} }, function()
+    confirmMenu:RegisterElement('button', { 
+        label = _U('No'), 
+        style = {}
+    }, function()
         OpenSellHouseToPlayerMenu(houseId, withInventory)
     end)
 

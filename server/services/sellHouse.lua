@@ -1,3 +1,4 @@
+
 -- Event to handle the selling of a house
 RegisterServerEvent('bcc-housing:sellHouse')
 AddEventHandler('bcc-housing:sellHouse', function(houseId)
@@ -36,6 +37,15 @@ AddEventHandler('bcc-housing:sellHouse', function(houseId)
                         MySQL.update('DELETE FROM bcchousing WHERE houseid = ?', { houseData.houseid })
                         devPrint("House deleted from database with houseId: " .. tostring(houseData.houseid))
 
+                        -- Remove associated doors from the doorlocks table based on houseId or uniqueName
+                        local doorIdsJson = json.decode(houseData.doors)
+                        if doorIdsJson and #doorIdsJson > 0 then
+                            for _, doorId in pairs(doorIdsJson) do
+                                MySQL.update('DELETE FROM doorlocks WHERE doorid = ?', { doorId })
+                                devPrint("Door with ID " .. tostring(doorId) .. " removed from doorlocks table.")
+                            end
+                        end
+
                         -- Insert the transaction into the `bcchousing_transactions` table
                         local params = {
                             ['@houseid'] = houseData.houseid,
@@ -46,7 +56,7 @@ AddEventHandler('bcc-housing:sellHouse', function(houseId)
                         devPrint("House sale transaction inserted into `bcchousing_transactions` table: " .. json.encode(params))
 
                         -- Notify the player that the house was sold
-                        VORPcore.NotifyAvanced(src, "Successfully sold for $" .. sellPrice, "inventory_items", "money_billstack", "COLOR_GREEN", 4000)
+                        VORPcore.NotifyAvanced(src, _U("houseSoldSuccess", sellPrice), "inventory_items", "money_billstack", "COLOR_GREEN", 4000)
                         devPrint("Player notified of successful house sale.")
 
                         -- Send a message to Discord
@@ -68,19 +78,19 @@ AddEventHandler('bcc-housing:sellHouse', function(houseId)
                         TriggerClientEvent('bcc-housing:ReinitializeChecksAfterSale', src)
                     else
                         devPrint("House with uniqueName: " .. tostring(houseData.uniqueName) .. " cannot be sold.")
-                        VORPcore.NotifyAvanced(src, "This house cannot be sold.", "generic_textures", "cross", "COLOR_RED", 4000)
+                        VORPcore.NotifyAvanced(src, _U("houseCannotBeSold"), "generic_textures", "cross", "COLOR_RED", 4000)
                     end
                 else
                     devPrint("House configuration missing for uniqueName: " .. tostring(houseData.uniqueName))
-                    VORPcore.NotifyAvanced(src, "House configuration missing. Please contact an admin.", "generic_textures", "cross", "COLOR_RED", 4000)
+                    VORPcore.NotifyAvanced(src, _U("houseConfigMissing"), "generic_textures", "cross", "COLOR_RED", 4000)
                 end
             else
                 devPrint("Player is not the owner of the house with houseId: " .. tostring(houseId))
-                VORPcore.NotifyAvanced(src, "You do not own this house.", "generic_textures", "cross", "COLOR_RED", 4000)
+                VORPcore.NotifyAvanced(src, _U("houseNotOwned"), "generic_textures", "cross", "COLOR_RED", 4000)
             end
         else
             devPrint("No house found in database for houseId: " .. tostring(houseId))
-            VORPcore.NotifyAvanced(src, "House not found.", "generic_textures", "cross", "COLOR_RED", 4000)
+            VORPcore.NotifyAvanced(src, _U("houseNotFound"), "generic_textures", "cross", "COLOR_RED", 4000)
         end
     end)
 end)
@@ -129,10 +139,8 @@ AddEventHandler('bcc-housing:sellHouseToPlayerWithInventory', function(houseId, 
                         params)
 
                     -- Notify both players
-                    VORPcore.NotifyAvanced(src, "Successfully sold the house for $" .. salePrice, "inventory_items",
-                        "money_billstack", "tick", "COLOR_green", 4000)
-                    VORPcore.NotifyAvanced(targetPlayerId, "Successfully purchased the house for $" .. salePrice,
-                        "inventory_items", "money_billstack", "COLOR_GREEN", 4000)
+                    VORPcore.NotifyAvanced(src, _U("houseSoldSuccess", salePrice), "inventory_items", "money_billstack", "tick", "COLOR_GREEN", 4000)
+                    VORPcore.NotifyAvanced(targetPlayerId, _U("housePurchasedSuccess"), salePrice, "inventory_items", "money_billstack", "COLOR_GREEN", 4000)
 
                     -- Notify other clients about the change
                     TriggerClientEvent('bcc-housing:ClientRecHouseLoad', targetPlayerId)
@@ -146,15 +154,12 @@ AddEventHandler('bcc-housing:sellHouseToPlayerWithInventory', function(houseId, 
                     " to charIdentifier: " .. tostring(targetCharIdentifier) .. " for $" .. tostring(salePrice))
                 else
                     -- Notify the seller that the buyer does not have enough money
-                    VORPcore.NotifyAvanced(src, "The buyer does not have enough money.", "inventory_items",
-                        "money_billstack", "COLOR_RED", 4000)
-                    VORPcore.NotifyAvanced(targetPlayerId, "You do not have enough money", "inventory_items",
-                        "money_billstack", "COLOR_red", 4000)
+                    VORPcore.NotifyAvanced(src, _U("buyerNoMoney"), "inventory_items", "money_billstack", "COLOR_RED", 4000)
+                    VORPcore.NotifyAvanced(targetPlayerId, _U("notEnoughMoney"), "inventory_items", "money_billstack", "COLOR_RED", 4000)
                 end
             else
                 -- Notify the player if they do not own the house or the house does not exist
-                VORPcore.NotifyAvanced(src, "You do not own this house or the house does not exist.", "generic_textures",
-                    "cross", "COLOR_red", 4000)
+                VORPcore.NotifyAvanced(src, _U("houseNotOwnedOrExist"), "generic_textures", "cross", "COLOR_RED", 4000)
             end
         end)
 end)
@@ -204,13 +209,9 @@ AddEventHandler('bcc-housing:sellHouseToPlayerWithoutInventory', function(houseI
                         params)
 
                     -- Notify both players
-                    VORPcore.NotifyAvanced(src,
-                        "You have successfully sold the house without inventory for $" .. salePrice, "generic_textures",
-                        "tick", "COLOR_PURE_WHITE", 4000)
-                    VORPcore.NotifyAvanced(targetPlayerId,
-                        "You have successfully purchased the house without inventory for $" .. salePrice,
-                        "generic_textures", "tick", "COLOR_PURE_WHITE", 4000)
-
+                    VORPcore.NotifyAvanced(src, _U("houseSoldWithoutInventory", salePrice), "generic_textures", "tick", "COLOR_PURE_WHITE", 4000)
+                    VORPcore.NotifyAvanced(targetPlayerId, _U("housePurchasedWithoutInventory", salePrice), "generic_textures", "tick", "COLOR_PURE_WHITE", 4000)
+                    
                     -- Notify other clients about the change
                     TriggerClientEvent('bcc-housing:ClientRecHouseLoad', targetPlayerId)
                     TriggerClientEvent('bcc-housing:ClientRecHouseLoad', src)
@@ -223,16 +224,12 @@ AddEventHandler('bcc-housing:sellHouseToPlayerWithoutInventory', function(houseI
                     " to charIdentifier: " .. tostring(targetCharIdentifier) .. " for $" .. tostring(salePrice))
                 else
                     -- Notify the seller that the buyer does not have enough money
-                    VORPcore.NotifyAvanced(src, "The buyer does not have enough money.", "generic_textures", "cross",
-                        "COLOR_PURE_WHITE", 4000)
-                    VORPcore.NotifyAvanced(targetPlayerId, "No Money",
-                        "You do not have enough money to purchase this house.", "generic_textures", "cross",
-                        "COLOR_PURE_WHITE", 4000)
+                    VORPcore.NotifyAvanced(src, _U("buyerNoMoney"), "generic_textures", "cross", "COLOR_PURE_WHITE", 4000)
+                    VORPcore.NotifyAvanced(targetPlayerId, _U("noMoneyToBuyHouse"), "generic_textures", "cross", "COLOR_PURE_WHITE", 4000)                    
                 end
             else
                 -- Notify the player if they do not own the house or the house does not exist
-                VORPcore.NotifyAvanced(src, "You do not own this house or the house does not exist.", "generic_textures",
-                    "cross", "COLOR_PURE_WHITE", 4000)
+                VORPcore.NotifyAvanced(src, _U("noHouseOrNotOwner"), "generic_textures", "cross", "COLOR_PURE_WHITE", 4000)
             end
         end)
 end)
@@ -291,16 +288,14 @@ AddEventHandler('bcc-housing:collectHouseSaleMoneyFromNpc', function()
                 { ['@identifier'] = charIdentifier })
 
             -- Notify the player of the collected money
-            VORPcore.NotifyAvanced(src, "You have collected $" .. totalAmount .. " from your house sales.",
-                "generic_textures", "tick", "COLOR_PURE_WHITE", 4000)
+            VORPcore.NotifyAvanced(src, _U("collectedHouseSalesMoney", totalAmount), "generic_textures", "tick", "COLOR_PURE_WHITE", 4000)
 
             -- Send a message to Discord
             Discord:sendMessage("House sale money collected by charIdentifier: " ..
             tostring(charIdentifier) .. "\nCollected $" .. tostring(totalAmount) .. " from house sales.")
         else
             -- Notify the player if there is no money to collect
-            VORPcore.NotifyAvanced(src, "You have no money to collect.", "generic_textures", "cross", "COLOR_PURE_WHITE",
-                4000)
+            VORPcore.NotifyAvanced(src, _U("noMoneyToCollect"), "generic_textures", "cross", "COLOR_PURE_WHITE", 4000)
         end
     end)
 end)
