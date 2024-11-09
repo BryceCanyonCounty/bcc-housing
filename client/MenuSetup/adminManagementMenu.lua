@@ -28,9 +28,14 @@ function AdminManagementMenu(allHouses)
         style = {}
     })
 
-    for k, houseInfo in pairs(allHouses) do
+    for _, houseInfo in pairs(allHouses) do
+        -- Get owner's first and last name with fallback to "Unknown" if data is missing
+        local ownerFirstName = houseInfo.firstName or "Unknown"
+        local ownerLastName = houseInfo.lastName or "Unknown"
+
+        -- Register a button for each house with the owner's name and house ID
         adminMenuPage:RegisterElement('button', {
-            label = "House Id : " .. houseInfo.houseid,
+            label = "House ID: " .. houseInfo.houseid .. " | Owner: " .. ownerFirstName .. " " .. ownerLastName,
             style = {}
         }, function()
             AdminManagementMenuHouseChose(houseInfo)

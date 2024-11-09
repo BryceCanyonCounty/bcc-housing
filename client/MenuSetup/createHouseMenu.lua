@@ -77,6 +77,7 @@ function PlayerListMenu(houseId, callback, context)
 
     TextDisplay = playerListMenupage:RegisterElement('textdisplay', {
         value = _U('selectPlayerFromList'),
+        slot = "footer",
         style = {}
     })
 

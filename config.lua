@@ -15,7 +15,8 @@ Config = {
         MaxHousePerChar = 2,
     },
     -----------------------------------------------------
-
+    -----------------------------------------------------
+    collectTaxes = false,
     -- Tax Day for checking the ledger and collect
     TaxDay = 23,      --This is the number day of each month that taxes will be collected on
     TaxResetDay = 24, --This MUST be the day after TaxDay set above!!! (do not change either of these dates if the current date is one of the 2 for ex if its the 22 or 23rd day do not change these dates it will break the code)

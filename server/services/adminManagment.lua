@@ -1,7 +1,49 @@
-RegisterServerEvent('bcc-housing:AdminGetAllHouses', function()
+RegisterServerEvent('bcc-housing:AdminGetAllHouses')
+AddEventHandler('bcc-housing:AdminGetAllHouses', function()
     local _source = source
+    print("AdminGetAllHouses triggered by source:", _source)
+
+    -- Fetch all house data from the database
     local result = MySQL.query.await("SELECT * FROM bcchousing")
-    TriggerClientEvent('bcc-housing:AdminManagementMenu', _source, result)
+    if not result then
+        print("Error: No house data found in the database.")
+        return
+    end
+    print("House data retrieved from database:", #result, "houses found.")
+
+    local allHouses = {}
+
+    for _, houseInfo in ipairs(result) do
+        local houseCharIdentifier = houseInfo.charidentifier
+        print("Processing house with ID:", houseInfo.houseid, "and character identifier:", houseCharIdentifier)
+
+        if houseCharIdentifier then
+            -- Attempt to get character data from the characters table directly
+            local characterData = MySQL.query.await("SELECT firstname, lastname FROM characters WHERE charidentifier = ?", { houseCharIdentifier })
+
+            if characterData and #characterData > 0 then
+                houseInfo.firstName = characterData[1].firstname
+                houseInfo.lastName = characterData[1].lastname
+                print("Character found in database - First Name:", houseInfo.firstName, "Last Name:", houseInfo.lastName)
+            else
+                houseInfo.firstName = "Unknown"
+                houseInfo.lastName = "Unknown"
+                print("Warning: No character data found for character identifier:", houseCharIdentifier)
+            end
+        else
+            houseInfo.firstName = "Unknown"
+            houseInfo.lastName = "Unknown"
+            print("Warning: houseCharIdentifier is missing for house ID:", houseInfo.houseid)
+        end
+
+        table.insert(allHouses, houseInfo)
+    end
+
+    -- Confirm the structure and data being sent to the client
+    print("All houses prepared for client:", allHouses)
+
+    -- Send the data to the client
+    TriggerClientEvent('bcc-housing:AdminManagementMenu', _source, allHouses)
 end)
 
 RegisterServerEvent('bcc-house:AdminManagementDelHouse', function(houseId)
