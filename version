@@ -1,11 +1,2 @@
-<1.3.0>
-- Updated version check method to use a file instead of release.
-- Implemented house ownership limit per character when purchasing a house.
-- Removed associated doors from the doorlocks table based on houseId or uniqueName during house sale.
-- Replaced bottomline with line in the house creation menu for inventory.
-- Expanded localization keys to support multiple languages.
-- Added an HTML element to the bottom menu to display an image. You can set the image link via config.
-- Added an option to enable/disable the image display in the config.
-- Removed the custom logo implementation.
-- Replaced key hashes from config with actual keys; bcc-utils.keys will now resolve the hashes.
-- Added bccutils keys support for hotel prompts.
+<1.3.1>
+See GitHub for details!

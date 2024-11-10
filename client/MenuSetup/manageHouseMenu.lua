@@ -155,12 +155,6 @@ function PlayerListMenuForRemoveAccess(houseId, callback, context)
     GetPlayersWithAccess(houseId, function(rplayers)
         devPrint("Number of players with access: " .. #rplayers) -- This will print the count of players fetched
 
-        if #rplayers == 0 then
-            devPrint("No players to display in menu")
-            -- Consider what action to take if no players are available
-            return -- Optionally return if no players are available to display
-        end
-
         local playerListRemoveMenuPage = BCCHousingMenu:RegisterPage("bcc-housing:playerListRemoveMenuPage")
         playerListRemoveMenuPage:RegisterElement("header", {
             value = _U('removeAccess'),
@@ -172,6 +166,14 @@ function PlayerListMenuForRemoveAccess(houseId, callback, context)
             slot = "header",
             style = {}
         })
+
+        if #rplayers == 0 then
+            devPrint("No players to display in menu")
+            TextDisplay = playerListRemoveMenuPage:RegisterElement('textdisplay', {
+                value = "You didn`t give acess to anyone",
+                style = {}
+            })
+        end
 
         for k, v in pairs(rplayers) do
             devPrint("Adding button for player ID: " .. tostring(v.charidentifier)) -- Ensure charidentifier is correct
@@ -296,21 +298,64 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
     end
 
     housingMainMenu:RegisterElement('button', {
-        label = _U("checkledger"),
-        style = {}
-    }, function()
-        TriggerServerEvent('bcc-housing:CheckLedger', houseId)
-    end)
-
-    housingMainMenu:RegisterElement('button', {
         label = _U("ledger"),
         style = {}
     }, function()
-        if houseId then
-            TriggerEvent('bcc-housing:addLedger', houseId, isOwner)
-        else
-            devPrint("Error: HouseId is undefined or invalid.")
-        end
+        local ledgerPage = BCCHousingMenu:RegisterPage('bcc-housing:ledger:page')
+        ledgerPage:RegisterElement('header', {
+            value = _U("ledger"),
+            slot = "header",
+            style = {}
+        })
+
+        ledgerPage:RegisterElement('button', {
+            label = _U("checkledger"),
+            style = {}
+        }, function()
+            TriggerServerEvent('bcc-housing:CheckLedger', houseId)
+        end)
+    
+        ledgerPage:RegisterElement('button', {
+            label = _U("ledger"),
+            style = {}
+        }, function()
+            if houseId then
+                TriggerEvent('bcc-housing:addLedger', houseId, isOwner)
+            else
+                devPrint("Error: HouseId is undefined or invalid.")
+            end
+        end)
+
+        ledgerPage:RegisterElement('button', {
+            label = "Remove from ledger",
+            style = {}
+        }, function()
+            if houseId then
+                TriggerEvent('bcc-housing:removeLedger', houseId, isOwner)
+            else
+                devPrint("Error: HouseId is undefined or invalid.")
+            end
+        end)
+        
+        ledgerPage:RegisterElement('line', {
+            slot = "footer",
+            style = {}
+        })
+    
+        ledgerPage:RegisterElement('button', {
+            label = _U("backButton"),
+            slot = "footer",
+            style = {}
+        }, function()
+            TriggerEvent('bcc-housing:openmenu', houseId, isOwner)
+        end)
+
+        ledgerPage:RegisterElement('bottomline', {
+            style = {},
+            slot = "footer"
+        })
+
+        BCCHousingMenu:Open({ startupPage = ledgerPage })
     end)
 
     housingMainMenu:RegisterElement('bottomline', {
@@ -350,6 +395,7 @@ function enterOrExitHouse(enter, tpHouseIndex)
     end
 end
 
+-- Event to open the add ledger page
 RegisterNetEvent('bcc-housing:addLedger')
 AddEventHandler('bcc-housing:addLedger', function(houseId, isOwner)
     devPrint("Adding ledger for House ID: " .. tostring(houseId))
@@ -377,23 +423,24 @@ AddEventHandler('bcc-housing:addLedger', function(houseId, isOwner)
         end
     end)
 
+    AddLedgerPage:RegisterElement('line', {
+        slot = "footer",
+        style = {}
+    })
+
     AddLedgerPage:RegisterElement('button', {
         label = _U("Confirm"),
+        slot = "footer",
         style = {}
     }, function()
         if amountToInsert then
-            devPrint("Submitting ledger update for amount: " .. tostring(amountToInsert))
-            TriggerServerEvent('bcc-housing:LedgerHandling', amountToInsert, houseId)
+            devPrint("Submitting ledger update for amount: " .. tostring(amountToInsert) .. " (Adding)")
+            TriggerServerEvent('bcc-housing:LedgerHandling', amountToInsert, houseId, true) -- true for adding
             BCCHousingMenu:Close()
         else
             devPrint("Error: Amount not set or invalid.")
         end
     end)
-
-    AddLedgerPage:RegisterElement('line', {
-        slot = "footer",
-        style = {}
-    })
 
     AddLedgerPage:RegisterElement('button', {
         label = _U("backButton"),
@@ -409,6 +456,69 @@ AddEventHandler('bcc-housing:addLedger', function(houseId, isOwner)
     })
 
     BCCHousingMenu:Open({ startupPage = AddLedgerPage })
+end)
+
+-- Event to open the remove ledger page
+RegisterNetEvent('bcc-housing:removeLedger')
+AddEventHandler('bcc-housing:removeLedger', function(houseId, isOwner)
+    devPrint("Remove ledger for House ID: " .. tostring(houseId))
+    local RemoveLedgerPage = BCCHousingMenu:RegisterPage('remove_ledger_page')
+    local amountToInsert = nil
+
+    RemoveLedgerPage:RegisterElement('header', {
+        value = _U('ledger'),
+        slot = 'header',
+        style = {}
+    })
+
+    RemoveLedgerPage:RegisterElement('input', {
+        label = _U('taxAmount'),
+        placeholder = _U("ledgerAmountToInsert"),
+        inputType = 'number',
+        slot = 'content',
+        style = {}
+    }, function(data)
+        if data.value and tonumber(data.value) and tonumber(data.value) > 0 then
+            amountToInsert = tonumber(data.value)
+        else
+            amountToInsert = nil
+            devPrint("Invalid input for amount.")
+        end
+    end)
+
+    RemoveLedgerPage:RegisterElement('line', {
+        slot = "footer",
+        style = {}
+    })
+
+    RemoveLedgerPage:RegisterElement('button', {
+        label = _U("Confirm"),
+        slot = "footer",
+        style = {}
+    }, function()
+        if amountToInsert then
+            devPrint("Submitting ledger update for amount: " .. tostring(amountToInsert) .. " (Removing)")
+            TriggerServerEvent('bcc-housing:LedgerHandling', amountToInsert, houseId, false) -- false for removing
+            BCCHousingMenu:Close()
+        else
+            devPrint("Error: Amount not set or invalid.")
+        end
+    end)
+
+    RemoveLedgerPage:RegisterElement('button', {
+        label = _U("backButton"),
+        slot = "footer",
+        style = {}
+    }, function()
+        TriggerEvent('bcc-housing:openmenu', houseId, isOwner)
+    end)
+
+    RemoveLedgerPage:RegisterElement('bottomline', {
+        slot = "footer",
+        style = {}
+    })
+
+    BCCHousingMenu:Open({ startupPage = RemoveLedgerPage })
 end)
 
 function enterTpHouse(houseTable)

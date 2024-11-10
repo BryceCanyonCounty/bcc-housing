@@ -1,7 +1,9 @@
 ----- Hotel Area ----
 RegisterServerEvent('bcc-housing:HotelDbRegistry', function() --registering each player
     local _source = source
-    local character = VORPcore.getUser(_source).getUsedCharacter
+    local user = VORPcore.getUser(_source)
+    if not user then return end
+    local character = user.getUsedCharacter and user.getUsedCharacter
     local param = { ['charidentifier'] = character.charIdentifier }
     local result = MySQL.query.await("SELECT * FROM bcchousinghotels WHERE charidentifier=@charidentifier", param)
     if #result == 0 then
