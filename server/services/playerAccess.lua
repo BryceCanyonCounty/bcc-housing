@@ -1,42 +1,37 @@
-RegisterServerEvent('bcc-housing:getPlayersWithAccess')
-AddEventHandler('bcc-housing:getPlayersWithAccess', function(houseId)
-    local src = source
+BccUtils.RPC:Register("bcc-housing:GetPlayersWithAccess", function(params, cb, recSource)
+    local houseId = params.houseId
     devPrint("Fetching players with access for House ID: " .. tostring(houseId))
 
     -- Query to fetch allowed character IDs for the house
-    MySQL.query("SELECT allowed_ids FROM bcchousing WHERE houseid = @houseid", { ['@houseid'] = houseId },
-        function(result)
-            if result and #result > 0 then
-                local allowedIds = json.decode(result[1].allowed_ids)
-                if allowedIds and #allowedIds > 0 then
-                    -- Convert the allowed IDs list into a comma-separated string for the SQL query
-                    local allowedIdsString = table.concat(allowedIds, ',')
+    local result = MySQL.query.await("SELECT allowed_ids FROM bcchousing WHERE houseid = ?", { houseId })
 
-                    -- Fetching detailed character information from the database
-                    MySQL.query("SELECT * FROM characters WHERE charidentifier IN (" .. allowedIdsString .. ")", {},
-                        function(characterDetails)
-                            if characterDetails and #characterDetails > 0 then
-                                for _, character in ipairs(characterDetails) do
-                                    devPrint("Character found: ID=" ..
-                                        character.charidentifier ..
-                                        ", Name=" .. character.firstname .. " " .. character.lastname)
-                                end
-                                -- Send character details back to the client
-                                TriggerClientEvent('bcc-housing:ReceivePlayersWithAccess', src, characterDetails)
-                            else
-                                devPrint("No character details found for the allowed IDs")
-                                TriggerClientEvent('bcc-housing:ReceivePlayersWithAccess', src, {})
-                            end
-                        end)
-                else
-                    devPrint("No allowed IDs found for House ID: " .. tostring(houseId))
-                    TriggerClientEvent('bcc-housing:ReceivePlayersWithAccess', src, {})
+    if result and #result > 0 then
+        local allowedIds = json.decode(result[1].allowed_ids)
+        if allowedIds and #allowedIds > 0 then
+            -- Convert the allowed IDs list into placeholders
+            local placeholders = string.rep('?,', #allowedIds):sub(1, -2) -- e.g., "?,?"
+            local query = "SELECT * FROM characters WHERE charidentifier IN (" .. placeholders .. ")"
+
+            -- Fetch detailed character information
+            local characterDetails = MySQL.query.await(query, allowedIds)
+            if characterDetails and #characterDetails > 0 then
+                for _, character in ipairs(characterDetails) do
+                    devPrint("Character found: ID=" ..
+                        character.charidentifier .. ", Name=" .. character.firstname .. " " .. character.lastname)
                 end
+                cb(characterDetails) -- Pass the character details back to the client
             else
-                devPrint("No players found with access to house ID: " .. tostring(houseId))
-                TriggerClientEvent('bcc-housing:ReceivePlayersWithAccess', src, {})
+                devPrint("No character details found for the allowed IDs.")
+                cb({})
             end
-        end)
+        else
+            devPrint("No allowed IDs found for House ID: " .. tostring(houseId))
+            cb({})
+        end
+    else
+        devPrint("No players found with access to house ID: " .. tostring(houseId))
+        cb({})
+    end
 end)
 
 RegisterServerEvent('bcc-housing:NewPlayerGivenAccess')

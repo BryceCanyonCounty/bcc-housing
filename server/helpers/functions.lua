@@ -1,6 +1,6 @@
 ---- Pulling Essentials -----
 VORPcore = exports.vorp_core:GetCore()
-
+DoorLocksAPI = exports['bcc-doorlocks']:getDoorLocksAPI()
 BccUtils = exports['bcc-utils'].initiate()
 
 Discord = BccUtils.Discord.setup(Config.WebhookLink, Config.WebhookTitle, Config.WebhookAvatar)

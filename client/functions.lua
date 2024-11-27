@@ -49,17 +49,19 @@ end
 function GetPlayersWithAccess(houseId, callback)
     devPrint("Requesting players with access for House ID: " .. tostring(houseId))
 
-    RegisterNetEvent("bcc-housing:ReceivePlayersWithAccess", function(result)
-        -- Debugging the data received from the server
-        devPrint("Received players data from server for House ID: " .. tostring(houseId))
-        devPrint("Number of players with access received: " .. tostring(#result))
-
-        -- Trigger the callback with the results
-        callback(result)
+    -- Use RPC to call the server-side function and handle the response
+    BccUtils.RPC:Call("bcc-housing:GetPlayersWithAccess", { houseId = houseId }, function(result)
+        if result and #result > 0 then
+            devPrint("Number of players with access received: " .. tostring(#result))
+            for _, player in ipairs(result) do
+                devPrint("Player: ID=" .. player.charidentifier .. ", Name=" .. player.firstname .. " " .. player.lastname)
+            end
+            callback(result) -- Pass the result to the callback
+        else
+            devPrint("No players with access received.")
+            callback({})
+        end
     end)
-
-    -- Trigger the server event to fetch players with access
-    TriggerServerEvent("bcc-housing:getPlayersWithAccess", houseId)
 end
 
 function showManageOpt(x, y, z, houseId)
@@ -146,6 +148,7 @@ AddEventHandler("onResourceStop", function(resource)
 
         -- Notify the server to clean up any server-side resources
         TriggerServerEvent('bcc-housing:ServerSideRssStop')
+        BCCHousingMenu:Close()
     end
 end)
 

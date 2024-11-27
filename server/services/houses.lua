@@ -179,23 +179,212 @@ end)
 
 -- Function to update door access for a specific door ID
 function updateDoorAccess(doorId, newId)
+    -- Get the door object using the API
+    local door = DoorLocksAPI:GetDoorById(doorId)
+    if not door then
+        devPrint("Door ID " .. tostring(doorId) .. " not found.")
+        return
+    end
+
     devPrint("Updating door access for door ID: " .. tostring(doorId) .. " with new ID: " .. tostring(newId))
-    -- Query the database to get the allowed IDs for the door
-    local result = MySQL.query.await("SELECT ids_allowed FROM doorlocks WHERE doorid=@doorId", { ['doorId'] = doorId })
-    if result and #result > 0 then
-        local allowedIdTable = json.decode(result[1].ids_allowed) or {}
-        -- Check if the new ID is not already in the allowed IDs
-        if not table.contains(allowedIdTable, newId) then
-            table.insert(allowedIdTable, newId)
-            local param = {
-                ['ids_allowed'] = json.encode(allowedIdTable),
-                ['doorId'] = doorId
-            }
-            -- Update the door locks with the new allowed IDs
-            MySQL.update("UPDATE doorlocks SET ids_allowed=@ids_allowed WHERE doorid=@doorId", param)
-        end
+
+    -- Get the current allowed IDs
+    local allowedIds = door:GetAllowedIds()
+
+    -- Ensure the new ID is not already in the list
+    if not table.contains(allowedIds, newId) then
+        table.insert(allowedIds, newId)
+        -- Update the allowed IDs using the API method
+        door:UpdateAllowedIds(allowedIds)
+        devPrint("Door access updated successfully for door ID: " .. tostring(doorId))
+    else
+        devPrint("ID " .. tostring(newId) .. " is already allowed for door ID: " .. tostring(doorId))
     end
 end
+
+BccUtils.RPC:Register("bcc-housing:GetDoorsByHouseId", function(params, cb, recSource)
+    local houseId = params.houseId
+    if not houseId then
+        cb(nil) -- Return nil to indicate an invalid house ID
+        return
+    end
+
+    -- Fetch the doors JSON for the given house ID from bcchousing
+    local houseResult = MySQL.query.await("SELECT doors FROM bcchousing WHERE houseid = ?", { houseId })
+
+    if houseResult and #houseResult > 0 then
+        local houseDoors = json.decode(houseResult[1].doors or "[]")
+
+        -- Validate each door ID by checking if it exists in the doorlocks table
+        local validDoors = {}
+        for _, doorId in ipairs(houseDoors) do
+            local door = DoorLocksAPI:GetDoorById(doorId)
+            if door then
+                table.insert(validDoors, {
+                    doorid = door.id,
+                    doorinfo = door:GetDoorInfo()
+                })
+            end            
+        end
+
+        cb(validDoors) -- Return the valid doors
+    else
+        cb({}) -- Return an empty table if no doors are found in bcchousing
+    end
+end)
+
+BccUtils.RPC:Register("bcc-housing:GetAllowedIdsForHouse", function(params, cb, recSource)
+    local houseId = params.houseId
+
+    if not houseId then
+        cb(nil) -- Invalid parameters
+        return
+    end
+
+    -- Fetch allowed IDs for the house
+    local result = MySQL.query.await("SELECT allowed_ids FROM bcchousing WHERE houseid = ?", { houseId })
+
+    if result and #result > 0 then
+        local allowedIds = json.decode(result[1].allowed_ids or "[]")
+        cb(allowedIds) -- Return allowed IDs
+    else
+        cb(nil) -- No house or allowed IDs found
+    end
+end)
+
+-- Register the RPC for adding a door to a house
+BccUtils.RPC:Register("bcc-housing:AddDoorToHouse", function(params, cb, recSource)
+    local houseId = params.houseId
+    local newDoor = params.newDoor
+
+    if not houseId or not newDoor then
+        cb(false) -- Invalid parameters
+        return
+    end
+
+    -- Fetch the current doors for the specified house
+    local result = MySQL.query.await("SELECT doors FROM bcchousing WHERE houseid = ?", { houseId })
+    if not result or #result == 0 then
+        cb(false) -- House not found
+        return
+    end
+
+    -- Decode the current doors or initialize an empty table
+    local currentDoors = json.decode(result[1].doors or "[]")
+
+    -- Add the new door to the list
+    table.insert(currentDoors, newDoor)
+
+    -- Update the doors in the database
+    local updatedDoors = json.encode(currentDoors)
+    local success = MySQL.query.await("UPDATE bcchousing SET doors = ? WHERE houseid = ?", { updatedDoors, houseId })
+
+    if success then
+        cb(true) -- Door added successfully
+    else
+        cb(false) -- Failed to update the database
+    end
+end)
+
+BccUtils.RPC:Register("bcc-housing:GiveAccessToDoor", function(params, cb)
+    local doorId = params.doorId
+    local userId = params.userId
+
+    devPrint("DEBUG: Received doorId: " .. tostring(doorId) .. ", userId: " .. tostring(userId))
+
+    if not doorId or not userId then
+        devPrint("Invalid parameters for GiveAccessToDoor: Door ID or User ID is missing.")
+        cb(false)
+        return
+    end
+    local door = DoorLocksAPI:GetDoorById(doorId)
+    
+    if not door then
+        devPrint("Door ID not found in API: " .. tostring(doorId))
+        cb(false)
+        return
+    end
+
+    -- Fetch current allowed IDs using the API
+    local idsAllowed = DoorLocksAPI:GetDoorById(doorId):GetAllowedIds()
+
+    -- Check if the user already has access
+    if not table.contains(idsAllowed, userId) then
+        table.insert(idsAllowed, userId)
+
+        -- Update the allowed IDs for the door using the API
+        DoorLocksAPI:GetDoorById(doorId):UpdateAllowedIds(idsAllowed)
+
+        devPrint("Access granted to user ID: " .. tostring(userId) .. " for door ID: " .. tostring(doorId))
+        cb(true)
+    else
+        devPrint("User ID: " .. tostring(userId) .. " already has access to door ID: " .. tostring(doorId))
+        cb(false)
+    end
+end)
+
+BccUtils.RPC:Register("bcc-housing:RemoveAccessFromDoor", function(params, cb, recSource)
+    local doorId = params.doorId
+    local userId = params.userId
+
+    if not doorId or not userId then
+        devPrint("Invalid parameters for RemoveAccessFromDoor: Door ID or User ID is missing.")
+        cb(false)
+        return
+    end
+
+    -- Access the DoorLocksAPI
+    local door = DoorLocksAPI:GetDoorById(doorId)
+
+    if not door then
+        devPrint("Door ID not found in API: " .. tostring(doorId))
+        cb(false)
+        return
+    end
+
+    -- Fetch current allowed IDs using the API
+    local idsAllowed = door:GetAllowedIds()
+
+    -- Check if the user has access
+    for index, allowedId in ipairs(idsAllowed) do
+        if allowedId == userId then
+            table.remove(idsAllowed, index)
+
+            -- Update the allowed IDs for the door using the API
+            door:UpdateAllowedIds(idsAllowed)
+
+            devPrint("Access removed for user ID: " .. tostring(userId) .. " from door ID: " .. tostring(doorId))
+            cb(true)
+            return
+        end
+    end
+
+    devPrint("User ID: " .. tostring(userId) .. " did not have access to door ID: " .. tostring(doorId))
+    cb(false)
+end)
+
+BccUtils.RPC:Register("bcc-housing:DeleteDoor", function(params, cb, recSource)
+    local doorId = params.doorId
+
+    if not doorId then
+        devPrint("Invalid door ID received for deletion.")
+        cb(false)
+        return
+    end
+
+    local door = DoorLocksAPI:GetDoorById(doorId)
+
+    if not door then
+        devPrint("Door not found in API for deletion. Door ID: " .. tostring(doorId))
+        cb(false)
+        return
+    end
+
+    -- Delete the door
+    door:DeleteDoor()
+    devPrint("Door deleted successfully. Door ID: " .. tostring(doorId))
+    cb(true)
+end)
 
 -- Event to handle ledger updates for houses (both add and remove)
 RegisterServerEvent('bcc-housing:LedgerHandling')
