@@ -1,5 +1,12 @@
 local propertyCheckActive = false
 
+-- Command to toggle the NUI
+RegisterCommand('hidePropertyUI', function(source, args)
+    SendNUIMessage({
+        action = "hidePropertyUI"
+    })
+end, false)
+
 RegisterNetEvent('bcc-housing:PrivatePropertyCheckHandler')
 AddEventHandler('bcc-housing:PrivatePropertyCheckHandler', function(houseCoords, houseRadius)
     -- Check if the property check is enabled
@@ -30,7 +37,8 @@ AddEventHandler('bcc-housing:PrivatePropertyCheckHandler', function(houseCoords,
         if distanceToHouse < privatePropertyRadius then
             if not isInsidePrivateProperty then
                 -- First time entering the property
-                VORPcore.NotifyLeft(_U("enteringPrivate"), 3000)
+                VORPcore.NotifyRightTip(_U("enteringPrivate"), 3000)
+                Wait(4000)
                 SendNUIMessage({
                     action = "showPropertyUI"
                 })
@@ -39,7 +47,7 @@ AddEventHandler('bcc-housing:PrivatePropertyCheckHandler', function(houseCoords,
             end
         elseif isInsidePrivateProperty then
             -- Player has left the property
-            VORPcore.NotifyLeft(_U("leavingPrivate"), 4000)
+            VORPcore.NotifyRightTip(_U("leavingPrivate"), 4000)
             SendNUIMessage({
                 action = "hidePropertyUI"
             })
