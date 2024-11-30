@@ -1,4 +1,5 @@
 local propertyCheckActive = false
+
 RegisterNetEvent('bcc-housing:PrivatePropertyCheckHandler')
 AddEventHandler('bcc-housing:PrivatePropertyCheckHandler', function(houseCoords, houseRadius)
     -- Check if the property check is enabled
@@ -11,15 +12,14 @@ AddEventHandler('bcc-housing:PrivatePropertyCheckHandler', function(houseCoords,
     if not houseCoords or not houseRadius then
         devPrint("Error: Missing houseCoords or houseRadius.")
         propertyCheckActive = false -- Stop the check if values are missing
-        return                      -- Exit the handler if values are missing
+        return -- Exit the handler if values are missing
     end
 
     devPrint("Starting private property check handler")
 
     propertyCheckActive = true
     local privatePropertyRadius = houseRadius + 20 -- Adjust the radius as needed
-    local isInsidePrivateProperty = false          -- Track if the player is currently inside the property
-    local lastNotificationTime = 0                 -- Track the last time a notification was shown
+    local isInsidePrivateProperty = false -- Track if the player is currently inside the property
 
     while propertyCheckActive do
         Wait(1500) -- Run the loop continuously
@@ -30,26 +30,40 @@ AddEventHandler('bcc-housing:PrivatePropertyCheckHandler', function(houseCoords,
         if distanceToHouse < privatePropertyRadius then
             if not isInsidePrivateProperty then
                 -- First time entering the property
-                VORPcore.NotifyBottomRight(_U("enteringPrivate"), 4000)
+                VORPcore.NotifyLeft(_U("enteringPrivate"), 3000)
+                SendNUIMessage({
+                    action = "showPropertyUI"
+                })
                 isInsidePrivateProperty = true
                 devPrint("Player has entered private property.")
-                lastNotificationTime = GetGameTimer() -- Set the time for the first notification
-            elseif GetGameTimer() - lastNotificationTime >= 8000 then
-                -- Show the message every 10 seconds
-                VORPcore.NotifyRightTip(_U("onPrivate"), 10000)
-                lastNotificationTime = GetGameTimer() -- Update the time for the next notification
             end
         elseif isInsidePrivateProperty then
             -- Player has left the property
-            VORPcore.NotifyBottomRight(_U("leavingPrivate"), 4000)
+            VORPcore.NotifyLeft(_U("leavingPrivate"), 4000)
+            SendNUIMessage({
+                action = "hidePropertyUI"
+            })
             isInsidePrivateProperty = false
             devPrint("Player has left private property.")
         end
     end
+
+    -- Ensure the UI is hidden when the loop ends
+    SendNUIMessage({
+        action = "hidePropertyUI"
+    })
+
     devPrint("Property check loop has ended.")
 end)
 
 RegisterNetEvent('bcc-housing:StopPropertyCheck')
 AddEventHandler('bcc-housing:StopPropertyCheck', function()
     propertyCheckActive = false
+
+    -- Ensure the UI is hidden when property check stops
+    SendNUIMessage({
+        action = "hidePropertyUI"
+    })
+
+    devPrint("Property check has been stopped.")
 end)

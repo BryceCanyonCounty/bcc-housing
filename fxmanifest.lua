@@ -1,5 +1,5 @@
 fx_version 'adamant'
-games {'rdr3'}
+games { 'rdr3' }
 rdr3_warning 'I acknowledge that this is a prerelease build of RedM, and I am aware my resources *will* become incompatible once RedM ships.'
 lua54 'yes'
 
@@ -27,10 +27,15 @@ server_scripts {
   'server/services/*.lua',
   'server/main.lua'
 }
+ui_page {
+  "ui/index.html"
+}
 
 files {
-  'stream/Siddin3.ymap',
-  'stream/Siddin4.ymap',
+    "ui/index.html",
+    "ui/assets/*",
+    'stream/Siddin3.ymap',
+    'stream/Siddin4.ymap',
 }
 
 dependency {
@@ -42,6 +47,4 @@ dependency {
   'feather-menu'
 }
 
--- u can set doors but if u set one with an id first it will break so u have to set one without an id first then add id doors
-
-version '1.4.0'
+version '1.4.1'
