@@ -20,11 +20,11 @@ else
     end
 end
 
-RegisterNetEvent('vorp:SelectedCharacter')                   -- init loading
+RegisterNetEvent('vorp:SelectedCharacter')
 AddEventHandler('vorp:SelectedCharacter', function()
-    local player = GetPlayerServerId(tonumber(PlayerId()))   -- credit vorp_admin
+    local player = GetPlayerServerId(tonumber(PlayerId()))
     Wait(200)
-    TriggerServerEvent("bcc-housing:getPlayersInfo", player) -- credit vorp_admin
+    TriggerServerEvent("bcc-housing:getPlayersInfo", player)
     TriggerServerEvent('bcc-housing:AdminCheck')
     TriggerServerEvent('bcc-housing:HotelDbRegistry')
     TriggerServerEvent('bcc-housing:CheckIfHasHouse')
@@ -32,10 +32,10 @@ end)
 
 CreateThread(function() -- Devmode area
     if Config.DevMode then
-        RegisterCommand('HousingDev', function()
-            local player = GetPlayerServerId(tonumber(PlayerId()))   -- credit vorp_admin
+        RegisterCommand(Config.DevModeCommand, function()
+            local player = GetPlayerServerId(tonumber(PlayerId()))
             Wait(200)
-            TriggerServerEvent("bcc-housing:getPlayersInfo", player) -- credit vorp_admin
+            TriggerServerEvent("bcc-housing:getPlayersInfo", player)
             TriggerServerEvent('bcc-housing:AdminCheck')
             TriggerServerEvent('bcc-housing:HotelDbRegistry')
             TriggerServerEvent('bcc-housing:CheckIfHasHouse')
