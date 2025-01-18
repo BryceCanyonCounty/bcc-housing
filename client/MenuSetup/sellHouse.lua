@@ -199,7 +199,6 @@ function OpenConfirmSellHouseMenu(houseId, targetPlayerId, targetPlayerName, wit
         value = _U('confirmSale'),
         slot = 'header'
     })
-    
     confirmMenu:RegisterElement('html', {
         value = string.format([[
             <div style="
@@ -213,10 +212,9 @@ function OpenConfirmSellHouseMenu(houseId, targetPlayerId, targetPlayerName, wit
                     %s
                 </p>
             </div>
-        ]], string.format(_U('confirmSellText'), targetPlayerName, salePrice)),
+        ]], _U('confirmSellText', targetPlayerName, salePrice)),
         style = {}
     })
-    
     confirmMenu:RegisterElement('button', {
         label = _U('Yes'),
         style = {}

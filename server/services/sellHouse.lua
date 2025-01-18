@@ -140,7 +140,7 @@ AddEventHandler('bcc-housing:sellHouseToPlayerWithInventory', function(houseId, 
 
                     -- Notify both players
                     VORPcore.NotifyAvanced(src, _U("houseSoldSuccess", salePrice), "inventory_items", "money_billstack", "tick", "COLOR_GREEN", 4000)
-                    VORPcore.NotifyAvanced(targetPlayerId, _U("housePurchasedSuccess"), salePrice, "inventory_items", "money_billstack", "COLOR_GREEN", 4000)
+                    VORPcore.NotifyAvanced(targetPlayerId, _U("housePurchasedSuccess", salePrice), "inventory_items", "money_billstack", "COLOR_GREEN", 4000)
 
                     -- Notify other clients about the change
                     TriggerClientEvent('bcc-housing:ClientRecHouseLoad', targetPlayerId)
