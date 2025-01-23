@@ -3,7 +3,7 @@ local RotateYawPrompt, RotateYawLeftPrompt, RotatePitchPrompt, RotateBackwardPro
 local IncreasePrecisionPrompt, DecreasePrecisionPrompt, ConfirmPrompt, CancelPrompt
 local FurnitureGroup = GetRandomIntInRange(0, 0xffffff)
 
-function FurnitureMenu(houseId)
+function FurnitureMenu(houseId, ownershipStatus)
     BCCHousingMenu:Close() -- Close any previously opened menus
 
     if HandlePlayerDeathAndCloseMenu() then
@@ -28,7 +28,7 @@ function FurnitureMenu(houseId)
         label = _U("buyOwnerFurn"),
         style = {}
     }, function()
-        buyFurnitureMenu(houseId)
+        buyFurnitureMenu(houseId, ownershipStatus)
     end)
 
     furnitureMainMenu:RegisterElement('button', {
@@ -48,9 +48,9 @@ function FurnitureMenu(houseId)
     furnitureMainMenu:RegisterElement('button', {
         label = _U("backButton"),
         slot = 'footer',
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
-        TriggerEvent('bcc-housing:openmenu', houseId, true)
+        TriggerEvent('bcc-housing:openmenu', houseId, true, ownershipStatus)
     end)
 
     furnitureMainMenu:RegisterElement('bottomline', {
@@ -68,7 +68,7 @@ function FurnitureMenu(houseId)
     })
 end
 
-function buyFurnitureMenu(houseId)
+function buyFurnitureMenu(houseId, ownershipStatus)
     BCCHousingMenu:Close() -- Close any previously opened menus
 
     if HandlePlayerDeathAndCloseMenu() then
@@ -135,7 +135,7 @@ function buyFurnitureMenu(houseId)
             style = {}
         }, function()
             -- Call to open the specific furniture type menu
-            IndFurnitureTypeMenu(item.action, houseId)
+            IndFurnitureTypeMenu(item.action, houseId, ownershipStatus)
         end)
     end
 
@@ -148,9 +148,9 @@ function buyFurnitureMenu(houseId)
     buyFurnitureMenu:RegisterElement('button', {
         label = _U("backButton"),
         slot = "footer",
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
-        FurnitureMenu(houseId)
+        FurnitureMenu(houseId, ownershipStatus)
     end)
 
     buyFurnitureMenu:RegisterElement('bottomline', {
@@ -168,7 +168,7 @@ function buyFurnitureMenu(houseId)
     })
 end
 
-function IndFurnitureTypeMenu(type, houseId)
+function IndFurnitureTypeMenu(type, houseId, ownershipStatus)
     BCCHousingMenu:Close() -- Close any previously opened menus
 
     if HandlePlayerDeathAndCloseMenu() then
@@ -214,9 +214,9 @@ function IndFurnitureTypeMenu(type, houseId)
     furnitureTypeMenu:RegisterElement('button', {
         label = _U("backButton"),
         slot = "footer",
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
-        FurnitureMenu(houseId)
+        FurnitureMenu(houseId, ownershipStatus)
     end)
 
     furnitureTypeMenu:RegisterElement('bottomline', {
@@ -598,7 +598,7 @@ function SellFurniture(furniture)
     TriggerServerEvent('bcc-housing:SellFurniture', furniture)
 end
 
-function SellOwnedFurnitureMenu(houseId, furnTable)
+function SellOwnedFurnitureMenu(houseId, furnTable, ownershipStatus)
     devPrint("Opening SellOwnedFurnitureMenu with houseId: " .. tostring(houseId))
     BCCHousingMenu:Close() -- Close any previously opened menus
 
@@ -632,7 +632,7 @@ function SellOwnedFurnitureMenu(houseId, furnTable)
                     if dist < 1.0 then -- Check if the distance is less than 1 meter
                         DeleteEntity(entity)
                         table.remove(CreatedFurniture, idx)
-                        TriggerServerEvent('bcc-housing:FurnSoldRemoveFromTable', v, houseId, furnTable, k)
+                        TriggerServerEvent('bcc-housing:FurnSoldRemoveFromTable', v, houseId, furnTable, k, ownershipStatus)
                         sold = true
                         break
                     end
@@ -659,9 +659,9 @@ function SellOwnedFurnitureMenu(houseId, furnTable)
     sellFurnMenu:RegisterElement('button', {
         label = _U("backButton"),
         slot = "footer",
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
-        FurnitureMenu(houseId)
+        FurnitureMenu(houseId, ownershipStatus)
     end)
 
     sellFurnMenu:RegisterElement('bottomline', {
@@ -691,10 +691,10 @@ function GetOwnedFurniture(houseId)
 end
 
 RegisterNetEvent('bcc-housing:SellOwnedFurnMenu')
-AddEventHandler('bcc-housing:SellOwnedFurnMenu', function(houseId, furnTable)
+AddEventHandler('bcc-housing:SellOwnedFurnMenu', function(houseId, furnTable, ownershipStatus)
     devPrint("Opening Sell Owned Furniture Menu for House ID: " .. tostring(houseId))
     if type(furnTable) == "table" then
-        SellOwnedFurnitureMenu(houseId, furnTable)
+        SellOwnedFurnitureMenu(houseId, furnTable, ownershipStatus)
     else
         devPrint("Error: furnTable is not a table")
     end

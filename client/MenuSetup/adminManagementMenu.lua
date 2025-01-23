@@ -10,11 +10,11 @@ function AdminManagementMenu(allHouses)
     if BCCHousingMenu then
         BCCHousingMenu:Close() -- Ensure no other menus are open
     end
-    
+
     if HandlePlayerDeathAndCloseMenu() then
         return -- Skip opening the menu if the player is dead
     end
-    
+
     local adminMenuPage = BCCHousingMenu:RegisterPage('admin_management_menu_page')
 
     adminMenuPage:RegisterElement('header', {
@@ -50,7 +50,7 @@ function AdminManagementMenu(allHouses)
     adminMenuPage:RegisterElement('button', {
         label = _U("backButton"),
         slot = "footer",
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
         HouseManagementMenu()
     end)
@@ -69,11 +69,11 @@ function AdminManagementMenuHouseChose(houseInfo)
     if BCCHousingMenu then
         BCCHousingMenu:Close()
     end
-    
+
     if HandlePlayerDeathAndCloseMenu() then
         return -- Skip opening the menu if the player is dead
     end
-    
+
     local houseOptionsPage = BCCHousingMenu:RegisterPage('house_options_page')
 
     houseOptionsPage:RegisterElement('header', {
@@ -90,10 +90,12 @@ function AdminManagementMenuHouseChose(houseInfo)
     local houseDetails = string.format(
         _U("houseDetailsHouseID", houseInfo.houseid and tostring(houseInfo.houseid) or "N/A") .. "\n" ..
         _U("houseDetailsOwnerID", houseInfo.charidentifier and tostring(houseInfo.charidentifier) or "N/A") .. "\n" ..
-        _U("houseDetailsRadius", houseInfo.house_radius_limit and tostring(houseInfo.house_radius_limit) or "N/A") .. "\n" ..
+        _U("houseDetailsRadius", houseInfo.house_radius_limit and tostring(houseInfo.house_radius_limit) or "N/A") ..
+        "\n" ..
         _U("houseDetailsInvLimit", houseInfo.invlimit and tostring(houseInfo.invlimit) or "N/A") .. "\n" ..
         _U("houseDetailsTaxes", houseInfo.tax_amount and tostring(houseInfo.tax_amount) or "N/A")
-    )    
+        ---@todo add ownershipStatus ?
+    )
 
     houseOptionsPage:RegisterElement('textdisplay', {
         value = houseDetails,
@@ -143,7 +145,7 @@ function AdminManagementMenuHouseChose(houseInfo)
     houseOptionsPage:RegisterElement('button', {
         label = _U("backButton"),
         slot = "footer",
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
         TriggerServerEvent('bcc-housing:AdminGetAllHouses')
     end)
@@ -167,7 +169,7 @@ function deleteHouse(houseInfo)
     if HandlePlayerDeathAndCloseMenu() then
         return -- Skip opening the menu if the player is dead
     end
-    
+
     if BCCHousingMenu then
         BCCHousingMenu:Close()
     end
@@ -175,7 +177,7 @@ function deleteHouse(houseInfo)
     local deleteHousePage = BCCHousingMenu:RegisterPage("delete_house_page")
 
     deleteHousePage:RegisterElement('header', {
-        value = "Delete House",
+        value = _U("delHouse"),
         slot = "header",
         style = {}
     })
@@ -186,18 +188,18 @@ function deleteHouse(houseInfo)
     })
 
     deleteHousePage:RegisterElement('subheader', {
-        value = "Are you sure you want to delete this house?",
+        value = _U("delHouse_desc"),
         slot = "header",
         style = {}
     })
-    
+
     deleteHousePage:RegisterElement('line', {
         slot = "footer",
         style = {}
     })
-    
+
     deleteHousePage:RegisterElement('button', {
-        label = "Yes",
+        label = _U("confirmYes"),
         slot = "footer",
         style = {}
     }, function()
@@ -206,9 +208,9 @@ function deleteHouse(houseInfo)
     end)
 
     deleteHousePage:RegisterElement('button', {
-        label = "No",
+        label = _U("confirmNo"),
         slot = "footer",
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
         AdminManagementMenuHouseChose(houseInfo)
     end)
@@ -237,7 +239,7 @@ function changeHouseRadius(houseInfo)
     if HandlePlayerDeathAndCloseMenu() then
         return -- Skip opening the menu if the player is dead
     end
-    
+
     local changeRadiusPage = BCCHousingMenu:RegisterPage("set_radius_page")
     changeRadiusPage:RegisterElement('header', {
         value = _U("setRadius"),
@@ -288,7 +290,7 @@ function changeHouseRadius(houseInfo)
     changeRadiusPage:RegisterElement('button', {
         label = _U("backButton"),
         slot = "footer",
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
         AdminManagementMenuHouseChose(houseInfo)
     end)
@@ -317,7 +319,7 @@ function changeHouseTaxes(houseInfo)
     if HandlePlayerDeathAndCloseMenu() then
         return -- Skip opening the menu if the player is dead
     end
-    
+
     local changeHouseTaxesPage = BCCHousingMenu:RegisterPage("set_tax_amount_page")
 
     changeHouseTaxesPage:RegisterElement('header', {
@@ -369,7 +371,7 @@ function changeHouseTaxes(houseInfo)
     changeHouseTaxesPage:RegisterElement('button', {
         label = _U("backButton"),
         slot = "footer",
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
         AdminManagementMenuHouseChose(houseInfo)
     end)
@@ -398,7 +400,7 @@ function changeHouseInventory(houseInfo)
     if HandlePlayerDeathAndCloseMenu() then
         return -- Skip opening the menu if the player is dead
     end
-    
+
     local changeHouseInventoryPage = BCCHousingMenu:RegisterPage('inventory_limit_page')
     local inventoryLimit = nil
 
@@ -449,7 +451,7 @@ function changeHouseInventory(houseInfo)
     changeHouseInventoryPage:RegisterElement('button', {
         label = _U("backButton"),
         slot = "footer",
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
         AdminManagementMenuHouseChose(houseInfo)
     end)

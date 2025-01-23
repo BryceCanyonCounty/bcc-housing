@@ -1,17 +1,22 @@
-function sellHouseConfirmation(houseId)
+function sellHouseConfirmation(houseId, ownershipStatus)
     if not houseId then
         devPrint("Error: houseInfo is nil")
+        return
+    end
+
+    if ownershipStatus ~= "purchased" then
+        devPrint("Error: cannot sold rented house to player")
         return
     end
 
     if BCCHousingMenu then
         BCCHousingMenu:Close()
     end
-    
+
     if HandlePlayerDeathAndCloseMenu() then
         return -- Skip opening the menu if the player is dead
     end
-    
+
     local sellHouseConfirmation = BCCHousingMenu:RegisterPage("sell_house_page_confirmation")
 
     sellHouseConfirmation:RegisterElement('header', {
@@ -53,9 +58,9 @@ function sellHouseConfirmation(houseId)
     sellHouseConfirmation:RegisterElement('button', {
         label = _U('No'),
         slot = "footer",
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
-        TriggerEvent('bcc-housing:openmenu', houseId, true)
+        TriggerEvent('bcc-housing:openmenu', houseId, true, ownershipStatus)
     end)
 
     sellHouseConfirmation:RegisterElement('bottomline', {
@@ -74,9 +79,14 @@ function sellHouseConfirmation(houseId)
     })
 end
 
-function sellHouseToPlayer(houseId)
+function sellHouseToPlayer(houseId, ownershipStatus)
     if not houseId then
         devPrint("Error: houseId is nil")
+        return
+    end
+
+    if ownershipStatus ~= "purchased" then
+        devPrint("Error: cannot sold rented house to player")
         return
     end
 
@@ -91,7 +101,7 @@ function sellHouseToPlayer(houseId)
     local sellHouseToPlayer = BCCHousingMenu:RegisterPage("sell_house_toPlayer_page")
 
     sellHouseToPlayer:RegisterElement('header', {
-        value = "Sell House To a Player",
+        value = _U("sellHouseToPlayer"),
         slot = "header",
         style = {}
     })
@@ -102,18 +112,18 @@ function sellHouseToPlayer(houseId)
 
     -- Button to sell house with inventory
     sellHouseToPlayer:RegisterElement('button', {
-        label = "Sell house with inventory",
+        label = _U("sellHouseWithInv"),
         style = {}
     }, function()
-        OpenSellHouseToPlayerMenu(houseId, true) -- true indicates selling with inventory
+        OpenSellHouseToPlayerMenu(houseId, true, ownershipStatus) -- true indicates selling with inventory
     end)
 
     -- Button to sell house without inventory
     sellHouseToPlayer:RegisterElement('button', {
-        label = "Sell house without inventory",
+        label = _U("sellHouseWithoutInv"),
         style = {}
     }, function()
-        OpenSellHouseToPlayerMenu(houseId, false) -- false indicates selling without inventory
+        OpenSellHouseToPlayerMenu(houseId, false, ownershipStatus) -- false indicates selling without inventory
     end)
 
     sellHouseToPlayer:RegisterElement('line', {
@@ -122,11 +132,11 @@ function sellHouseToPlayer(houseId)
     })
 
     sellHouseToPlayer:RegisterElement('button', {
-        label = "Back",
+        label = _U("backButton"),
         slot = "footer",
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
-        TriggerEvent('bcc-housing:openmenu', houseId, true)
+        TriggerEvent('bcc-housing:openmenu', houseId, true, ownershipStatus)
     end)
 
     sellHouseToPlayer:RegisterElement('bottomline', {
@@ -134,10 +144,16 @@ function sellHouseToPlayer(houseId)
         style = {}
     })
 
-    TextDisplay = sellHouseToPlayer:RegisterElement('textdisplay', {
-        value = "Sell this house to a player? Please choose one option",
+    TextDisplay = sellHouseToPlayer:RegisterElement('html', {
+        value = _U("sellHouseDesc"),
         slot = "footer",
-        style = {}
+        style = {
+            ["font-size"] = "16px",
+            ["color"] = "#ffffff",
+            ["text-align"] = "center",
+            ["line-height"] = "1.5",
+            ["margin-top"] = "10px"
+        }
     })
 
     BCCHousingMenu:Open({
@@ -145,12 +161,12 @@ function sellHouseToPlayer(houseId)
     })
 end
 
-function OpenSellHouseToPlayerMenu(houseId, withInventory)
+function OpenSellHouseToPlayerMenu(houseId, withInventory, ownershipStatus)
 
     if HandlePlayerDeathAndCloseMenu() then
         return -- Skip opening the menu if the player is dead
     end
-    
+
     local nearbyPlayers = GetNearbyPlayers()
     local sellHouseToPlayerMenu = BCCHousingMenu:RegisterPage("sell_house_player_select")
 
@@ -160,13 +176,35 @@ function OpenSellHouseToPlayerMenu(houseId, withInventory)
     })
 
     if #nearbyPlayers > 0 then
+        local salePrice = Config.DefaultSellPricetoPlayer -- Get the sale price from your config
+        InputField = sellHouseToPlayerMenu:RegisterElement('input', {
+            label = _U('setPriceToPlayer'),
+            placeholder = tostring(salePrice),
+            value = salePrice,
+            -- persist = false,
+            style = {
+                -- ['background-image'] = 'none',
+                -- ['background-color'] = '#E8E8E8',
+                -- ['color'] = 'black',
+                -- ['border-radius'] = '6px'
+            }
+        }, function(data)
+            local temp = tonumber(data.value)
+            if temp then
+                salePrice = temp
+            else
+                InputField:update({value = salePrice})
+            end
+        end)
+
         for _, player in ipairs(nearbyPlayers) do
+            local targetId = GetPlayerFromServerId(player.id)
+            local showPlayer = Config.dontShowNames and player.id or GetPlayerName(targetId)
             sellHouseToPlayerMenu:RegisterElement('button', {
-                label = _U('sellTo') .. GetPlayerName(GetPlayerFromServerId(player.id)),
+                label = _U('sellTo') .. showPlayer,
                 style = {}
             }, function()
-                OpenConfirmSellHouseMenu(houseId, player.id, GetPlayerName(GetPlayerFromServerId(player.id)),
-                withInventory)
+                OpenConfirmSellHouseMenu(houseId, player.id, showPlayer, withInventory, ownershipStatus, salePrice)
             end)
         end
     else
@@ -181,19 +219,18 @@ function OpenSellHouseToPlayerMenu(houseId, withInventory)
         slot = "footer",
         style = {}
     }, function()
-        sellHouseToPlayer(houseId)
+        sellHouseToPlayer(houseId, ownershipStatus)
     end)
 
     BCCHousingMenu:Open({ startupPage = sellHouseToPlayerMenu })
 end
 
-function OpenConfirmSellHouseMenu(houseId, targetPlayerId, targetPlayerName, withInventory)
+function OpenConfirmSellHouseMenu(houseId, targetPlayerId, targetPlayerName, withInventory, ownershipStatus, salePrice)
     if HandlePlayerDeathAndCloseMenu() then
         return -- Skip opening the menu if the player is dead
     end
-    
+
     local confirmMenu = BCCHousingMenu:RegisterPage("confirmSellHouseMenu")
-    local salePrice = Config.DefaultSellPricetoPlayer -- Get the sale price from your config
 
     confirmMenu:RegisterElement('header', { 
         value = _U('confirmSale'),
@@ -227,11 +264,11 @@ function OpenConfirmSellHouseMenu(houseId, targetPlayerId, targetPlayerName, wit
         BCCHousingMenu:Close()
     end)
 
-    confirmMenu:RegisterElement('button', { 
-        label = _U('No'), 
+    confirmMenu:RegisterElement('button', {
+        label = _U('No'),
         style = {}
     }, function()
-        OpenSellHouseToPlayerMenu(houseId, withInventory)
+        OpenSellHouseToPlayerMenu(houseId, withInventory, ownershipStatus)
     end)
 
     BCCHousingMenu:Open({ startupPage = confirmMenu })

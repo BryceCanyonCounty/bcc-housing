@@ -15,6 +15,12 @@ AddEventHandler('bcc-housing:sellHouse', function(houseId)
             local houseData = result[1]
             devPrint("House found in database: " .. json.encode(houseData))
 
+            if houseData.ownershipStatus ~= 'purchased' then -- houseData.ownershipStatus == 'rented'
+                devPrint("Rented house cannot be sold. houseId: " .. tostring(houseId))
+                VORPcore.NotifyAvanced(src, _U("rentedHouseCannotBeSold"), "generic_textures", "cross", "COLOR_RED", 4000)
+                return
+            end
+
             if houseData.charidentifier == tostring(charIdentifier) then
                 devPrint("Player is the owner of the house with houseId: " .. tostring(houseId))
 
@@ -125,13 +131,20 @@ AddEventHandler('bcc-housing:sellHouseToPlayerWithInventory', function(houseId, 
                     TargetCharacter.removeCurrency(0, salePrice)
 
                     -- Update the house owner in the database
-                    MySQL.update('UPDATE bcchousing SET charidentifier = ? WHERE houseid = ?',
-                        { targetCharIdentifier, houseId })
+                    local affectedRows = MySQL.update.await(
+                        'UPDATE bcchousing SET charidentifier = ? WHERE houseid = ?',
+                        { targetCharIdentifier, houseId }
+                    )
+
+                    if affectedRows == 0 then
+                        devPrint("SQL query error fro transfering house: " .. houseId)
+                        error()
+                    end
 
                     -- Insert the transaction into the `bcc-transactions` table
                     local params = {
                         ['@houseid'] = houseId,
-                        ['@identifier'] = targetCharIdentifier,
+                        ['@identifier'] = charIdentifier,
                         ['@amount'] = salePrice
                     }
                     MySQL.insert(
@@ -161,7 +174,8 @@ AddEventHandler('bcc-housing:sellHouseToPlayerWithInventory', function(houseId, 
                 -- Notify the player if they do not own the house or the house does not exist
                 VORPcore.NotifyAvanced(src, _U("houseNotOwnedOrExist"), "generic_textures", "cross", "COLOR_RED", 4000)
             end
-        end)
+        end
+    )
 end)
 
 -- Sell House Without Inventory
@@ -194,34 +208,42 @@ AddEventHandler('bcc-housing:sellHouseToPlayerWithoutInventory', function(houseI
                     TargetCharacter.removeCurrency(0, salePrice)
 
                     -- Update the house owner in the database and remove inventory data
-                    MySQL.update(
-                    'UPDATE bcchousing SET charidentifier = ?, furniture = NULL, doors = NULL WHERE houseid = ?',
-                        { targetCharIdentifier, houseId })
+                    local affectedRows = MySQL.update.await(
+                        'UPDATE bcchousing SET charidentifier = ?, furniture = "none", doors = "none" WHERE houseid = ?',
+                        { targetCharIdentifier, houseId }
+                    )
+
+                    if affectedRows == 0 then
+                        devPrint("SQL query error fro transfering house: " .. houseId)
+                        error()
+                    end
 
                     -- Insert the transaction into the `bcc-transactions` table
                     local params = {
                         ['@houseid'] = houseId,
-                        ['@identifier'] = targetCharIdentifier,
+                        ['@identifier'] = charIdentifier,
                         ['@amount'] = salePrice
                     }
                     MySQL.insert(
-                    'INSERT INTO bcchousing_transactions (houseid, identifier, amount) VALUES (@houseid, @identifier, @amount)',
-                        params)
+                        'INSERT INTO bcchousing_transactions (houseid, identifier, amount) VALUES (@houseid, @identifier, @amount)',
+                        params
+                    )
 
                     -- Notify both players
                     VORPcore.NotifyAvanced(src, _U("houseSoldWithoutInventory", salePrice), "generic_textures", "tick", "COLOR_PURE_WHITE", 4000)
                     VORPcore.NotifyAvanced(targetPlayerId, _U("housePurchasedWithoutInventory", salePrice), "generic_textures", "tick", "COLOR_PURE_WHITE", 4000)
-                    
+
                     -- Notify other clients about the change
                     TriggerClientEvent('bcc-housing:ClientRecHouseLoad', targetPlayerId)
                     TriggerClientEvent('bcc-housing:ClientRecHouseLoad', src)
 
                     -- Optionally, send a message to Discord
                     Discord:sendMessage("House ID: " ..
-                    tostring(houseId) ..
-                    " was sold without inventory by charIdentifier: " ..
-                    tostring(charIdentifier) ..
-                    " to charIdentifier: " .. tostring(targetCharIdentifier) .. " for $" .. tostring(salePrice))
+                        tostring(houseId) ..
+                        " was sold without inventory by charIdentifier: " ..
+                        tostring(charIdentifier) ..
+                        " to charIdentifier: " .. tostring(targetCharIdentifier) .. " for $" .. tostring(salePrice)
+                    )
                 else
                     -- Notify the seller that the buyer does not have enough money
                     VORPcore.NotifyAvanced(src, _U("buyerNoMoney"), "generic_textures", "cross", "COLOR_PURE_WHITE", 4000)
@@ -231,7 +253,8 @@ AddEventHandler('bcc-housing:sellHouseToPlayerWithoutInventory', function(houseI
                 -- Notify the player if they do not own the house or the house does not exist
                 VORPcore.NotifyAvanced(src, _U("noHouseOrNotOwner"), "generic_textures", "cross", "COLOR_PURE_WHITE", 4000)
             end
-        end)
+        end
+    )
 end)
 
 -- Event to request the list of houses sold by a player

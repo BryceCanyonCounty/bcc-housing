@@ -36,6 +36,7 @@ Locales["ro_lang"] = {
 	givenAccess = 'Acest jucator a primit acces la casa ta!',
 	houseInv = 'Inventar',
 	houseInv_desc = 'Deschide inventarul casei tale. Aceste obiecte vor fi pastrate în siguranta!',
+	noAccessNotify = "You didn`t give acess to anyone", -- NEW
 
 	----- Meniu Mobilier -----
 	furniture = 'Meniu Mobilier',
@@ -95,6 +96,7 @@ Locales["ro_lang"] = {
 	movementIncreased = "Precizia miscarii a crescut la ",
 	movementDecreased = "Precizia miscarii a scazut la ",
 	noMoney = 'Nu Ai Destui Bani',
+	noGold = "Not enough ~o~gold~s~", -- NEW
 	furnPlaced = 'Mobilier Cumparat!',
 	furnNotPlaced = 'Nu ai achizitionat mobilierul',
 	toFar = 'Prea departe de casa ta',
@@ -111,13 +113,16 @@ Locales["ro_lang"] = {
 	taxAmount_desc = 'Seteaza suma pe care casa va trebui sa o plateasca In taxe.',
 	taxAmountSet = 'Suma Taxei Stabilita',
 	ledgerAmountInserted = 'Bani introdusi In registru cu succes',
+	ledgerGoldAmountInserted = "~o~Gold~s~ is placed", -- NEW
 	ledger = 'Registru',
+	ledgerGold = "Gold Ledger", -- NEW
 	ledger_desc = 'Aici vor fi luati banii pentru taxe. Nu poti scoate bani odata ce au fost introdusi, si nu poti stoca mai multi bani decat suma pe care trebuie sa o platesti In taxe!',
 	ledgerAmountToInsert = 'Suma',
 	checkledger = 'Verifica Registrul',
 	checkledger_desc = 'Verifica cati bani ai In registru comparativ cu suma taxei.',
 	maxMoney = 'Suma maxima de bani este deja stocata sau suma pe care Incerci sa o stochezi este prea mare',
     ledgerAmountRemoved = "Ati scos bani din registru: ",
+	ledgerGoldAmountRemoved = "You have removed ~o~gold~s~ from ledger: ", -- NEW
     ledgerUpdateFailed = "Actualizarea registrului a esuat",
     notEnoughFunds = "Fonduri insuficiente in registru pentru a elimina suma specificata",
     maxAmountStored = "Suma maxima de bani este deja stocată",
@@ -170,6 +175,10 @@ Locales["ro_lang"] = {
 	placeFurniture = 'Aseaza Mobila',
 	noHouseFound = 'Nu a fost gasita nicio casa',
 	sellHouse = 'Vinde Casa',
+	sellHouseDesc = "Sell this house to a player? Please choose one option", -- NEW
+    sellHouseWithInv = "Sell house with inventory", -- NEW
+    sellHouseWithoutInv = "Sell house without inventory", -- NEW
+	removeAccessTo = "Removed player access successfully for Player ID: ", -- NEW
 	removeAccess = 'Elimina Accesul',
 	enteringPrivate = 'Intri pe o proprietate privata!',
 	onPrivate = 'Esti pe o proprietate privata',
@@ -188,7 +197,12 @@ Locales["ro_lang"] = {
     invUpdatedFailed = 'Nu s-a reusit actualizarea limitei de inventar.',
     taxUpdatedSuccess = 'Suma de impozit a fost actualizata cu succes.',
     taxUpdatedFailed = 'Nu s-a reusit actualizarea sumei de impozit.',
-    buyPricePrompt = 'Pret : $',
+    buyPricePrompt = 'Price : $ %d~n~Rent : %d ~o~GOLD~s~', -- RENEW
+    rentalDeposit = 'Rental deposit in <span style="color: gold; font-weight: bold;">gold</span>: ', -- NEW
+    rentCharge = 'Rent charge in <span style="color: gold; font-weight: bold;">gold</span>: ', -- NEW
+    buyGoldHouseFor = 'Rent House for %d gold', -- NEW
+    rentedHouseCannotBeSold = "Rented house cannot be sold", -- NEW
+    cancelHouseRent = "Cancel the rental early", -- NEW
     confirmHousePurchase = 'Confirma Achizitia Casei',
     listBuyPrice = 'Pret: ',
     listSellPrice = 'Pret de Vanzare: ',
@@ -258,8 +272,16 @@ Locales["ro_lang"] = {
     giveAccesstoDoor = "Give access to door",
     giveAccesstoHouse = "Access",
     removeFromLedger = "Remove from ledger",
+	removeFromLedgerGold = "Take Gold", -- NEW
     removeAccessFromDoor = "Remove Access From Door",
     doorSelectUserToRemove = "Select a user to remove access from this door",
     doorAccessRevoked = "'s access has been revoked.",
-    doorRemoveAccessFailed = "Failed to revoke access for "
+    doorRemoveAccessFailed = "Failed to revoke access for ",
+
+	updateFailed = "Update failed, please try again.", -- NEW
+    noSuchHouseId = "No such house ID or empty allowed list.", -- NEW
+	purchased = "Purchased", -- NEW
+    rented = "Rented", -- NEW
+	setPriceToPlayer = "Set the price", -- NEW
+
 }

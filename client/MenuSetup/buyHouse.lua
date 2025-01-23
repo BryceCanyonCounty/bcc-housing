@@ -82,7 +82,7 @@ CreateThread(function()
                 end
 
                 if distance < 2 then
-                    PromptGroup:ShowGroup(_U("buyPricePrompt") .. house.price)
+                    PromptGroup:ShowGroup(_U("buyPricePrompt", house.price, house.rentalDeposit))
                     if BuyHousePrompt:HasCompleted() then
                         TriggerEvent('bcc-housing:openBuyHouseMenu', house)
                     end
@@ -169,7 +169,7 @@ AddEventHandler('bcc-housing:openCollectMoneyMenu', function()
 
         collectMoneyMenu:RegisterElement('button', {
             label = _U("backButton"),
-            style = {},
+            style = {['position'] = 'relative', ['z-index'] = 9,},
             slot = "footer"
         }, function()
             BCCHousingMenu:Close()
@@ -214,13 +214,17 @@ AddEventHandler('bcc-housing:openBuyHouseMenu', function(house)
         <div style="text-align:center; margin: 20px;">
             <p style="font-size:18px; margin-bottom: 10px;">%s <strong style="color:#28A745;">$%d</strong></p>
             <p style="font-size:18px; margin-bottom: 10px;">%s <strong style="color:#17A2B8;">$%d</strong></p>
+            <p style="font-size:18px; margin-bottom: 10px;">%s %d
+            <p style="font-size:18px; margin-bottom: 10px;">%s %d
             <p style="font-size:18px; margin-bottom: 10px;">%s <strong style="color:#FFC107;">%s</strong></p>
             <p style="font-size:18px; margin-bottom: 10px;">%s <strong>%d</strong></p>
             <p style="font-size:18px; margin-bottom: 10px;">%s <strong style="color:#DC3545;">$%d</strong></p>
         </div>
     ]],
-        _U('listBuyPrice'), tonumber(house.price or 0), 
+        _U('listBuyPrice'), tonumber(house.price or 0),
         _U('listSellPrice'), tonumber(house.sellPrice or 0),
+        _U('rentalDeposit'), tonumber(house.rentalDeposit),
+        _U('rentCharge'), tonumber(house.rentCharge),
         _U('listCanSell'), tostring(house.canSell and _U('Yes') or _U('No')),
         _U('listInvLimit'), tonumber(house.invLimit or 0),
         _U('listTaxAmount'), tonumber(house.taxAmount or 0)
@@ -246,13 +250,24 @@ AddEventHandler('bcc-housing:openBuyHouseMenu', function(house)
         style = {},
         slot = "footer"
     }, function()
-        TriggerServerEvent('bcc-housing:buyHouse', house.houseCoords)
+        local moneyType = 0 -- Cash
+        TriggerServerEvent('bcc-housing:buyHouse', house.houseCoords, moneyType)
+        BCCHousingMenu:Close()
+    end)
+
+    buyHouseMenu:RegisterElement('button', {
+        label = _U('buyGoldHouseFor', house.rentalDeposit),
+        style = {},
+        slot = "footer"
+    }, function()
+        local moneyType = 1 -- Gold
+        TriggerServerEvent('bcc-housing:buyHouse', house.houseCoords, moneyType)
         BCCHousingMenu:Close()
     end)
 
     buyHouseMenu:RegisterElement('button', {
         label = _U('cancel'),
-        style = {},
+        style = {['position'] = 'relative', ['z-index'] = 9,},
         slot = "footer"
     }, function()
         BCCHousingMenu:Close()

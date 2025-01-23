@@ -108,7 +108,7 @@ function PlayerListMenuForGiveAccess(houseId, callback, context)
 
     for k, v in pairs(players) do
         playerListGiveMenuPage:RegisterElement("button", {
-            label = v.PlayerName,
+            label = Config.dontShowNames and ("ID - " .. v.serverId) or v.PlayerName,
             style = {}
         }, function()
             callback(houseId, v.staticid, v.serverId, function(success, message)
@@ -126,7 +126,7 @@ function PlayerListMenuForGiveAccess(houseId, callback, context)
     playerListGiveMenuPage:RegisterElement("button", {
         label = _U("backButton"),
         slot = "footer",
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
         housingAccessMenu:RouteTo()
     end)
@@ -170,7 +170,7 @@ function PlayerListMenuForRemoveAccess(houseId, callback, context)
         if #rplayers == 0 then
             devPrint("No players to display in menu")
             TextDisplay = playerListRemoveMenuPage:RegisterElement('textdisplay', {
-                value = "You didn`t give acess to anyone",
+                value = _U("noAccessNotify"),
                 style = {}
             })
         end
@@ -194,7 +194,7 @@ function PlayerListMenuForRemoveAccess(houseId, callback, context)
         playerListRemoveMenuPage:RegisterElement("button", {
             label = _U("backButton"),
             slot = "footer",
-            style = {}
+            style = {['position'] = 'relative', ['z-index'] = 9,}
         }, function()
             housingAccessMenu:RouteTo()
         end)
@@ -214,7 +214,7 @@ function PlayerListMenuForRemoveAccess(houseId, callback, context)
     end)
 end
 
-AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
+AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner, ownershipStatus)
     devPrint("Opening housing main menu for House ID: " .. tostring(houseId) .. ", Is Owner: " .. tostring(isOwner))
 
     if HandlePlayerDeathAndCloseMenu() then
@@ -297,7 +297,7 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
             housingAccessMenu:RegisterElement('button', {
                 label = _U("backButton"),
                 slot = "footer",
-                style = {}
+                style = {['position'] = 'relative', ['z-index'] = 9,}
             }, function()
                 housingMainMenu:RouteTo()
             end)
@@ -311,7 +311,7 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
         end)
 
         housingMainMenu:RegisterElement('button', {
-            label = "Doors",
+            label = _U("doors"),
             style = {}
         }, function()
             local doorManagementPage = BCCHousingMenu:RegisterPage('owner_door_management_page')
@@ -460,7 +460,7 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
                                     doorRemoveDoorPage:RegisterElement('button', {
                                         label = _U("backButton"),
                                         slot = "footer",
-                                        style = {}
+                                        style = {['position'] = 'relative', ['z-index'] = 9,}
                                     }, function()
                                         doorOptionsPage:RouteTo()
                                     end)
@@ -541,7 +541,7 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
                                             giveAccessPage:RegisterElement('button', {
                                                 label = _U("backButton"),
                                                 slot = "footer",
-                                                style = {}
+                                                style = {['position'] = 'relative', ['z-index'] = 9,}
                                             }, function()
                                                 doorOptionsPage:RouteTo()
                                             end)
@@ -623,7 +623,7 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
                                             removeAccessPage:RegisterElement('button', {
                                                 label = _U("backButton"),
                                                 slot = "footer",
-                                                style = {}
+                                                style = {['position'] = 'relative', ['z-index'] = 9,}
                                             }, function()
                                                 doorOptionsPage:RouteTo()
                                             end)
@@ -648,7 +648,7 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
                                 doorOptionsPage:RegisterElement('button', {
                                     label = _U("backButton"),
                                     slot = "footer",
-                                    style = {}
+                                    style = {['position'] = 'relative', ['z-index'] = 9,}
                                 }, function()
                                     doorListPage:RouteTo()
                                 end)
@@ -694,7 +694,7 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
             doorManagementPage:RegisterElement('button', {
                 label = _U("backButton"),
                 slot = "footer",
-                style = {}
+                style = {['position'] = 'relative', ['z-index'] = 9,}
             }, function()
                 housingMainMenu:RouteTo()
             end)
@@ -713,31 +713,44 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
             label = _U("furniture"),
             style = {}
         }, function()
-            FurnitureMenu(houseId)
+            FurnitureMenu(houseId, ownershipStatus)
         end)
 
-        housingMainMenu:RegisterElement('button', {
-            label = _U("sellHouse"),
-            style = {}
-        }, function()
-            sellHouseConfirmation(houseId)
-        end)
+        if ownershipStatus == 'purchased' then
+            housingMainMenu:RegisterElement('button', {
+                label = _U("sellHouse"),
+                style = {}
+            }, function()
+                sellHouseConfirmation(houseId, ownershipStatus)
+            end)
 
-        housingMainMenu:RegisterElement('button', {
-            label = _U('sellHouseToPlayer'),
-            style = {}
-        }, function()
-            sellHouseToPlayer(houseId)
-        end)
+            housingMainMenu:RegisterElement('button', {
+                label = _U('sellHouseToPlayer'),
+                style = {}
+            }, function()
+                sellHouseToPlayer(houseId, ownershipStatus)
+            end)
+        else
+            ---@tbd
+            --[[
+            housingMainMenu:RegisterElement('button', {
+                label = _U("cancelHouseRent"),
+                style = {}
+            }, function()
+                --OpenConfirmCancelRent(houseId, ownershipStatus)
+            end)
+            --]]
+        end
     end
 
+    -- if houseData.ownershipStatus ~= 'purchased' then -- houseData.ownershipStatus == 'rented'
     housingMainMenu:RegisterElement('button', {
-        label = _U("ledger"),
+        label = ownershipStatus == "purchased" and _U("ledger") or _U("ledgerGold"),
         style = {}
     }, function()
         local ledgerPage = BCCHousingMenu:RegisterPage('bcc-housing:ledger:page')
         ledgerPage:RegisterElement('header', {
-            value = _U("ledger"),
+            value = ownershipStatus == "purchased" and _U("ledger") or _U("ledgerGold"),
             slot = "header",
             style = {}
         })
@@ -750,7 +763,7 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
         end)
 
         ledgerPage:RegisterElement('button', {
-            label = _U("ledger"),
+            label = ownershipStatus == "purchased" and _U("ledger") or _U("ledgerGold"),
             style = {}
         }, function()
             if houseId then
@@ -761,7 +774,7 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
         end)
 
         ledgerPage:RegisterElement('button', {
-            label = _U('removeFromLedger'),
+            label = ownershipStatus == "purchased" and _U('removeFromLedger') or _U('removeFromLedgerGold'),
             style = {}
         }, function()
             if houseId then
@@ -779,13 +792,13 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
         ledgerPage:RegisterElement('button', {
             label = _U("backButton"),
             slot = "footer",
-            style = {}
+            style = {['position'] = 'relative', ['z-index'] = 9,}
         }, function()
-            TriggerEvent('bcc-housing:openmenu', houseId, isOwner)
+            TriggerEvent('bcc-housing:openmenu', houseId, isOwner, ownershipStatus)
         end)
 
         ledgerPage:RegisterElement('bottomline', {
-            style = {},
+            style = {['position'] = 'relative', ['z-index'] = 9,},
             slot = "footer"
         })
 
@@ -799,11 +812,7 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner)
 
     if Config.UseImageAtBottomMenu then
         housingMainMenu:RegisterElement("html", {
-            value = {
-                string.format([[
-                    <img width="750px" height="108px" style="margin: 0 auto;" src="%s" />
-                ]], Config.HouseImageURL)
-            },
+            value = { Config.HouseImageURL },
             slot = "footer"
         })
     end
@@ -879,9 +888,9 @@ AddEventHandler('bcc-housing:addLedger', function(houseId, isOwner)
     AddLedgerPage:RegisterElement('button', {
         label = _U("backButton"),
         slot = "footer",
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
-        TriggerEvent('bcc-housing:openmenu', houseId, isOwner)
+        TriggerEvent('bcc-housing:openmenu', houseId, isOwner, ownershipStatus)
     end)
 
     AddLedgerPage:RegisterElement('bottomline', {
@@ -942,9 +951,9 @@ AddEventHandler('bcc-housing:removeLedger', function(houseId, isOwner)
     RemoveLedgerPage:RegisterElement('button', {
         label = _U("backButton"),
         slot = "footer",
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
-        TriggerEvent('bcc-housing:openmenu', houseId, isOwner)
+        TriggerEvent('bcc-housing:openmenu', houseId, isOwner, ownershipStatus)
     end)
 
     RemoveLedgerPage:RegisterElement('bottomline', {

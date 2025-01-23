@@ -132,8 +132,7 @@ AddEventHandler('bcc-housing:RemovePlayerAccess', function(houseId, playerId)
 
                 if not found then
                     devPrint("Player ID not found in allowed list, nothing to remove.")
-                    TriggerClientEvent('bcc-housing:PlayerAccessRemovalFailed', src, houseId, playerId,
-                        "Player ID not in allowed list.")
+                    TriggerClientEvent('bcc-housing:PlayerAccessRemovalFailed', src, houseId, playerId, "Player ID not in allowed list.")
                     return
                 end
 
@@ -145,16 +144,15 @@ AddEventHandler('bcc-housing:RemovePlayerAccess', function(houseId, playerId)
                     if affectedRows > 0 then
                         devPrint("Removed player access successfully for Player ID: " .. tostring(playerId))
                         TriggerClientEvent('bcc-housing:ClientRecHouseLoad', src)
-                        VORPcore.NotifyRightTip(src,
-                            "Removed player access successfully for Player ID: " .. tostring(playerId))
+                        VORPcore.NotifyRightTip(src, _U("removeAccessTo") .. tostring(playerId))
                     else
                         devPrint("Failed to update database with new allowed IDs list.")
-                        VORPcore.NotifyRightTip(src, "Update failed, please try again.", 4000)
+                        VORPcore.NotifyRightTip(src, _U("updateFailed"), 4000)
                     end
                 end)
             else
                 devPrint("No house found with ID: " .. tostring(houseId) .. " or allowed_ids is empty.")
-                VORPcore.NotifyRightTip(src, "No such house ID or empty allowed list.", 4000)
+                VORPcore.NotifyRightTip(src, _U("noSuchHouseId"), 4000)
             end
         end)
 end)

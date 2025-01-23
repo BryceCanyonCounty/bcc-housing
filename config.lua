@@ -29,13 +29,17 @@ Config = {
     WebhookAvatar = '',
     -----------------------------------------------------
 
+    dontShowNames = false, -- Show player ID instead if true
+
+    -----------------------------------------------------
+
     -- Admin Commands
     AdminManagementMenuCommand = 'HousingManager', --the name of the command for admins to manage all houses
     EnablePrivatePropertyCheck = true,             -- Set to true to enable, false to disable, this is for if you want to see a message that you enterd on a private property
     keys = {
         manage = 'G',                        -- [G] Manage House
         collect = 'G',                       -- [G] Collect money from selling house 
-        buy = 'B',                           -- [B] Buy house
+        buy = 'G',                           -- [B] Buy house
     },
     -----------------------------------------------------
     UseImageAtBottomMenu = true,
@@ -276,6 +280,8 @@ Config = {
             menuCoords = vector3(-2375.032958984375, 476.5924987792969, 131.42164611816406),
             price = 80000,                       -- The price of the house
             sellPrice = 55000,                   -- Amount received when selling the house
+            rentalDeposit = 10,                  -- First Rental deposit in gold bars
+            rentCharge = 5,                      -- monthly rent in gold bars
             name = "House near Little Creek River", -- Name of the house for display
             forSaleBlips = true,
             saleBlipSprite = 'blip_ambient_quartermaster',

@@ -1,6 +1,6 @@
 -- Event to handle the purchasing of a house
 RegisterServerEvent('bcc-housing:buyHouse')
-AddEventHandler('bcc-housing:buyHouse', function(houseCoords)
+AddEventHandler('bcc-housing:buyHouse', function(houseCoords, moneyType)
     local src = source                               -- Get the source of the event
     local User = VORPcore.getUser(src)               -- Get the user object for the player
     local Character = User.getUsedCharacter          -- Get the character object for the player
@@ -9,7 +9,7 @@ AddEventHandler('bcc-housing:buyHouse', function(houseCoords)
     -- Check how many houses the player currently owns
     local param = { ['@charidentifier'] = Character.charIdentifier }
     local result = MySQL.query.await("SELECT * FROM bcchousing WHERE charidentifier=@charidentifier", param)
-    
+
     if #result >= Config.Setup.MaxHousePerChar then
         -- Notify the player that they have reached the house limit
         VORPcore.NotifyAvanced(src, _U('youOwnMaximum'), "generic_textures", "tick", "COLOR_RED", 4000)
@@ -18,12 +18,26 @@ AddEventHandler('bcc-housing:buyHouse', function(houseCoords)
 
     for _, house in pairs(Config.HousesForSale) do
         if house.uniqueName and #(house.houseCoords - houseCoords) < 0.1 then -- Check if the coordinates match and house has uniqueName
-            if Character.money >= house.price then
+            local moneyAmount
+            if moneyType == 0 then
+                moneyAmount = house.price
+            elseif moneyType == 1 then
+                moneyAmount = house.rentalDeposit
+            end
+            if (moneyType == 0 and Character.money >= moneyAmount) or
+                (moneyType == 1 and Character.gold >= moneyAmount) then
                 -- Check if the house already exists in the database by checking the unique name
                 MySQL.query('SELECT * FROM bcchousing WHERE uniqueName = ?', { house.uniqueName }, function(result)
                     if not result[1] then
                         -- Clear the blips for the house that is being purchased
                         TriggerClientEvent('bcc-housing:clearBlips', src, house.houseId)
+
+                        local houseAction
+                        if moneyType == 0 then
+                            houseAction = 'purchased'
+                        else
+                            houseAction = 'rented'
+                        end
 
                         -- House not found, proceed with the purchase
                         local parameters = {
@@ -32,15 +46,16 @@ AddEventHandler('bcc-housing:buyHouse', function(houseCoords)
                             ['@house_radius_limit'] = house.houseRadiusLimit,
                             ['@doors'] = '[]', -- Placeholder for doors, to be updated after insertion
                             ['@invlimit'] = house.invLimit,
-                            ['@tax_amount'] = house.taxAmount,
+                            ['@tax_amount'] = moneyType == 0 and house.taxAmount or house.rentCharge,
                             ['@tpInt'] = house.tpInt,
                             ['@tpInstance'] = house.tpInstance,
-                            ['@uniqueName'] = house.uniqueName
+                            ['@uniqueName'] = house.uniqueName,
+                            ['@ownershipStatus'] = houseAction,
                         }
 
                         -- Insert the new house into the database
                         MySQL.Async.execute(
-                            "INSERT INTO `bcchousing` (`charidentifier`, `house_coords`, `house_radius_limit`, `doors`, `invlimit`, `tax_amount`, `tpInt`, `tpInstance`, `uniqueName`) VALUES (@charidentifier, @house_coords, @house_radius_limit, @doors, @invlimit, @tax_amount, @tpInt, @tpInstance, @uniqueName)",
+                            "INSERT INTO `bcchousing` (`charidentifier`, `house_coords`, `house_radius_limit`, `doors`, `invlimit`, `tax_amount`, `tpInt`, `tpInstance`, `uniqueName`, `ownershipStatus`) VALUES (@charidentifier, @house_coords, @house_radius_limit, @doors, @invlimit, @tax_amount, @tpInt, @tpInstance, @uniqueName, @ownershipStatus)",
                             parameters, function(rowsChanged)
                                 -- After house purchase, handle door insertion
                                 if rowsChanged > 0 then
@@ -56,15 +71,21 @@ AddEventHandler('bcc-housing:buyHouse', function(houseCoords)
                         )
 
                         -- Deduct the money from the player
-                        Character.removeCurrency(0, house.price)
+                        Character.removeCurrency(moneyType, moneyAmount)
 
                         -- Notify the player that the house was purchased
                         TriggerClientEvent('bcc-housing:housePurchased', src, houseCoords)
-                        VORPcore.NotifyAvanced(src, _U("housePurchaseSuccess", house.name, house.price), "inventory_items", "money_billstack", "COLOR_GREEN", 4000)
-                        
+                        VORPcore.NotifyAvanced(src, _U("housePurchaseSuccess", house.name, moneyAmount), "inventory_items", "money_billstack", "COLOR_GREEN", 4000)
+
                         -- Send a message to Discord
-                        Discord:sendMessage("House purchased by charIdentifier: " .. tostring(Character.charIdentifier) .. "\nHouse: " .. house.name .. " was purchased for $" .. tostring(house.price) .. "\nCharacter Name: " .. Character.firstname .. " " .. Character.lastname)
-							
+                        local currency = " **Unknown currency**"
+                        if moneyType == 0 then
+                            currency = " **Dolars**"
+                        elseif moneyType == 1 then
+                            currency = " **Gold bars**"
+                        end
+                        Discord:sendMessage("House purchased by charIdentifier: " .. tostring(Character.charIdentifier) .. "\nHouse: " .. house.name .. " was **" .. houseAction .. "** for $" .. tostring(moneyAmount) .. currency .. "\nCharacter Name: " .. Character.firstname .. " " .. Character.lastname)
+
                         -- Trigger the client-side to reload the house data
                         TriggerClientEvent('bcc-housing:ClientRecHouseLoad', src)
                     else
