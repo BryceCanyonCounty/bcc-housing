@@ -7,7 +7,8 @@ globalHouseData = {
     invLimit = nil,
     taxAmount = nil,
     doors = {}, -- Assuming doors data is gathered somewhere
-    tpInt = nil
+    tpInt = nil,
+    ownershipStatus = 'purchased',
 }
 
 -- When creating a house
@@ -41,7 +42,7 @@ function PlayerListMenu(houseId, callback, context)
 
     for k, v in pairs(players) do
         playerListMenupage:RegisterElement("button", {
-            label = v.PlayerName,
+            label = Config.dontShowNames and ("ID - " .. v.serverId) or v.PlayerName,
             style = {}
         }, function()
             globalHouseData.owner = v.staticid
@@ -65,7 +66,7 @@ function PlayerListMenu(houseId, callback, context)
     playerListMenupage:RegisterElement("button", {
         label = _U("backButton"),
         slot = "footer",
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
         callback(tpHouse, context) -- Handle the back action appropriately
     end)
@@ -143,7 +144,7 @@ function doorCreationMenu()
     doorCreationMenuPage:RegisterElement('button', {
         label = _U("backButton"),
         slot = "footer",
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
         CreateHouseMenu(false) -- Ensure tpHouse is properly maintained throughout the navigation
     end)
@@ -211,7 +212,7 @@ function IntChoice()
     interiorChoiceMenuPage:RegisterElement('button', {
         label = _U("backButton"),
         slot = "footer",
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
         HouseManagementMenu()
     end)
@@ -237,11 +238,11 @@ function HouseManagementMenu(allHouses)
     if BCCHousingMenu then
         BCCHousingMenu:Close() -- Ensure no other menus are open
     end
-    
+
     if HandlePlayerDeathAndCloseMenu() then
         return -- Skip opening the menu if the player is dead
     end
-    
+
     -- Initialize the teleport options menu page
     local HouseManagementList = BCCHousingMenu:RegisterPage("tp_options_page")
 
@@ -275,7 +276,7 @@ function HouseManagementMenu(allHouses)
 
     HouseManagementList:RegisterElement('button', {
         label = _U('manageAllHouses'),
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
         TriggerServerEvent('bcc-housing:AdminGetAllHouses')
     end)
@@ -356,6 +357,33 @@ function CreateHouseMenu(tp, refresh)
         setInvLimit(tpHouse)
     end)
 
+    createHouseMenu:RegisterElement('arrows', {
+        label = _U("selectOwnershipType"),
+        start = 1,
+        options = {
+            {
+                display = _U("purchased"),
+                extra = "purchased"
+            },
+            {
+                display = _U("rented"),
+                extra = "rented"
+            },
+            -- "purchased",
+            -- "rented",
+        },
+        persist = true,
+        sound = {
+            action = "SELECT",
+            soundset = "RDRO_Character_Creator_Sounds"
+        },
+    }, function(data)
+        -- This gets triggered whenever the arrow selected value changes
+        -- print("arrows ownershipStatus", (data.value), data.value.extra) ---@todo remove
+        globalHouseData.ownershipStatus = data.value.extra ---@todo need a test!!!
+        devPrint("house sell type set to:", globalHouseData.ownershipStatus)
+    end)
+
     createHouseMenu:RegisterElement('button', {
         label = _U("taxAmount"),
         style = {}
@@ -390,7 +418,7 @@ function CreateHouseMenu(tp, refresh)
     createHouseMenu:RegisterElement('button', {
         label = _U("backButton"),
         slot = "footer",
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
         HouseManagementMenu()
     end)
@@ -478,7 +506,7 @@ function setRadius()
     setRadiusPage:RegisterElement('button', {
         label = _U("backButton"),
         slot = "footer",
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
         CreateHouseMenu(tpHouse)
     end)
@@ -566,7 +594,7 @@ function setTaxAmount()
     setTaxAmountPage:RegisterElement('button', {
         label = _U("backButton"),
         slot = "footer",
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
         CreateHouseMenu(tpHouse)
     end)
@@ -655,7 +683,7 @@ function setInvLimit(houseId)
     inventoryLimitPage:RegisterElement('button', {
         label = _U("backButton"),
         slot = "footer",
-        style = {}
+        style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
         CreateHouseMenu(tpHouse) -- Optionally go back to the main menu of house creation
     end)
@@ -694,7 +722,7 @@ function confirmCreation(globalHouseData)
     -- Assuming data contains all necessary information
     TriggerServerEvent('bcc-housing:CreationDBInsert', tpHouse, globalHouseData.owner, globalHouseData.radius,
         globalHouseData.doors, globalHouseData.houseCoords, globalHouseData.invLimit, globalHouseData.ownerSource,
-        globalHouseData.taxAmount)
+        globalHouseData.taxAmount, globalHouseData.ownershipStatus)
     -- Debug to confirm data contents
     devPrint("Sending data to server:", tpHouse, globalHouseData.owner, globalHouseData.radius, globalHouseData.doors, globalHouseData.houseCoords, globalHouseData.invLimit, globalHouseData.ownerSource, globalHouseData.taxAmount)
 end
