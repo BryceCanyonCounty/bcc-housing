@@ -358,7 +358,7 @@ function CreateHouseMenu(tp, refresh)
     end)
 
     createHouseMenu:RegisterElement('arrows', {
-        label = "Hair Color",
+        label = _U("selectOwnershipType"),
         start = 1,
         options = {
             {

@@ -74,9 +74,8 @@ function buyFurnitureMenu(houseId, ownershipStatus)
     if HandlePlayerDeathAndCloseMenu() then
         return -- Skip opening the menu if the player is dead
     end
-    
-    local buyFurnitureMenu = BCCHousingMenu:RegisterPage("bcc-housing-furniture-menu")
 
+    local buyFurnitureMenu = BCCHousingMenu:RegisterPage("bcc-housing-furniture-menu")
     -- Header for the furniture menu
     buyFurnitureMenu:RegisterElement('header', {
         value = _U("creationMenuName"),
@@ -90,52 +89,15 @@ function buyFurnitureMenu(houseId, ownershipStatus)
     })
 
     -- Define the furniture items with their actions
-    local furnitureItems = { {
-        label = _U("chairs"),
-        desc = _U("chairs_desc"),
-        action = 'chairs'
-    }, {
-        label = _U("benches"),
-        desc = _U("benches_desc"),
-        action = 'benches'
-    }, {
-        label = _U("tables"),
-        desc = _U("tables_desc"),
-        action = 'tables'
-    }, {
-        label = _U("beds"),
-        desc = _U("beds_desc"),
-        action = 'beds'
-    }, {
-        label = _U("lights"),
-        desc = _U("lights_desc"),
-        action = 'lights'
-    }, {
-        label = _U("post"),
-        desc = _U("post_desc"),
-        action = 'post'
-    }, {
-        label = _U("couch"),
-        desc = _U("couch_desc"),
-        action = 'couch'
-    }, {
-        label = _U("seat"),
-        desc = _U("seat_desc"),
-        action = 'seat'
-    }, {
-        label = _U("shelf"),
-        desc = _U("shelf_desc"),
-        action = 'shelf'
-    } }
-
     -- Register elements for each furniture item
-    for _, item in ipairs(furnitureItems) do
+    for index, category in pairs(Config.Furniture) do
+        --category.desc
         buyFurnitureMenu:RegisterElement('button', {
-            label = item.label,
+            label = category.name,
             style = {}
         }, function()
             -- Call to open the specific furniture type menu
-            IndFurnitureTypeMenu(item.action, houseId, ownershipStatus)
+            IndFurnitureTypeMenu(index, houseId, ownershipStatus)
         end)
     end
 
@@ -186,7 +148,7 @@ function IndFurnitureTypeMenu(type, houseId, ownershipStatus)
 
     local furnitureTypeMenu = BCCHousingMenu:RegisterPage("bcc-housing-furniture-type-menu")
     furnitureTypeMenu:RegisterElement('header', {
-        value = _U("creationMenuName") .. " - " .. _U(type),
+        value = Config.Furniture[type].titile,
         slot = 'header',
         style = {}
     })
@@ -196,7 +158,7 @@ function IndFurnitureTypeMenu(type, houseId, ownershipStatus)
         style = {}
     })
 
-    for k, v in pairs(furnConfigTable) do
+    for k, v in ipairs(furnConfigTable) do
         furnitureTypeMenu:RegisterElement('button', {
             label = v.displayName .. " - $" .. tostring(v.costToBuy),
             style = {}
@@ -375,7 +337,7 @@ function PlaceFurnitureIntoWorldPrompt(model, cost, displayName, sellPrice)
     SetEntityCollision(createdObject, false, true)
     TriggerEvent('bcc-housing:CheckIfInRadius', createdObject)
 
-    local amountToMove = 0.1 -- default movement precision
+    local amountToMove = 1.0 -- default movement precision
 
     -- Notify player of controls
     VORPcore.NotifyRightTip(_U('furnitureControls'), 5000)
@@ -407,33 +369,35 @@ function PlaceFurnitureIntoWorldPrompt(model, cost, displayName, sellPrice)
             PromptSetEnabled(IncreasePrecisionPrompt, true)
             PromptSetEnabled(DecreasePrecisionPrompt, true)
 
+            local step = amountToMove * 0.1
             if Citizen.InvokeNative(0xC92AC953F0A982AE, MoveForwardPrompt) then
-                MoveFurniture(createdObject, "forward", amountToMove)
+                MoveFurniture(createdObject, "forward", step)
             elseif Citizen.InvokeNative(0xC92AC953F0A982AE, MoveBackwardPrompt) then
-                MoveFurniture(createdObject, "backward", amountToMove)
+                MoveFurniture(createdObject, "backward", step)
             elseif Citizen.InvokeNative(0xC92AC953F0A982AE, MoveLeftPrompt) then
-                MoveFurniture(createdObject, "left", amountToMove)
+                MoveFurniture(createdObject, "left", step)
             elseif Citizen.InvokeNative(0xC92AC953F0A982AE, MoveRightPrompt) then
-                MoveFurniture(createdObject, "right", amountToMove)
+                MoveFurniture(createdObject, "right", step)
             elseif Citizen.InvokeNative(0xC92AC953F0A982AE, MoveUpPrompt) then
-                MoveFurniture(createdObject, "up", amountToMove)
+                MoveFurniture(createdObject, "up", step)
             elseif Citizen.InvokeNative(0xC92AC953F0A982AE, MoveDownPrompt) then
-                MoveFurniture(createdObject, "down", amountToMove)
+                MoveFurniture(createdObject, "down", step)
             end
 
+            step = amountToMove * 5
             -- Handle rotation prompts
             if Citizen.InvokeNative(0xC92AC953F0A982AE, RotateYawPrompt) then
-                MoveFurniture(createdObject, "rotateYaw", amountToMove)
+                MoveFurniture(createdObject, "rotateYaw", step)
             elseif Citizen.InvokeNative(0xC92AC953F0A982AE, RotateYawLeftPrompt) then
-                MoveFurniture(createdObject, "rotateYawLeft", amountToMove)
+                MoveFurniture(createdObject, "rotateYawLeft", step)
             elseif Citizen.InvokeNative(0xC92AC953F0A982AE, RotatePitchPrompt) then
-                MoveFurniture(createdObject, "rotatepitch", amountToMove)
+                MoveFurniture(createdObject, "rotatepitch", step)
             elseif Citizen.InvokeNative(0xC92AC953F0A982AE, RotateBackwardPrompt) then
-                MoveFurniture(createdObject, "rotatebackward", amountToMove)
+                MoveFurniture(createdObject, "rotatebackward", step)
             elseif Citizen.InvokeNative(0xC92AC953F0A982AE, RotateRightPrompt) then
-                MoveFurniture(createdObject, "rotateright", amountToMove)
+                MoveFurniture(createdObject, "rotateright", step)
             elseif Citizen.InvokeNative(0xC92AC953F0A982AE, RotateLeftPrompt) then
-                MoveFurniture(createdObject, "rotateleft", amountToMove)
+                MoveFurniture(createdObject, "rotateleft", step)
             end
 
             -- Adjust precision

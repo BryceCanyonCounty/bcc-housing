@@ -113,7 +113,7 @@ function showManageOpt(x, y, z, houseId)
                 local plc = GetEntityCoords(playerPed)
                 local dist = GetDistanceBetweenCoords(plc.x, plc.y, plc.z, x, y, z, true)
 
-                if dist < 2 then
+                if dist < Config.DefaultMenuManageRadius then
                     PromptGroup:ShowGroup(_U("house"))
 
                     if ManageHousePrompt:HasCompleted() then

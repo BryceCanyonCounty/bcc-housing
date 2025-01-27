@@ -12,8 +12,8 @@ CreateThread(function()
             `invlimit` varchar(50) NOT NULL DEFAULT 200,
             `player_source_spawnedfurn` varchar(50) NOT NULL DEFAULT 'none',
             `taxes_collected` varchar(50) NOT NULL DEFAULT 'false',
-            `ledger` int NOT NULL DEFAULT 0,
-            `tax_amount` int NOT NULL DEFAULT 0,
+            `ledger` float NOT NULL DEFAULT 0,
+            `tax_amount` float NOT NULL DEFAULT 0,
             PRIMARY KEY `houseid` (`houseid`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ]])

@@ -65,23 +65,23 @@ CreateThread(function()
             end
 
             -- If the house is purchased and blip exists, remove it
-            if isPurchased and HouseBlips[house.name] then
-                BccUtils.Blips:RemoveBlip(HouseBlips[house.name].rawblip)
-                HouseBlips[house.name] = nil
+            if isPurchased and HouseBlips[house.uniqueName] then
+                BccUtils.Blips:RemoveBlip(HouseBlips[house.uniqueName].rawblip)
+                HouseBlips[house.uniqueName] = nil
             elseif not isPurchased then
                 local distance = GetDistanceBetweenCoords(playerCoords, house.menuCoords, true)
 
                 -- Only create blips if forSaleBlips is true and blip hasn't been created yet
-                if house.forSaleBlips and not HouseBlips[house.name] then
-                    local houseSaleBlip = BccUtils.Blips:SetBlip(house.name, house.saleBlipSprite, 0.2, house.menuCoords.x, house.menuCoords.y, house.menuCoords.z)
+                if house.forSaleBlips and not HouseBlips[house.uniqueName] then
+                    local houseSaleBlip = BccUtils.Blips:SetBlip(house.blipname, house.saleBlipSprite, 0.2, house.menuCoords.x, house.menuCoords.y, house.menuCoords.z)
                     
-                    HouseBlips[house.name] = houseSaleBlip
+                    HouseBlips[house.uniqueName] = houseSaleBlip
                     
                     local blipModifier = BccUtils.Blips:AddBlipModifier(houseSaleBlip, house.saleBlipModifier)
                     blipModifier:ApplyModifier()
                 end
 
-                if distance < 2 then
+                if distance < house.menuRadius then
                     PromptGroup:ShowGroup(_U("buyPricePrompt", house.price, house.rentalDeposit))
                     if BuyHousePrompt:HasCompleted() then
                         TriggerEvent('bcc-housing:openBuyHouseMenu', house)
@@ -210,33 +210,24 @@ AddEventHandler('bcc-housing:openBuyHouseMenu', function(house)
         slot = 'content',
     })
 
-    local htmlContent = string.format([[
-        <div style="text-align:center; margin: 20px;">
-            <p style="font-size:18px; margin-bottom: 10px;">%s <strong style="color:#28A745;">$%d</strong></p>
-            <p style="font-size:18px; margin-bottom: 10px;">%s <strong style="color:#17A2B8;">$%d</strong></p>
-            <p style="font-size:18px; margin-bottom: 10px;">%s %d
-            <p style="font-size:18px; margin-bottom: 10px;">%s %d
-            <p style="font-size:18px; margin-bottom: 10px;">%s <strong style="color:#FFC107;">%s</strong></p>
-            <p style="font-size:18px; margin-bottom: 10px;">%s <strong>%d</strong></p>
-            <p style="font-size:18px; margin-bottom: 10px;">%s <strong style="color:#DC3545;">$%d</strong></p>
+    local htmlContent = [[
+        <div style="text-align:center; margin: 20px;">]] ..
+            [[<p style="font-size:18px; margin-bottom: 10px;">]] .. _U('listBuyPrice')   .. [[$<strong style="color:#28A745;">]] .. tonumber(house.price or 0) .. [[</strong>]] .. [[</p>]] ..
+            (house.canSell and
+            ([[<p style="font-size:18px; margin-bottom: 10px;">]] .. _U('listSellPrice')  .. [[$<strong>]] .. tonumber(house.sellPrice or 0) .. [[</strong>]] .. [[</p>]]) or -- <strong style="color:#17A2B8;">$%d</strong></p>
+            ([[<p style="font-size:18px; margin-bottom: 10px;">]] .. _U('listCanSell')    .. [[<strong>]] .. tostring(house.canSell and _U('Yes') or _U('No')) .. [[</strong>]] .. [[</p>]])) .. -- [[<strong style="color:#FFC107;">]] .. [[</strong></p>]] ..
+            [[<p style="font-size:18px; margin-bottom: 10px;">]] .. _U('rentalDeposit')  .. [[<strong>]] .. tonumber(house.rentalDeposit) .. [[</strong>]] .. [[</p>]] ..
+            [[<p style="font-size:18px; margin-bottom: 10px;">]] .. _U('rentCharge')     .. [[<strong>]] .. tonumber(house.rentCharge) .. [[</strong>]] .. [[</p>]] ..
+            [[<p style="font-size:18px; margin-bottom: 10px;">]] .. _U('listRoomateLim') .. [[<strong>]] .. tonumber(house.playerMax or 1) .. [[</strong>]] .. [[</p>]] ..
+            [[<p style="font-size:18px; margin-bottom: 10px;">]] .. _U('listInvLimit')   .. [[<strong>]] .. tonumber(house.invLimit or 0) .. [[</strong>]] .. [[</p>]] ..
+            [[<p style="font-size:18px; margin-bottom: 10px;">]] .. _U('listTaxAmount')  .. [[$<strong style="color:#DC3545;">]] .. tonumber(house.taxAmount or 0) .. [[</strong>]] .. [[</p>]] .. [[
         </div>
-    ]],
-        _U('listBuyPrice'), tonumber(house.price or 0),
-        _U('listSellPrice'), tonumber(house.sellPrice or 0),
-        _U('rentalDeposit'), tonumber(house.rentalDeposit),
-        _U('rentCharge'), tonumber(house.rentCharge),
-        _U('listCanSell'), tostring(house.canSell and _U('Yes') or _U('No')),
-        _U('listInvLimit'), tonumber(house.invLimit or 0),
-        _U('listTaxAmount'), tonumber(house.taxAmount or 0)
-    )
+    ]]
+
 
     buyHouseMenu:RegisterElement("html", {
         value = { htmlContent },
         slot = 'content',
-        style = {}
-    })
-
-    buyHouseMenu:RegisterElement('line', {
         style = {}
     })
 

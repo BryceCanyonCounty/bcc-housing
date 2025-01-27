@@ -328,30 +328,32 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner, ownershipStat
                 style = {}
             })
 
-            doorManagementPage:RegisterElement('button', {
-                label = _U("createNewDoor"),
-                style = {}
-            }, function()
-                BCCHousingMenu:Close()                         -- Close the menu before proceeding
-                local playerId = GetPlayerServerId(PlayerId()) -- Get the current player's server ID
-                local newDoorId = exports['bcc-doorlocks']:addPlayerToDoor(playerId)
+            if Config.doors.createNewDoors then
+                doorManagementPage:RegisterElement('button', {
+                    label = _U("createNewDoor"),
+                    style = {}
+                }, function()
+                    BCCHousingMenu:Close()                         -- Close the menu before proceeding
+                    local playerId = GetPlayerServerId(PlayerId()) -- Get the current player's server ID
+                    local newDoorId = exports['bcc-doorlocks']:addPlayerToDoor(playerId)
 
-                if newDoorId then
-                    devPrint("Door created and player added successfully: " .. tostring(newDoorId))
+                    if newDoorId then
+                        devPrint("Door created and player added successfully: " .. tostring(newDoorId))
 
-                    -- Save the door to the house database using the RPC call
-                    BccUtils.RPC:Call("bcc-housing:AddDoorToHouse", { houseId = houseId, newDoor = newDoorId },
-                        function(success)
-                            if success then
-                                VORPcore.NotifyRightTip(_U("doorCreated"), 4000)
-                            else
-                                VORPcore.NotifyRightTip(_U("doorSaveFailed"), 4000)
-                            end
-                        end)
-                else
-                    VORPcore.NotifyRightTip(_U("doorCreationFailed"), 4000)
-                end
-            end)
+                        -- Save the door to the house database using the RPC call
+                        BccUtils.RPC:Call("bcc-housing:AddDoorToHouse", { houseId = houseId, newDoor = newDoorId },
+                            function(success)
+                                if success then
+                                    VORPcore.NotifyRightTip(_U("doorCreated"), 4000)
+                                else
+                                    VORPcore.NotifyRightTip(_U("doorSaveFailed"), 4000)
+                                end
+                            end)
+                    else
+                        VORPcore.NotifyRightTip(_U("doorCreationFailed"), 4000)
+                    end
+                end)
+            end
 
             -- List Doors Button
             doorManagementPage:RegisterElement('button', {
@@ -407,73 +409,76 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner, ownershipStat
                                     style = {}
                                 })
 
+
                                 -- Remove Door Button
-                                doorOptionsPage:RegisterElement('button', {
-                                    label = _U("removeDoor"),
-                                    style = {}
-                                }, function()
-                                    local doorRemoveDoorPage = BCCHousingMenu:RegisterPage('door_options_page')
-
-                                    doorRemoveDoorPage:RegisterElement('header', {
-                                        value = _U("confirmDoorDelete") .. (door.doorid or ""),
-                                        slot = "header",
-                                        style = {}
-                                    })
-
-                                    doorRemoveDoorPage:RegisterElement('line', {
-                                        slot = "header",
-                                        style = {}
-                                    })
-
-                                    -- Confirm Remove Door Button
-                                    doorRemoveDoorPage:RegisterElement('button', {
-                                        label = _U("confirmYes"),
+                                if Config.doors.removeDoors then
+                                    doorOptionsPage:RegisterElement('button', {
+                                        label = _U("removeDoor"),
                                         style = {}
                                     }, function()
-                                        -- Use RPC to remove the door
-                                        BccUtils.RPC:Call("bcc-housing:DeleteDoor", { doorId = door.doorid },
-                                            function(success)
-                                                if success then
-                                                    VORPcore.NotifyRightTip(_U("doorRemoved"), 4000)
-                                                else
-                                                    VORPcore.NotifyRightTip(_U("doorRemoveFailed"), 4000)
-                                                end
+                                        local doorRemoveDoorPage = BCCHousingMenu:RegisterPage('door_options_page')
 
-                                                -- Route back to the door list page
-                                                doorListPage:RouteTo()
-                                            end)
+                                        doorRemoveDoorPage:RegisterElement('header', {
+                                            value = _U("confirmDoorDelete") .. (door.doorid or ""),
+                                            slot = "header",
+                                            style = {}
+                                        })
+
+                                        doorRemoveDoorPage:RegisterElement('line', {
+                                            slot = "header",
+                                            style = {}
+                                        })
+
+                                        -- Confirm Remove Door Button
+                                        doorRemoveDoorPage:RegisterElement('button', {
+                                            label = _U("confirmYes"),
+                                            style = {}
+                                        }, function()
+                                            -- Use RPC to remove the door
+                                            BccUtils.RPC:Call("bcc-housing:DeleteDoor", { doorId = door.doorid },
+                                                function(success)
+                                                    if success then
+                                                        VORPcore.NotifyRightTip(_U("doorRemoved"), 4000)
+                                                    else
+                                                        VORPcore.NotifyRightTip(_U("doorRemoveFailed"), 4000)
+                                                    end
+
+                                                    -- Route back to the door list page
+                                                    doorListPage:RouteTo()
+                                                end)
+                                        end)
+
+
+                                        doorRemoveDoorPage:RegisterElement('button', {
+                                            label = _U("confirmNo"),
+                                            style = {}
+                                        }, function()
+                                            doorListPage:RouteTo()
+                                        end)
+
+                                        doorRemoveDoorPage:RegisterElement('line', {
+                                            slot = "footer",
+                                            style = {}
+                                        })
+
+                                        doorRemoveDoorPage:RegisterElement('button', {
+                                            label = _U("backButton"),
+                                            slot = "footer",
+                                            style = {['position'] = 'relative', ['z-index'] = 9,}
+                                        }, function()
+                                            doorOptionsPage:RouteTo()
+                                        end)
+
+                                        doorRemoveDoorPage:RegisterElement('bottomline', {
+                                            slot = "footer",
+                                            style = {}
+                                        })
+
+                                        BCCHousingMenu:Open({
+                                            startupPage = doorRemoveDoorPage
+                                        })
                                     end)
-
-
-                                    doorRemoveDoorPage:RegisterElement('button', {
-                                        label = _U("confirmNo"),
-                                        style = {}
-                                    }, function()
-                                        doorListPage:RouteTo()
-                                    end)
-
-                                    doorRemoveDoorPage:RegisterElement('line', {
-                                        slot = "footer",
-                                        style = {}
-                                    })
-
-                                    doorRemoveDoorPage:RegisterElement('button', {
-                                        label = _U("backButton"),
-                                        slot = "footer",
-                                        style = {['position'] = 'relative', ['z-index'] = 9,}
-                                    }, function()
-                                        doorOptionsPage:RouteTo()
-                                    end)
-
-                                    doorRemoveDoorPage:RegisterElement('bottomline', {
-                                        slot = "footer",
-                                        style = {}
-                                    })
-
-                                    BCCHousingMenu:Open({
-                                        startupPage = doorRemoveDoorPage
-                                    })
-                                end)
+                                end
 
                                 -- Update Door Button
                                 doorOptionsPage:RegisterElement('button', {
@@ -763,7 +768,7 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner, ownershipStat
         end)
 
         ledgerPage:RegisterElement('button', {
-            label = ownershipStatus == "purchased" and _U("ledger") or _U("ledgerGold"),
+            label = ownershipStatus == "purchased" and _U("ledgerInsert") or _U("ledgerInsertGold"),
             style = {}
         }, function()
             if houseId then
@@ -773,16 +778,18 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner, ownershipStat
             end
         end)
 
-        ledgerPage:RegisterElement('button', {
-            label = ownershipStatus == "purchased" and _U('removeFromLedger') or _U('removeFromLedgerGold'),
-            style = {}
-        }, function()
-            if houseId then
-                TriggerEvent('bcc-housing:removeLedger', houseId, isOwner)
-            else
-                devPrint("Error: HouseId is undefined or invalid.")
-            end
-        end)
+        if ownershipStatus == "purchased" then
+            ledgerPage:RegisterElement('button', {
+                label = ownershipStatus == "purchased" and _U('removeFromLedger') or _U('removeFromLedgerGold'),
+                style = {}
+            }, function()
+                if houseId then
+                    TriggerEvent('bcc-housing:removeLedger', houseId, isOwner)
+                else
+                    devPrint("Error: HouseId is undefined or invalid.")
+                end
+            end)
+        end
 
         ledgerPage:RegisterElement('line', {
             slot = "footer",

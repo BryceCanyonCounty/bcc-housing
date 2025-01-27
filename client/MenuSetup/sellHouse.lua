@@ -190,7 +190,7 @@ function OpenSellHouseToPlayerMenu(houseId, withInventory, ownershipStatus)
             }
         }, function(data)
             local temp = tonumber(data.value)
-            if temp then
+            if temp and temp > 0 then
                 salePrice = temp
             else
                 InputField:update({value = salePrice})
@@ -228,6 +228,10 @@ end
 function OpenConfirmSellHouseMenu(houseId, targetPlayerId, targetPlayerName, withInventory, ownershipStatus, salePrice)
     if HandlePlayerDeathAndCloseMenu() then
         return -- Skip opening the menu if the player is dead
+    end
+
+    if salePrice < 0 then
+        return
     end
 
     local confirmMenu = BCCHousingMenu:RegisterPage("confirmSellHouseMenu")

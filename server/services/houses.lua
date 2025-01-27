@@ -546,6 +546,7 @@ AddEventHandler('bcc-housing:getHouseId', function(context, houseId)
                                 tostring(houseId) .. " and character ID: " .. tostring(charIdentifier))
                             TriggerClientEvent('bcc-housing:receiveHouseIdinv', src, houseId)
                         elseif context == 'access' then
+                            
                             devPrint("Granting access to House ID: " ..
                                 tostring(houseId) .. " for character ID: " .. tostring(charIdentifier))
                             TriggerClientEvent('bcc-housing:receiveHouseId', src, houseId)
