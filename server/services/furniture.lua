@@ -136,7 +136,7 @@ RegisterServerEvent('bcc-housing:GetOwnerFurniture', function(houseId)
                 end
                 devPrint("Triggering SellOwnedFurnMenu event for house ID: " ..
                     tostring(houseId) .. " with " .. tostring(#furniture) .. " items.")
-                TriggerClientEvent('bcc-housing:SellOwnedFurnMenu', _source, houseId, furniture)
+                TriggerClientEvent('bcc-housing:SellOwnedFurnMenu', _source, houseId, furniture, houseData.ownershipStatus)
             end
         else
             -- Log the decoding error and notify the player
@@ -152,10 +152,15 @@ RegisterServerEvent('bcc-housing:GetOwnerFurniture', function(houseId)
 end)
 
 RegisterServerEvent('bcc-housing:FurnSoldRemoveFromTable',
-    function(furnTable, houseId, wholeFurnTable, wholeFurnTableKey)
+    function(furnTable, houseId, wholeFurnTable, wholeFurnTableKey, ownershipStatus)
         local _source = source
         local character = VORPcore.getUser(_source).getUsedCharacter
         devPrint("Furniture sold, removing from table for house ID: " .. tostring(houseId))
+
+        if ownershipStatus ~= 'purchased' then
+            devPrint("ownershipStatus must be 'purchased' to allow selling.")
+            return error()
+        end
 
         if wholeFurnTable and tonumber(wholeFurnTableKey) and wholeFurnTable[tonumber(wholeFurnTableKey)] then
             table.remove(wholeFurnTable, tonumber(wholeFurnTableKey))
@@ -182,5 +187,5 @@ RegisterServerEvent('bcc-housing:FurnSoldRemoveFromTable',
             VORPcore.NotifyRightTip(_source, _U("furnNotSoldInvalid"), 4000)
         end
 
-        TriggerClientEvent('bcc-housing:SellOwnedFurnMenu', _source, houseId, wholeFurnTable)
+        TriggerClientEvent('bcc-housing:SellOwnedFurnMenu', _source, houseId, wholeFurnTable, ownershipStatus)
     end)

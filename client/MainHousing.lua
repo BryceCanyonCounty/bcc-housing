@@ -7,7 +7,7 @@ RegisterCommand(Config.AdminManagementMenuCommand, function() -- house creation 
     if AdminAllowed then
         HouseManagementMenu()
     end
-end)
+end, false)
 
 if Config.DevMode then
     -- Helper function for debugging
@@ -39,7 +39,7 @@ CreateThread(function() -- Devmode area
             TriggerServerEvent('bcc-housing:AdminCheck')
             TriggerServerEvent('bcc-housing:HotelDbRegistry')
             TriggerServerEvent('bcc-housing:CheckIfHasHouse')
-        end)
+        end, false)
     end
 end)
 

@@ -36,8 +36,10 @@ end)
 
 RegisterServerEvent('bcc-housing:NewPlayerGivenAccess')
 AddEventHandler('bcc-housing:NewPlayerGivenAccess', function(id, houseid, recSource)
-    devPrint("NewPlayerGivenAccess event triggered with ID: " .. tostring(id) .. ", HouseID: " .. tostring(houseid) ..
-        ", RecSource: " .. tostring(recSource))
+    devPrint("NewPlayerGivenAccess event triggered with ID: " .. tostring(id) ..
+        ", HouseID: " .. tostring(houseid) .. ", RecSource: " .. tostring(recSource)
+    )
+    local _source = source
 
     local param = {
         ['@houseid'] = houseid
@@ -73,6 +75,23 @@ AddEventHandler('bcc-housing:NewPlayerGivenAccess', function(id, houseid, recSou
     end
     devPrint("Exists check: " .. tostring(exists))
 
+    local houseMaxResident
+    for _, h in pairs(Config.HousesForSale) do
+        if h.uniqueName == houseData.uniqueName then
+            houseMaxResident = h.playerMax
+            devPrint("Matching house configuration found, House has a " .. houseMaxResident .. " person limit.")
+            break
+        end
+    end
+
+    if not houseMaxResident or houseMaxResident <= #idsTable then
+        devPrint("Resident limit exceeded: " .. #idsTable)
+        VORPcore.NotifyRightTip(recSource, _U("notEnoughRoommateSlots"), 4000)
+        VORPcore.NotifyRightTip(_source, _U("notEnoughRoommateSlots"), 4000)
+        return
+    end
+
+
     if not exists then
         table.insert(idsTable, id)
         local encodedIds = json.encode(idsTable)
@@ -84,10 +103,11 @@ AddEventHandler('bcc-housing:NewPlayerGivenAccess', function(id, houseid, recSou
                 else
                     devPrint("Update failed for houseid: " .. tostring(houseid))
                     if recSource then
-                        VORPcore.NotifyRightTip(recSource, "Update failed, please try again.", 4000)
+                        VORPcore.NotifyRightTip(recSource, _U("giveAccesFailed"), 4000)
                     end
                 end
-            end)
+            end
+        )
     else
         devPrint("ID already exists in the access list for houseid: " .. tostring(houseid))
     end
@@ -132,8 +152,7 @@ AddEventHandler('bcc-housing:RemovePlayerAccess', function(houseId, playerId)
 
                 if not found then
                     devPrint("Player ID not found in allowed list, nothing to remove.")
-                    TriggerClientEvent('bcc-housing:PlayerAccessRemovalFailed', src, houseId, playerId,
-                        "Player ID not in allowed list.")
+                    TriggerClientEvent('bcc-housing:PlayerAccessRemovalFailed', src, houseId, playerId, "Player ID not in allowed list.")
                     return
                 end
 
@@ -145,16 +164,15 @@ AddEventHandler('bcc-housing:RemovePlayerAccess', function(houseId, playerId)
                     if affectedRows > 0 then
                         devPrint("Removed player access successfully for Player ID: " .. tostring(playerId))
                         TriggerClientEvent('bcc-housing:ClientRecHouseLoad', src)
-                        VORPcore.NotifyRightTip(src,
-                            "Removed player access successfully for Player ID: " .. tostring(playerId))
+                        VORPcore.NotifyRightTip(src, _U("removeAccessTo") .. tostring(playerId))
                     else
                         devPrint("Failed to update database with new allowed IDs list.")
-                        VORPcore.NotifyRightTip(src, "Update failed, please try again.", 4000)
+                        VORPcore.NotifyRightTip(src, _U("updateFailed"), 4000)
                     end
                 end)
             else
                 devPrint("No house found with ID: " .. tostring(houseId) .. " or allowed_ids is empty.")
-                VORPcore.NotifyRightTip(src, "No such house ID or empty allowed list.", 4000)
+                VORPcore.NotifyRightTip(src, _U("noSuchHouseId"), 4000)
             end
         end)
 end)

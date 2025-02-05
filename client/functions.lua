@@ -13,11 +13,18 @@ BCCHousingMenu = FeatherMenu:RegisterMenu("bcc:housing:mainmenu",
         ["1080width"] = "600px",
         ["2kwidth"] = "700px",
         ["4kwidth"] = "900px",
-        style = {},
+        style = {
+            ['font-family'] = 'crock, Georgia, serif',
+            --['font-size'] = '18px',
+        },
         contentslot = {
             style = {
-                ["height"] = "450px",
-                ["min-height"] = "250px"
+                -- ['height'] = '350px',
+                ['max-height'] = '500px', -- дозволяє обмежити висоту вмісту, додаючи можливість прокрутки вмісту, якщо він перевищує певну висоту.
+                ['min-height'] = '350px', -- дозволяє обмежити висоту вмісту, додаючи можливість прокрутки вмісту, якщо він перевищує певну висоту.
+                -- ["height"] = "450px",
+                -- ["min-height"] = "250px"
+                ['position'] = 'relative', ['z-index'] = 9,
             }
         },
         draggable = true
@@ -106,7 +113,7 @@ function showManageOpt(x, y, z, houseId)
                 local plc = GetEntityCoords(playerPed)
                 local dist = GetDistanceBetweenCoords(plc.x, plc.y, plc.z, x, y, z, true)
 
-                if dist < 2 then
+                if dist < Config.DefaultMenuManageRadius then
                     PromptGroup:ShowGroup(_U("house"))
 
                     if ManageHousePrompt:HasCompleted() then
@@ -154,9 +161,9 @@ end)
 
 -- Receive House Owner Information
 RegisterNetEvent('bcc-housing:receiveHouseOwner')
-AddEventHandler('bcc-housing:receiveHouseOwner', function(houseId, isOwner)
-    devPrint("Received house owner information for House ID: " .. tostring(houseId) .. ", Is Owner: " .. tostring(isOwner))
-    TriggerEvent('bcc-housing:openmenu', houseId, isOwner)
+AddEventHandler('bcc-housing:receiveHouseOwner', function(houseId, isOwner, ownershipStatus)
+    devPrint("Received house owner information for House ID: " .. tostring(houseId) .. ", Is Owner: " .. tostring(isOwner) .. " and House is " .. ownershipStatus)
+    TriggerEvent('bcc-housing:openmenu', houseId, isOwner, ownershipStatus)
 end)
 
 function HandlePlayerDeathAndCloseMenu()

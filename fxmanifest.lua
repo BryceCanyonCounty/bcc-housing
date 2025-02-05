@@ -8,27 +8,27 @@ author 'BCC Team'
 description 'Advanced Housing Script: A comprehensive and customizable system for managing player houses.'
 
 shared_scripts {
-  'config.lua',
-  'locale.lua',
-  'languages/*.lua'
+    'config.lua',
+    'locale.lua',
+    'languages/*.lua'
 }
 
 client_scripts {
-  'client/functions.lua',
-  'client/MainHousing.lua',
-  'client/propertyCheck.lua',
-  'client/furnitureSpawning.lua',
-  'client/MenuSetup/*.lua',
+    'client/functions.lua',
+    'client/MainHousing.lua',
+    'client/propertyCheck.lua',
+    'client/furnitureSpawning.lua',
+    'client/MenuSetup/*.lua',
 }
 
 server_scripts {
-  '@oxmysql/lib/MySQL.lua',
-  'server/helpers/functions.lua',
-  'server/services/*.lua',
-  'server/main.lua'
+    '@oxmysql/lib/MySQL.lua',
+    'server/helpers/functions.lua',
+    'server/services/*.lua',
+    'server/main.lua'
 }
 ui_page {
-  "ui/index.html"
+    "ui/index.html"
 }
 
 files {
@@ -39,12 +39,12 @@ files {
 }
 
 dependency {
-  'vorp_core',
-  'vorp_inventory',
-  'vorp_character',
-  'bcc-utils',
-  'bcc-doorlocks',
-  'feather-menu'
+    'vorp_core',
+    'vorp_inventory',
+    'vorp_character',
+    'bcc-utils',
+    'bcc-doorlocks',
+    'feather-menu'
 }
 
 version '1.4.1'

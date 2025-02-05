@@ -1,7 +1,7 @@
 -- Event to insert a house into the database when it is created
 RegisterServerEvent('bcc-housing:CreationDBInsert')
 AddEventHandler('bcc-housing:CreationDBInsert',
-    function(tpHouse, owner, radius, doors, houseCoords, invLimit, ownerSource, taxAmount)
+    function(tpHouse, owner, radius, doors, houseCoords, invLimit, ownerSource, taxAmount, ownershipStatus)
         local _source = source                                             -- Get the source of the event (the player who triggered it)
         local taxes = tonumber(taxAmount) > 0 and tonumber(taxAmount) or 0 -- Calculate the taxes, ensuring they are a positive number
         local character = VORPcore.getUser(_source).getUsedCharacter       -- Get the character object for the player
@@ -19,7 +19,8 @@ AddEventHandler('bcc-housing:CreationDBInsert',
                 ['taxes'] = taxes,
                 ['tpInt'] = 0,
                 ['tpInstance'] = 0,
-                ['uniqueName'] = 'none'
+                ['uniqueName'] = 'none',
+                ['ownershipStatus'] = ownershipStatus,
             }
         else
             -- If a teleport house is provided, set up the parameters with teleport info
@@ -32,7 +33,8 @@ AddEventHandler('bcc-housing:CreationDBInsert',
                 ['taxes'] = taxes,
                 ['tpInt'] = tpHouse,
                 ['tpInstance'] = 52324 + _source, -- Generate a unique teleport instance based on the source
-                ['uniqueName'] = 'none'
+                ['uniqueName'] = 'none',
+                ['ownershipStatus'] = ownershipStatus,
             }
         end
 
@@ -41,7 +43,7 @@ AddEventHandler('bcc-housing:CreationDBInsert',
         if #result < Config.Setup.MaxHousePerChar then
             -- If the character can own more houses, insert the new house into the database
             MySQL.insert(
-                "INSERT INTO bcchousing ( `charidentifier`,`house_radius_limit`,`doors`,`house_coords`,`invlimit`,`tax_amount`,`tpInt`,`tpInstance`, `uniqueName` ) VALUES ( @charidentifier,@radius,@doors,@houseCoords,@invlimit,@taxes,@tpInt,@tpInstance, @uniqueName )",
+                "INSERT INTO bcchousing ( `charidentifier`,`house_radius_limit`,`doors`,`house_coords`,`invlimit`,`tax_amount`,`tpInt`,`tpInstance`, `uniqueName`, `ownershipStatus`) VALUES ( @charidentifier,@radius,@doors,@houseCoords,@invlimit,@taxes,@tpInt,@tpInstance, @uniqueName, @ownershipStatus )",
                 param)
 
             -- Notify Discord about the new house creation
@@ -59,7 +61,8 @@ AddEventHandler('bcc-housing:CreationDBInsert',
             -- If the character has reached the maximum number of houses, notify them
             VORPcore.NotifyRightTip(_source, _U("maxHousesReached"), 4000)
         end
-    end)
+    end
+)
 
 RegisterServerEvent('bcc-housing:CheckIfHasHouse')
 AddEventHandler('bcc-housing:CheckIfHasHouse', function(passedSource)
@@ -403,10 +406,20 @@ AddEventHandler('bcc-housing:LedgerHandling', function(amount, houseid, isAdding
     end
 
     -- Query the database to get the current ledger and tax amount for the house
-    MySQL.query("SELECT ledger, tax_amount FROM bcchousing WHERE houseid = ?", { houseIdNumber }, function(result)
+    MySQL.query("SELECT ledger, tax_amount, ownershipStatus FROM bcchousing WHERE houseid = ?", { houseIdNumber }, function(result)
         if result and #result > 0 then
             local ledger = tonumber(result[1].ledger)                               -- Get the current ledger amount
             local tax_amount = tonumber(result[1].tax_amount)                       -- Get the current tax amount
+            local ownershipStatus = result[1].ownershipStatus                       -- Get type of ownership
+            local currency
+            if ownershipStatus == "purchased" then
+                currency = 0
+            elseif ownershipStatus == "rented" then
+                currency = 1
+            else
+                devPrint("Unknown ownershipStatus type: " .. ownershipStatus)
+                return error()
+            end
 
             if isAdding then
                 -- Adding logic
@@ -414,23 +427,31 @@ AddEventHandler('bcc-housing:LedgerHandling', function(amount, houseid, isAdding
                 local insertionAmount = math.min(amountNumber, maxInsertAmount)     -- Determine the actual amount to insert
 
                 if insertionAmount > 0 then
-                    -- Check if the player has enough money
-                    if character.money >= insertionAmount then
-                        character.removeCurrency(0, insertionAmount) -- Deduct the money from the player's account
+                    -- Check if the player has enough money/gold
+
+                    if ((ownershipStatus == "purchased" and character.money >= insertionAmount) or
+                        (ownershipStatus == "rented"    and character.gold >= insertionAmount))
+                    then
+                        character.removeCurrency(currency, insertionAmount) -- Deduct the money from the player's account
                         -- Update the ledger in the database
                         MySQL.update("UPDATE bcchousing SET ledger = ledger + ? WHERE houseid = ?",
                             { insertionAmount, houseIdNumber }, function(affectedRows)
                                 if affectedRows > 0 then
                                     -- Notify the player of the successful ledger update
-                                    VORPcore.NotifyLeft(_source, _U("ledgerAmountInserted") .. " $" .. insertionAmount, "", "inventory_items", "money_moneystack", 5000)
+                                    if ownershipStatus == "purchased" then
+                                        VORPcore.NotifyLeft(_source, _U("ledgerAmountInserted") .. " $" .. insertionAmount, "", "inventory_items", "money_moneystack", 5000)
+                                    else
+                                        VORPcore.NotifyLeft(_source, _U("ledgerGoldAmountInserted") .. insertionAmount, "", "generic_textures", "stamp_gold", 5000)
+                                    end
                                 else
                                     -- Notify the player if the ledger update failed
                                     VORPcore.NotifyLeft(_source, _U("ledgerUpdateFailed"), "", "scoretimer_textures", "scoretimer_generic_cross", 5000)
                                 end
-                            end)
+                            end
+                        )
                     else
                         -- Notify the player if they do not have enough money
-                        VORPcore.NotifyLeft(_source, _U("noMoney"), "", "scoretimer_textures", "scoretimer_generic_cross", 5000)
+                        VORPcore.NotifyLeft(_source, ownershipStatus == "purchased" and _U("noMoney") or _U("noGold"), "", "scoretimer_textures", "scoretimer_generic_cross", 5000)
                     end
                 else
                     -- Notify the player if the maximum amount of money is already stored
@@ -439,18 +460,23 @@ AddEventHandler('bcc-housing:LedgerHandling', function(amount, houseid, isAdding
             else
                 -- Removing logic
                 if ledger >= amountNumber then
-                    character.addCurrency(0, amountNumber)
+                    character.addCurrency(currency, amountNumber)
                     -- Update the ledger in the database by subtracting the amount
                     MySQL.update("UPDATE bcchousing SET ledger = ledger - ? WHERE houseid = ?",
                         { amountNumber, houseIdNumber }, function(affectedRows)
                             if affectedRows > 0 then
                                 -- Notify the player of the successful ledger update
-                                VORPcore.NotifyLeft(_source, _U("ledgerAmountRemoved") .. " $" .. amountNumber, "", "inventory_items", "money_moneystack", 5000)
+                                if ownershipStatus == "purchased" then
+                                    VORPcore.NotifyLeft(_source, _U("ledgerAmountRemoved") .. " $" .. amountNumber, "", "inventory_items", "money_moneystack", 5000)
+                                else
+                                    VORPcore.NotifyLeft(_source, _U("ledgerGoldAmountRemoved") .. amountNumber, "", "generic_textures", "stamp_gold", 5000)
+                                end
                             else
                                 -- Notify the player if the ledger update failed
                                 VORPcore.NotifyLeft(_source, _U("ledgerUpdateFailed"), "", "scoretimer_textures", "scoretimer_generic_cross", 5000)
                             end
-                        end)
+                        end
+                    )
                 else
                     -- Notify the player if there is not enough money in the ledger
                     VORPcore.NotifyLeft(_source, _U('notEnoughFunds'), "", "menu_textures", "menu_icon_alert", 5000)
@@ -520,6 +546,7 @@ AddEventHandler('bcc-housing:getHouseId', function(context, houseId)
                                 tostring(houseId) .. " and character ID: " .. tostring(charIdentifier))
                             TriggerClientEvent('bcc-housing:receiveHouseIdinv', src, houseId)
                         elseif context == 'access' then
+                            
                             devPrint("Granting access to House ID: " ..
                                 tostring(houseId) .. " for character ID: " .. tostring(charIdentifier))
                             TriggerClientEvent('bcc-housing:receiveHouseId', src, houseId)
@@ -573,22 +600,22 @@ AddEventHandler('bcc-housing:getHouseOwner', function(houseId)
                     -- Notify the client about the house owner
                     devPrint("Owner of House ID: " ..
                         tostring(houseId) .. " is charidentifier: " .. tostring(houseData.charidentifier))
-                    TriggerClientEvent('bcc-housing:receiveHouseOwner', src, houseId, isOwner)
+                    TriggerClientEvent('bcc-housing:receiveHouseOwner', src, houseId, isOwner, houseData.ownershipStatus)
                 else
                     -- Notify the client if no house was found
                     devPrint("Error: No results found for house ID: " .. tostring(houseId))
-                    TriggerClientEvent('bcc-housing:receiveHouseOwner', src, houseId, nil)
+                    TriggerClientEvent('bcc-housing:receiveHouseOwner', src, houseId, nil, nil)
                 end
             end)
         else
             -- Notify the client if no house ID was provided
             devPrint("Error: No house ID provided")
-            TriggerClientEvent('bcc-housing:receiveHouseOwner', src, houseId, nil)
+            TriggerClientEvent('bcc-housing:receiveHouseOwner', src, houseId, nil, nil)
         end
     else
         -- Notify the client if no character was found
         devPrint("Error: No character found for source: " .. tostring(src))
-        TriggerClientEvent('bcc-housing:receiveHouseOwner', src, houseId, nil)
+        TriggerClientEvent('bcc-housing:receiveHouseOwner', src, houseId, nil, nil)
     end
 end)
 
