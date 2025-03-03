@@ -26,7 +26,7 @@ AddEventHandler('bcc-housing:sellHouse', function(houseId)
 
                 -- Find the corresponding house configuration by uniqueName
                 local houseConfig = nil
-                for _, h in pairs(Config.HousesForSale) do
+                for _, h in pairs(Houses) do
                     if h.uniqueName == houseData.uniqueName then
                         houseConfig = h
                         devPrint("Matching house configuration found: " .. json.encode(houseConfig))
@@ -291,31 +291,28 @@ AddEventHandler('bcc-housing:sellHouseToPlayerWithoutInventory', function(houseI
     )
 end)
 
--- Event to request the list of houses sold by a player
-RegisterServerEvent('bcc-housing:requestSoldHouses')
-AddEventHandler('bcc-housing:requestSoldHouses', function()
-    local src = source                              -- Get the source of the event
-    local User = VORPcore.getUser(src)              -- Get the user object for the player
-    local Character = User.getUsedCharacter         -- Get the character object for the player
-    local charIdentifier = Character.charIdentifier -- Get the character identifier
+VORPcore.Callback.Register('bcc-housing:RequestSoldHouses', function(source, cb)
+    local src = source
+    local user = VORPcore.getUser(src)
+    if not user then return cb(false) end
 
-    -- Query the database to get the list of houses sold by this player
-    MySQL.query('SELECT * FROM bcchousing_transactions WHERE identifier = @identifier',
-        { ['@identifier'] = charIdentifier }, function(results)
-        local soldHouses = {}
+    local character = user.getUsedCharacter
+    local charId = character.charIdentifier
+    local soldHouses = {}
 
-        -- Loop through the results and add the house information to the soldHouses table
-        if results and #results > 0 then
-            for _, result in ipairs(results) do
-                table.insert(soldHouses, {
-                    houseId = result.houseid,
-                    amount = result.amount
-                })
-            end
+    local result = MySQL.query.await('SELECT * FROM `bcchousing_transactions` WHERE `identifier` = ?', { charId })
+
+    if result and #result > 0 then
+
+        for _, house in ipairs(result) do
+            table.insert(soldHouses, {
+                houseId = house.houseid,
+                amount = house.amount
+            })
         end
-        -- Send the list of sold houses to the client
-        TriggerClientEvent('bcc-housing:receiveSoldHouses', src, soldHouses)
-    end)
+    end
+
+    cb(soldHouses)
 end)
 
 -- Event to collect house sale money from an NPC

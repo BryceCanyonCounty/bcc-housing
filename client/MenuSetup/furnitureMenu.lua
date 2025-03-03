@@ -90,7 +90,7 @@ function buyFurnitureMenu(houseId, ownershipStatus)
 
     -- Define the furniture items with their actions
     -- Register elements for each furniture item
-    for index, category in pairs(Config.Furniture) do
+    for index, category in pairs(Furniture) do
         --category.desc
         buyFurnitureMenu:RegisterElement('button', {
             label = category.name,
@@ -137,10 +137,10 @@ function IndFurnitureTypeMenu(type, houseId, ownershipStatus)
         return -- Skip opening the menu if the player is dead
     end
 
-    local furnConfigTable = Config.Furniture[type]
+    local furnConfigTable = Furniture[type]
     if not furnConfigTable then
         devPrint("Error: Invalid furniture type '" .. type .. "'. Available types are:")
-        for key in pairs(Config.Furniture) do
+        for key in pairs(Furniture) do
             devPrint(" - " .. key)
         end
         return -- Exit the function if the type is invalid
@@ -148,7 +148,7 @@ function IndFurnitureTypeMenu(type, houseId, ownershipStatus)
 
     local furnitureTypeMenu = BCCHousingMenu:RegisterPage("bcc-housing-furniture-type-menu")
     furnitureTypeMenu:RegisterElement('header', {
-        value = Config.Furniture[type].titile,
+        value = Furniture[type].titile,
         slot = 'header',
         style = {}
     })

@@ -76,7 +76,7 @@ AddEventHandler('bcc-housing:NewPlayerGivenAccess', function(id, houseid, recSou
     devPrint("Exists check: " .. tostring(exists))
 
     local houseMaxResident
-    for _, h in pairs(Config.HousesForSale) do
+    for _, h in pairs(Houses) do
         if h.uniqueName == houseData.uniqueName then
             houseMaxResident = h.playerMax
             devPrint("Matching house configuration found, House has a " .. houseMaxResident .. " person limit.")

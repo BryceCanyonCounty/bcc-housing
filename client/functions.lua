@@ -14,7 +14,6 @@ BCCHousingMenu = FeatherMenu:RegisterMenu("bcc:housing:mainmenu",
         ["2kwidth"] = "700px",
         ["4kwidth"] = "900px",
         style = {
-            ['font-family'] = 'crock, Georgia, serif',
             --['font-size'] = '18px',
         },
         contentslot = {
@@ -38,6 +37,26 @@ BCCHousingMenu = FeatherMenu:RegisterMenu("bcc:housing:mainmenu",
         end
     }
 )
+
+function LoadModel(model, modelName)
+    if not IsModelValid(model) then
+        print('Invalid model:', modelName)
+        return
+    end
+
+    RequestModel(model, false)
+
+    local timeout = 10000
+    local startTime = GetGameTimer()
+
+    while not HasModelLoaded(model) do
+        if GetGameTimer() - startTime > timeout then
+            print('Failed to load model:', modelName)
+            return
+        end
+        Wait(10)
+    end
+end
 
 -------- Get Players Function --------
 function GetPlayers()
@@ -141,7 +160,6 @@ AddEventHandler("onResourceStop", function(resource)
                 DeleteObject(v)
             end
         end
-        dealerPed:Remove()
 
         -- Remove any blips that were created
         if HouseBlips and next(HouseBlips) then
@@ -151,6 +169,18 @@ AddEventHandler("onResourceStop", function(resource)
                 end
             end
             HouseBlips = {} -- Clear the table to prevent any stale references
+        end
+
+        -- Remove blips and npcs for all npc agents
+        for _, shopCfg in pairs(Agents) do
+            if shopCfg.Blip then
+                RemoveBlip(shopCfg.Blip)
+                shopCfg.Blip = nil
+            end
+            if shopCfg.NPC then
+                DeleteEntity(shopCfg.NPC)
+                shopCfg.NPC = nil
+            end
         end
 
         -- Notify the server to clean up any server-side resources

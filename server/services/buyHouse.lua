@@ -16,7 +16,7 @@ AddEventHandler('bcc-housing:buyHouse', function(houseCoords, moneyType)
         return
     end
 
-    for _, house in pairs(Config.HousesForSale) do
+    for _, house in pairs(Houses) do
         if house.uniqueName and #(house.houseCoords - houseCoords) < 0.1 then -- Check if the coordinates match and house has uniqueName
             local moneyAmount
             if moneyType == 0 then
@@ -112,7 +112,7 @@ function insertHouseDoors(doors, charidentifier, houseId, uniqueName)
 
     -- Get the house configuration from the uniqueName to ensure correct doors are inserted
     local houseConfig = nil
-    for _, house in pairs(Config.HousesForSale) do
+    for _, house in pairs(Houses) do
         if house.uniqueName == uniqueName then
             houseConfig = house
             break
@@ -201,7 +201,7 @@ AddEventHandler('bcc-housing:getPurchasedHouses', function()
     MySQL.query('SELECT uniqueName FROM bcchousing', {}, function(results)
         if #results > 0 then
             for _, house in ipairs(results) do
-                for _, configHouse in pairs(Config.HousesForSale) do
+                for _, configHouse in pairs(Houses) do
                     if house.uniqueName == configHouse.uniqueName then
                         table.insert(purchasedHouses, configHouse.houseCoords) -- Insert the house coordinates from config
                     end
