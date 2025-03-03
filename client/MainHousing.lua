@@ -45,10 +45,12 @@ end)
 
 RegisterNetEvent('bcc-housing:OwnsHouseClientHandler')
 AddEventHandler('bcc-housing:OwnsHouseClientHandler', function(houseTable, owner)
-    HouseCoords = json.decode(houseTable.house_coords)
+    local coords = json.decode(houseTable.house_coords)
+    HouseCoords = vector3(coords.x, coords.y, coords.z)
     HouseRadius = houseTable.house_radius_limit
     HouseId = houseTable.houseid
     Owner = owner
+
     if houseTable.tpInt ~= 0 then
         TpHouse = houseTable.tpInt
         TpHouseInstance = houseTable.tpInstance
@@ -58,8 +60,10 @@ AddEventHandler('bcc-housing:OwnsHouseClientHandler', function(houseTable, owner
 
     -- ManageHouse Menu Setup
     TriggerEvent('bcc-housing:FurnCheckHandler')
+
     local blip = BccUtils.Blips:SetBlip(_U("houseBlip"), Config.OwnedHouseBlip, 0.2, HouseCoords.x, HouseCoords.y, HouseCoords.z)
     table.insert(HouseBlips, blip)
+
     showManageOpt(HouseCoords.x, HouseCoords.y, HouseCoords.z, HouseId) -- Ensure HouseId is passed here
 end)
 
@@ -89,7 +93,7 @@ RegisterNetEvent('bcc-housing:MainHotelHandler', function()
         Wait(5)
         local plc = GetEntityCoords(PlayerPedId())
         if not inHotel then
-            for k, v in pairs(Config.Hotels) do
+            for k, v in pairs(Hotels) do
                 if GetDistanceBetweenCoords(plc.x, plc.y, plc.z, v.location.x, v.location.y, v.location.z, true) < 2 then
                     if #OwnedHotels > 0 then
                         for r, u in pairs(OwnedHotels) do
