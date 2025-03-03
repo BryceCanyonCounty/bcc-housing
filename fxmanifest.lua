@@ -1,4 +1,4 @@
-fx_version 'adamant'
+fx_version 'cerulean'
 games { 'rdr3' }
 rdr3_warning 'I acknowledge that this is a prerelease build of RedM, and I am aware my resources *will* become incompatible once RedM ships.'
 lua54 'yes'
@@ -8,7 +8,7 @@ author 'BCC Team'
 description 'Advanced Housing Script: A comprehensive and customizable system for managing player houses.'
 
 shared_scripts {
-    'config.lua',
+    'configs/*.lua',
     'locale.lua',
     'languages/*.lua'
 }
@@ -47,4 +47,4 @@ dependency {
     'feather-menu'
 }
 
-version '1.4.1'
+version '1.5.0'

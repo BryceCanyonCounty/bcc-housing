@@ -119,8 +119,8 @@ Locales["de_lang"] = {
     ledgerGoldAmountInserted = "~o~Gold~s~ is placed", -- NEW
     ledger = 'Steuerbuch',
     ledgerGold = "Gold Ledger", -- NEW
-    ledgerInsert = "Inset money",  -- NEW
-    ledgerInsertGold = "Inset gold",  -- NEW
+    ledgerInsert = "Add money",  -- NEW
+    ledgerInsertGold = "Add gold",  -- NEW
     ledger_desc = '',
     ledgerAmountToInsert = 'Menge',
     checkledger = 'Steuerbuch checken',
@@ -294,5 +294,9 @@ Locales["de_lang"] = {
     setPriceToPlayer = "Set the price", -- NEW
     selectOwnershipType = "Select ownership", -- NEW
     listRoomateLim = "Number of roommates: ", -- NEW
-
+    needJob = "You don't have the required job or job grade!",
+    to = "to",
+    hundred = ":00",
+    hours = " is open from",
+    moreInfo = "More Info",
 }

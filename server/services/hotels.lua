@@ -61,7 +61,7 @@ RegisterServerEvent('bcc-housing:HotelBought', function(hotelTable)
 end)
 
 CreateThread(function() --registering all inventories
-    for k, v in pairs(Config.Hotels) do
+    for k, v in pairs(Hotels) do
         Wait(50)        -- Slight delay to ensure proper removal before registration
 
         -- Register inventory for the hotel

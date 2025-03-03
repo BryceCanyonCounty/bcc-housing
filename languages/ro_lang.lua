@@ -119,8 +119,8 @@ Locales["ro_lang"] = {
 	ledgerGoldAmountInserted = "~o~Gold~s~ is placed", -- NEW
 	ledger = 'Registru',
 	ledgerGold = "Gold Ledger", -- NEW
-	ledgerInsert = "Inset money",  -- NEW
-    ledgerInsertGold = "Inset gold",  -- NEW
+	ledgerInsert = "Add money",  -- NEW
+    ledgerInsertGold = "Add gold",  -- NEW
 	ledger_desc = 'Aici vor fi luati banii pentru taxe. Nu poti scoate bani odata ce au fost introdusi, si nu poti stoca mai multi bani decat suma pe care trebuie sa o platesti In taxe!',
 	ledgerAmountToInsert = 'Suma',
 	checkledger = 'Verifica Registrul',
@@ -293,5 +293,9 @@ Locales["ro_lang"] = {
 	setPriceToPlayer = "Set the price", -- NEW
 	selectOwnershipType = "Select ownership", -- NEW
 	listRoomateLim = "Number of roommates: ", -- NEW
-
+    needJob = "You don't have the required job or job grade!",
+    to = "to",
+    hundred = ":00",
+    hours = " is open from",
+    moreInfo = "More Info",
 }

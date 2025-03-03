@@ -729,12 +729,14 @@ AddEventHandler('bcc-housing:openmenu', function(houseId, isOwner, ownershipStat
                 sellHouseConfirmation(houseId, ownershipStatus)
             end)
 
-            housingMainMenu:RegisterElement('button', {
-                label = _U('sellHouseToPlayer'),
-                style = {}
-            }, function()
-                sellHouseToPlayer(houseId, ownershipStatus)
-            end)
+            if Config.SellToPlayer then
+                housingMainMenu:RegisterElement('button', {
+                    label = _U('sellHouseToPlayer'),
+                    style = {}
+                }, function()
+                    sellHouseToPlayer(houseId, ownershipStatus)
+                end)
+            end
         else
             ---@tbd
             --[[

@@ -119,8 +119,8 @@ Locales["fr_lang"] = {
     ledgerGoldAmountInserted = "~o~Gold~s~ is placed", -- NEW
     ledger = 'Registre',
     ledgerGold = "Gold Ledger", -- NEW
-    ledgerInsert = "Inset money",  -- NEW
-    ledgerInsertGold = "Inset gold",  -- NEW
+    ledgerInsert = "Add money",  -- NEW
+    ledgerInsertGold = "Add gold",  -- NEW
     ledger_desc = 'C\'est là que l\'argent pour les taxes sera prélevé. Vous ne pouvez pas retirer d\'argent une fois qu\'il a été mis, et vous ne pouvez pas stocker plus d\'argent que ce que vous avez à payer en taxes !',
     ledgerAmountToInsert = 'Montant',
     checkledger = 'Vérifier le registre',
@@ -294,5 +294,9 @@ Locales["fr_lang"] = {
     setPriceToPlayer = "Set the price", -- NEW
     selectOwnershipType = "Select ownership", -- NEW
     listRoomateLim = "Number of roommates: ", -- NEW
-
+    needJob = "You don't have the required job or job grade!",
+    to = "to",
+    hundred = ":00",
+    hours = " is open from",
+    moreInfo = "More Info",
 }

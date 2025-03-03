@@ -1,49 +1,10 @@
 local purchasedHouses = {}
 
-Citizen.CreateThread(function()
-    local HouseDealerPrompt = BccUtils.Prompts:SetupPromptGroup()
-    local collectMoneyPrompt = HouseDealerPrompt:RegisterPrompt(_U("collectFromDealer"), BccUtils.Keys[Config.keys.collect], 1, 1, true, 'hold', { timedeventhash = 'MEDIUM_TIMED_EVENT' })
-
-    for _, dealer in pairs(Config.houseDealer) do
-        if dealer.CreateNPC then
-            dealerPed = BccUtils.Ped:Create('A_M_O_SDUpperClass_01', dealer.NpcCoords.x, dealer.NpcCoords.y, dealer.NpcCoords.z - 1, 0, 'world', false)
-            dealerPed:Freeze()
-            dealerPed:SetHeading(dealer.NpcHeading)
-            dealerPed:Invincible()
-
-            if dealer.BlipName and dealer.BlipSprite then
-                local dealerBlip = BccUtils.Blips:SetBlip(dealer.BlipName, dealer.BlipSprite, 5.0, dealer.NpcCoords.x, dealer.NpcCoords.y, dealer.NpcCoords.z)
-            end
-        end
-    end
-
-    while true do
-        Wait(1)
-        local playerPed = PlayerPedId()
-
-        if IsEntityDead(playerPed) then goto END end
-        for _, dealer in pairs(Config.houseDealer) do
-            local playerCoords = GetEntityCoords(PlayerPedId())
-            local dist = #(playerCoords - dealer.NpcCoords)
-            if dist < 3 then
-                HouseDealerPrompt:ShowGroup(_U("houseDealer"))
-
-                if collectMoneyPrompt:HasCompleted() then
-                    -- Open the menu to collect money
-                    TriggerEvent('bcc-housing:openCollectMoneyMenu')
-                    break
-                end
-            end
-        end
-        ::END::
-    end
-end)
-
 CreateThread(function()
     -- Request the purchased houses list from the server when the resource starts
     TriggerServerEvent('bcc-housing:getPurchasedHouses')
     local PromptGroup = BccUtils.Prompt:SetupPromptGroup()
-    local BuyHousePrompt = PromptGroup:RegisterPrompt("More Info", BccUtils.Keys[Config.keys.buy], 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })                                                                                                               -- Register your first prompt
+    local BuyHousePrompt = PromptGroup:RegisterPrompt(_U("moreInfo"), BccUtils.Keys[Config.keys.buy], 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })                                                                                                               -- Register your first prompt
 
     while true do
         Wait(0) -- Run the loop continuously
@@ -53,7 +14,7 @@ CreateThread(function()
 
         if IsEntityDead(playerPed) then goto END end
         
-        for _, house in pairs(Config.HousesForSale) do
+        for _, house in pairs(Houses) do
             local isPurchased = false
 
             -- Check if the house has been purchased
@@ -77,7 +38,7 @@ CreateThread(function()
                     
                     HouseBlips[house.uniqueName] = houseSaleBlip
                     
-                    local blipModifier = BccUtils.Blips:AddBlipModifier(houseSaleBlip, house.saleBlipModifier)
+                    local blipModifier = BccUtils.Blips:AddBlipModifier(houseSaleBlip, Config.BlipColors[house.saleBlipModifier])
                     blipModifier:ApplyModifier()
                 end
 
@@ -110,78 +71,6 @@ RegisterNetEvent('bcc-housing:ReinitializeChecksAfterSale')
 AddEventHandler('bcc-housing:ReinitializeChecksAfterSale', function()
     -- Reinitialize the house purchase list
     TriggerServerEvent('bcc-housing:getPurchasedHouses')
-end)
-
-AddEventHandler('bcc-housing:openCollectMoneyMenu', function()
-    devPrint("Opening collect money menu")
-
-    if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
-    end
-
-    -- Request the list of sold houses from the server
-    TriggerServerEvent('bcc-housing:requestSoldHouses')
-
-    -- Listen for the response from the server with the sold houses
-    RegisterNetEvent('bcc-housing:receiveSoldHouses')
-    AddEventHandler('bcc-housing:receiveSoldHouses', function(soldHouses)
-        local collectMoneyMenu = BCCHousingMenu:RegisterPage("bcc-housing:CollectMoneyPage")
-
-        collectMoneyMenu:RegisterElement('header', {
-            value = _U("houseSaleMoney"),
-            slot = 'header',
-            style = {}
-        })
-
-        collectMoneyMenu:RegisterElement('line', {
-            style = {}
-        })
-
-        if #soldHouses > 0 then
-            for _, house in ipairs(soldHouses) do
-                collectMoneyMenu:RegisterElement('textdisplay', {
-                    value = string.format(_U("houseId") .. "%d" .. _U("soldFor") .. "$%d", house.houseId, house.amount),
-                    slot = 'content',
-                    style = {}
-                })
-            end
-        else
-            collectMoneyMenu:RegisterElement('textdisplay', {
-                value = _U("noHouseSold"),
-                slot = 'content',
-                style = {}
-            })
-        end
-
-        collectMoneyMenu:RegisterElement('line', {
-            style = {},
-            slot = "footer"
-        })
-
-        collectMoneyMenu:RegisterElement('button', {
-            label = _U("collectMoney"),
-            style = {},
-            slot = "footer"
-        }, function()
-            TriggerServerEvent('bcc-housing:collectHouseSaleMoneyFromNpc')
-            BCCHousingMenu:Close()
-        end)
-
-        collectMoneyMenu:RegisterElement('button', {
-            label = _U("backButton"),
-            style = {['position'] = 'relative', ['z-index'] = 9,},
-            slot = "footer"
-        }, function()
-            BCCHousingMenu:Close()
-        end)
-
-        collectMoneyMenu:RegisterElement('bottomline', {
-            style = {},
-            slot = "footer"
-        })
-
-        BCCHousingMenu:Open({ startupPage = collectMoneyMenu })
-    end)
 end)
 
 AddEventHandler('bcc-housing:openBuyHouseMenu', function(house)
