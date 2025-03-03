@@ -277,5 +277,9 @@ Locales["ua_lang"] = {
     setPriceToPlayer = "Вкажіть ціну", -- NEW
     selectOwnershipType = "Обрати тип власності", -- NEW
     listRoomateLim = "Кількість співмешканців: ", -- NEW
-
+    needJob = "You don't have the required job or job grade!",
+    to = "to",
+    hundred = ":00",
+    hours = " is open from",
+    moreInfo = "More Info",
 }
