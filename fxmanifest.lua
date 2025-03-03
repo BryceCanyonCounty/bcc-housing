@@ -8,7 +8,7 @@ author 'BCC Team'
 description 'Advanced Housing Script: A comprehensive and customizable system for managing player houses.'
 
 shared_scripts {
-    'config.lua',
+    'configs/*.lua',
     'locale.lua',
     'languages/*.lua'
 }
