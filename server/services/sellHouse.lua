@@ -26,7 +26,7 @@ AddEventHandler('bcc-housing:sellHouse', function(houseId)
 
                 -- Find the corresponding house configuration by uniqueName
                 local houseConfig = nil
-                for _, h in pairs(Config.HousesForSale) do
+                for _, h in pairs(Houses) do
                     if h.uniqueName == houseData.uniqueName then
                         houseConfig = h
                         devPrint("Matching house configuration found: " .. json.encode(houseConfig))
