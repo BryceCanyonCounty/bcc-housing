@@ -58,8 +58,7 @@ AddEventHandler('bcc-housing:OwnsHouseClientHandler', function(houseTable, owner
 
     -- ManageHouse Menu Setup
     TriggerEvent('bcc-housing:FurnCheckHandler')
-    local blip = BccUtils.Blips:SetBlip(_U("houseBlip"), 'blip_mp_base', 0.2, HouseCoords.x, HouseCoords.y, HouseCoords
-        .z)
+    local blip = BccUtils.Blips:SetBlip(_U("houseBlip"), Config.OwnedHouseBlip, 0.2, HouseCoords.x, HouseCoords.y, HouseCoords.z)
     table.insert(HouseBlips, blip)
     showManageOpt(HouseCoords.x, HouseCoords.y, HouseCoords.z, HouseId) -- Ensure HouseId is passed here
 end)
@@ -74,24 +73,16 @@ end)
 RegisterNetEvent('bcc-housing:MainHotelHandler', function()
     devPrint("Initializing main hotel handler")
     local PromptGroup = BccUtils.Prompts:SetupPromptGroup()
-    local firstprompt = PromptGroup:RegisterPrompt(_U("promptBuy"), BccUtils.Keys[Config.keys.buy], 1, 1, true, 'hold', {
-        timedeventhash = "MEDIUM_TIMED_EVENT"
-    })
+    local firstprompt = PromptGroup:RegisterPrompt(_U("promptBuy"), BccUtils.Keys[Config.keys.buy], 1, 1, true, 'hold', {timedeventhash = "MEDIUM_TIMED_EVENT"})
 
     local PromptGroup2 = BccUtils.Prompts:SetupPromptGroup()
-    local firstprompt2 = PromptGroup2:RegisterPrompt(_U("promptEnterHotel"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'hold', {
-        timedeventhash = "MEDIUM_TIMED_EVENT"
-    })
+    local firstprompt2 = PromptGroup2:RegisterPrompt(_U("promptEnterHotel"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'hold', {timedeventhash = "MEDIUM_TIMED_EVENT"})
 
     local PromptGroup3 = BccUtils.Prompts:SetupPromptGroup()
-    local firstprompt3 = PromptGroup3:RegisterPrompt(_U("hotelInvName"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'hold', {
-        timedeventhash = "MEDIUM_TIMED_EVENT"
-    })
+    local firstprompt3 = PromptGroup3:RegisterPrompt(_U("hotelInvName"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'hold', {timedeventhash = "MEDIUM_TIMED_EVENT"})
 
     local PromptGroup4 = BccUtils.Prompts:SetupPromptGroup()
-    local firstprompt4 = PromptGroup4:RegisterPrompt(_U("promptLeaveHotel"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'hold', {
-        timedeventhash = "MEDIUM_TIMED_EVENT"
-    })
+    local firstprompt4 = PromptGroup4:RegisterPrompt(_U("promptLeaveHotel"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'hold', {timedeventhash = "MEDIUM_TIMED_EVENT"})
 
     local inHotel, hotelInside, instanceNumber, coordsWhenEntered = false, nil, 0, nil
     while true do
