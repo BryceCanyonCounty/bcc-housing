@@ -53,7 +53,7 @@ CreateThread(function()
 
         if IsEntityDead(playerPed) then goto END end
         
-        for _, house in pairs(Config.HousesForSale) do
+        for _, house in pairs(Houses) do
             local isPurchased = false
 
             -- Check if the house has been purchased
@@ -77,7 +77,7 @@ CreateThread(function()
                     
                     HouseBlips[house.uniqueName] = houseSaleBlip
                     
-                    local blipModifier = BccUtils.Blips:AddBlipModifier(houseSaleBlip, house.saleBlipModifier)
+                    local blipModifier = BccUtils.Blips:AddBlipModifier(houseSaleBlip, Config.BlipColors[house.saleBlipModifier])
                     blipModifier:ApplyModifier()
                 end
 
