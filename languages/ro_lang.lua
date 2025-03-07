@@ -145,10 +145,9 @@ Locales["ro_lang"] = {
 	houseCreatedWebhookGivenToo = ' Casa a fost data la ID caracter: ',
 
 	--- Hoteluri ---
-	promptGroupName = 'Pret Hotel: ',
-	promptBuy = 'Cumpara Hotel',
+	promptGroupName = '~COLOR_GREYDARK~ |~q~ Room Price: ~t6~$',
+    promptBuy = 'Purchase Room',
 	promptEnterHotel = 'Intra In Hotel',
-	promptHotel = 'Hotel',
 	hotelInvName = 'Inventar',
 	promptLeaveHotel = 'Paraseste Hotelul',
 
