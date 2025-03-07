@@ -84,7 +84,6 @@ Locales["ua_lang"] = {
     furnNotPlaced = "Меблі не встановлено",
     toFar = "Занадто далеко від вашого будинку",
     cost = "Вартість покупки: ",
-    houseBlip = "Ваш будинок",
     buyOwnerFurn = "Купити меблі",
     sellOwnerFurn = "Продати меблі",
     sellOwnerFurn_desc = "Продати ваші меблі?",
