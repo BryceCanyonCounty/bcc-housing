@@ -18,6 +18,12 @@ CreateThread(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ]])
 
+    -- Add tpInt and tpInstance columns to bcchousing if they don't exist
+    MySQL.query.await("ALTER TABLE `bcchousing` ADD COLUMN IF NOT EXISTS `tpInt` int(10) DEFAULT 0")
+    MySQL.query.await("ALTER TABLE `bcchousing` ADD COLUMN IF NOT EXISTS `tpInstance` int(10) DEFAULT 0")
+	MySQL.query.await("ALTER TABLE `bcchousing` ADD COLUMN IF NOT EXISTS `uniqueName` VARCHAR(255) NOT NULL")
+    MySQL.query.await("ALTER TABLE `bcchousing` ADD COLUMN IF NOT EXISTS `ownershipStatus` ENUM('purchased', 'rented') NOT NULL DEFAULT 'purchased'")
+
     -- Create the bcchousinghotels table if it doesn't exist
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `bcchousinghotels` (
@@ -26,11 +32,10 @@ CreateThread(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ]])
 
-    -- Add tpInt and tpInstance columns to bcchousing if they don't exist
-    MySQL.query.await("ALTER TABLE `bcchousing` ADD COLUMN IF NOT EXISTS `tpInt` int(10) DEFAULT 0")
-    MySQL.query.await("ALTER TABLE `bcchousing` ADD COLUMN IF NOT EXISTS `tpInstance` int(10) DEFAULT 0")
-	MySQL.query.await("ALTER TABLE `bcchousing` ADD COLUMN IF NOT EXISTS `uniqueName` VARCHAR(255) NOT NULL")
-    MySQL.query.await("ALTER TABLE `bcchousing` ADD COLUMN IF NOT EXISTS `ownershipStatus` ENUM('purchased', 'rented') NOT NULL DEFAULT 'purchased'")
+    -- Add index to bcchousinghotels if it doesn't exist
+    MySQL.query.await([[
+        CREATE INDEX IF NOT EXISTS `idx_charidentifier` ON `bcchousinghotels` (`charidentifier`);
+    ]])
 
     -- Create the bcchousing_transactions table if it doesn't exist
     MySQL.query.await([[
@@ -46,5 +51,4 @@ CreateThread(function()
     DbUpdated = true
 
     print("Database tables for \x1b[35m\x1b[1m*bcc-housing*\x1b[0m created or updated \x1b[32msuccessfully\x1b[0m.")
-
 end)
