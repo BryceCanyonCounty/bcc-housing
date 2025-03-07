@@ -58,7 +58,7 @@ RegisterNetEvent('bcc-housing:HotelBought', function(hotelTable)
     end
 end)
 
-RegisterServerEvent('bcc-housing:RegisterHotelInventory', function(hotelId)
+RegisterNetEvent('bcc-housing:RegisterHotelInventory', function(hotelId)
     local src = source
     local user = VORPcore.getUser(src)
     if not user then return end
@@ -88,7 +88,7 @@ RegisterServerEvent('bcc-housing:RegisterHotelInventory', function(hotelId)
     end
 end)
 
-RegisterServerEvent('bcc-housing:HotelInvOpen', function(hotelId)
+RegisterNetEvent('bcc-housing:HotelInvOpen', function(hotelId)
     local _source = source
     local user = VORPcore.getUser(_source)
     if not user then return end
