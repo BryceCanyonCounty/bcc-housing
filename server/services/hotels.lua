@@ -58,28 +58,43 @@ RegisterNetEvent('bcc-housing:HotelBought', function(hotelTable)
     end
 end)
 
-CreateThread(function() --registering all inventories
-    for _, hotel in pairs(Hotels) do
-        Wait(50)        -- Slight delay to ensure proper removal before registration
+RegisterServerEvent('bcc-housing:RegisterHotelInventory', function(hotelId)
+    local src = source
+    local user = VORPcore.getUser(src)
+    if not user then return end
 
-        -- Register inventory for the hotel
-        local data = {
-            id = 'bcc-housinginv:' .. tostring(hotel.hotelId),
-            name = _U("hotelInvName"),
-            limit = tonumber(hotel.invSpace),
-            acceptWeapons = true,
-            shared = false,
-            ignoreItemStackLimit = true,
-            whitelistItems = false,
-            UsePermissions = false,
-            UseBlackList = false,
-            whitelistWeapons = false
-        }
-        exports.vorp_inventory:registerInventory(data)
+    local character = user.getUsedCharacter
+    local charId = character.charIdentifier
+
+    local isRegistered = exports.vorp_inventory:isCustomInventoryRegistered('bcc-housinginv:' .. tostring(hotelId) .. tostring(charId))
+    if isRegistered then return end
+
+    for _, hotelCfg in pairs(Hotels) do
+        if hotelCfg.hotelId == hotelId then
+            local data = {
+                id = 'bcc-housinginv:' .. tostring(hotelCfg.hotelId) .. tostring(charId),
+                name = _U("hotelInvName"),
+                limit = tonumber(hotelCfg.invSpace),
+                acceptWeapons = true,
+                shared = false,
+                ignoreItemStackLimit = true,
+                whitelistItems = false,
+                UsePermissions = false,
+                UseBlackList = false,
+                whitelistWeapons = false
+            }
+            exports.vorp_inventory:registerInventory(data)
+        end
     end
 end)
 
 RegisterServerEvent('bcc-housing:HotelInvOpen', function(hotelId)
     local _source = source
-    exports.vorp_inventory:openInventory(_source, 'bcc-housinginv:' .. tostring(hotelId))
+    local user = VORPcore.getUser(_source)
+    if not user then return end
+
+    local character = user.getUsedCharacter
+    local charId = character.charIdentifier
+
+    exports.vorp_inventory:openInventory(_source, 'bcc-housinginv:' .. tostring(hotelId) .. tostring(charId))
 end)
