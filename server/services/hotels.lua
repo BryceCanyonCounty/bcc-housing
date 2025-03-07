@@ -1,76 +1,74 @@
------ Hotel Area ----
-RegisterServerEvent('bcc-housing:HotelDbRegistry', function() --registering each player
-    local _source = source
-    local user = VORPcore.getUser(_source)
+RegisterNetEvent('bcc-housing:HotelDbRegistry', function()
+    local src = source
+    local user = VORPcore.getUser(src)
     if not user then return end
-    local character = user.getUsedCharacter and user.getUsedCharacter
-    local param = { ['charidentifier'] = character.charIdentifier }
-    local result = MySQL.query.await("SELECT * FROM bcchousinghotels WHERE charidentifier=@charidentifier", param)
+
+    local character = user.getUsedCharacter
+    local charId = character.charIdentifier
+
+    local result = MySQL.query.await('SELECT * FROM `bcchousinghotels` WHERE `charidentifier` = ?', { charId })
     if #result == 0 then
-        exports.oxmysql:execute("INSERT INTO bcchousinghotels ( `charidentifier` ) VALUES ( @charidentifier )", param)
-    else
-        for k, v in pairs(result) do
-            TriggerClientEvent('bcc-housing:HousingTableUpdate', _source, v)
-        end
+        MySQL.query.await('INSERT INTO `bcchousinghotels` (`charidentifier`) VALUES (?)', { charId })
+        result = { { hotels = 'none' } }
     end
-    Wait(1000)
-    local result2 = MySQL.query.await("SELECT * FROM bcchousinghotels WHERE charidentifier=@charidentifier", param)
-    if result2[1].hotels ~= 'none' then
-        local hotelsTable = json.decode(result2[1].hotels)
-        if #hotelsTable > 0 then
-            for k, v in pairs(hotelsTable) do
-                TriggerClientEvent('bcc-housing:HousingTableUpdate', _source, v)
+
+    local hotelsData = result[1].hotels
+    if hotelsData ~= 'none' then
+        local hotelsTable = json.decode(hotelsData)
+        if hotelsTable and #hotelsTable > 0 then
+            for _, hotelId in ipairs(hotelsTable) do
+                TriggerClientEvent('bcc-housing:UpdateHotelTable', src, hotelId)
             end
         end
+    else
+        for _, hotelId in ipairs(result) do
+            TriggerClientEvent('bcc-housing:UpdateHotelTable', src, hotelId)
+        end
     end
-    TriggerClientEvent('bcc-housing:MainHotelHandler', _source)
+
+    TriggerClientEvent('bcc-housing:MainHotelHandler', src)
 end)
 
-RegisterServerEvent('bcc-housing:HotelBought', function(hotelTable)
-    local _source = source
-    local character = VORPcore.getUser(_source).getUsedCharacter
-    local param = { ['charidentifier'] = character.charIdentifier }
-    local result = MySQL.query.await("SELECT * FROM bcchousinghotels WHERE charidentifier=@charidentifier", param)
-    local ownedHotels = result[1].hotels
-    local tableToInsert = nil
-    if ownedHotels == 'none' then
-        if character.money >= hotelTable.cost then
-            character.removeCurrency(0, hotelTable.cost)
-            tableToInsert = json.encode({ hotelTable.hotelId })
-        else
-            VORPcore.NotifyRightTip(_source, _U("noMoney"), 4000)
-        end
-    else
-        local ownedHotels2 = json.decode(ownedHotels)
-        if character.money >= hotelTable.cost then
-            table.insert(ownedHotels2, hotelTable.hotelId)
-            character.removeCurrency(0, hotelTable.cost)
-            tableToInsert = json.encode(ownedHotels2)
-        else
-            VORPcore.NotifyRightTip(_source, _U("noMoney"), 4000)
-        end
+RegisterNetEvent('bcc-housing:HotelBought', function(hotelTable)
+    local src = source
+    local user = VORPcore.getUser(src)
+    if not user then return end
+
+    local character = user.getUsedCharacter
+    local charId = character.charIdentifier
+
+    local result = MySQL.query.await('SELECT * FROM `bcchousinghotels` WHERE `charidentifier` = ?', { charId })
+    local ownedHotels = result[1] and result[1].hotels or 'none'
+
+    if character.money < hotelTable.cost then
+        VORPcore.NotifyRightTip(src, _U('noMoney'), 4000)
+        return
     end
-    if tableToInsert ~= nil then
-        local param2 = { ['charidentifier'] = character.charIdentifier, ['hotelsTable'] = tableToInsert }
-        exports.oxmysql:execute("UPDATE bcchousinghotels SET hotels=@hotelsTable WHERE charidentifier=@charidentifier",
-            param2)
-        for k, v in pairs(json.decode(tableToInsert)) do
-            TriggerClientEvent('bcc-housing:HousingTableUpdate', _source, v)
-        end
+
+    local ownedHotelsTable = ownedHotels == 'none' and {} or json.decode(ownedHotels)
+    table.insert(ownedHotelsTable, hotelTable.hotelId)
+    local updatedHotels = json.encode(ownedHotelsTable)
+
+    character.removeCurrency(0, hotelTable.cost)
+
+    MySQL.query.await('UPDATE `bcchousinghotels` SET `hotels` = ? WHERE `charidentifier` = ?', { updatedHotels, charId })
+
+    for _, hotelId in ipairs(ownedHotelsTable) do
+        TriggerClientEvent('bcc-housing:UpdateHotelTable', src, hotelId)
     end
 end)
 
 CreateThread(function() --registering all inventories
-    for k, v in pairs(Hotels) do
+    for _, hotel in pairs(Hotels) do
         Wait(50)        -- Slight delay to ensure proper removal before registration
 
         -- Register inventory for the hotel
         local data = {
-            id = 'bcc-housinginv:' .. tostring(v.hotelId),
+            id = 'bcc-housinginv:' .. tostring(hotel.hotelId),
             name = _U("hotelInvName"),
-            limit = tonumber(v.invSpace),
+            limit = tonumber(hotel.invSpace),
             acceptWeapons = true,
-            shared = true,
+            shared = false,
             ignoreItemStackLimit = true,
             whitelistItems = false,
             UsePermissions = false,
