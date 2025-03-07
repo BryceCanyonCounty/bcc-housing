@@ -145,10 +145,9 @@ Locales["fr_lang"] = {
     houseCreatedWebhookGivenToo = ' La maison a été donnée à l\'identifiant du personnage : ',
 
     --- Hôtels ---
-    promptGroupName = 'Prix de l\'hôtel : ',
-    promptBuy = 'Acheter l\'hôtel',
+    promptGroupName = '~COLOR_GREYDARK~ |~q~ Room Price: ~t6~$',
+    promptBuy = 'Purchase Room',
     promptEnterHotel = 'Entrer dans l\'hôtel',
-    promptHotel = 'Hôtel',
     hotelInvName = 'Inventaire',
     promptLeaveHotel = 'Quitter l\'hôtel',
 
