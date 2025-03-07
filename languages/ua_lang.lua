@@ -125,10 +125,9 @@ Locales["ua_lang"] = {
     houseCreatedWebhookGivenToo = " Будинок передано персонажу з ID: ",
 
     --- Hotels ---
-    promptGroupName = "Ціна готелю: ",
-    promptBuy = "Купити готель",
+    promptGroupName = '~COLOR_GREYDARK~ |~q~ Room Price: ~t6~$',
+    promptBuy = 'Purchase Room',
     promptEnterHotel = "Увійти до готелю",
-    promptHotel = "Готель",
     hotelInvName = "Інвентар",
     promptLeaveHotel = "Залишити готель",
 
