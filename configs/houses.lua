@@ -281,7 +281,7 @@ Houses = {
     -----------------------------------------------------
     {
         uniqueName = "house6", -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
-        houseCoords = vector3(-1675.88, -340.27, 170.79),
+        houseCoords = vector3(-613.23, -26.92, 85.98),
         houseRadiusLimit = 35,
         doors = {
             -- Make sure you add the exact door from doorhashes.lua (you can find that in bcc-doorlocks in the client folder)
