@@ -104,7 +104,6 @@ Locales["ro_lang"] = {
 	furnNotPlaced = 'Nu ai achizitionat mobilierul',
 	toFar = 'Prea departe de casa ta',
 	cost = 'Costul de cumparare: ',
-	houseBlip = 'Casa Ta',
 	buyOwnerFurn = 'Cumpara mobilier',
 	sellOwnerFurn = 'Vinde mobilier',
 	sellOwnerFurn_desc = 'Vinzi mobilierul pe care Il detii?',
