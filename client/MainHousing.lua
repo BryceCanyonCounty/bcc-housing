@@ -106,8 +106,9 @@ RegisterNetEvent('bcc-housing:MainHotelHandler', function()
                                 isOwned = true
                                 enterGroup:ShowGroup(hotel.name)
                                 if enterPrompt:HasCompleted() then
+                                    TriggerServerEvent('bcc-housing:RegisterHotelInventory', hotelId)
                                     local player = PlayerId()
-                                    devPrint("Entering hotel: " .. tostring(hotel.hotelId))
+                                    devPrint("Entering hotel: " .. tostring(hotelId))
                                     inHotel = true
                                     hotelInside = hotel
                                     coordsWhenEntered = playerCoords
@@ -170,7 +171,7 @@ AddEventHandler('bcc-housing:ManageHotelBlips', function()
 end)
 
 RegisterNetEvent('bcc-housing:UpdateHotelTable', function(hotelId) -- event to update the housing table
-    devPrint("Updating housing table with house ID: " .. tostring(hotelId))
+    devPrint("Updating hotel table with hotel ID: " .. tostring(hotelId))
     table.insert(OwnedHotels, hotelId)
 end)
 
