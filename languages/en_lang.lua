@@ -104,7 +104,6 @@ Locales["en_lang"] = {
     furnNotPlaced = 'Funiture not placed',
     toFar = 'To far from your house',
     cost = 'Cost to buy: ',
-    houseBlip = 'Your House',
     buyOwnerFurn = 'Buy furniture',
     sellOwnerFurn = 'Sell furniture',
     sellOwnerFurn_desc = 'Sell furniture you own?',
