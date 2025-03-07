@@ -32,13 +32,13 @@ CreateThread(function()
             elseif not isPurchased then
                 local distance = GetDistanceBetweenCoords(playerCoords, house.menuCoords, true)
 
-                -- Only create blips if forSaleBlips is true and blip hasn't been created yet
-                if house.forSaleBlips and not HouseBlips[house.uniqueName] then
-                    local houseSaleBlip = BccUtils.Blips:SetBlip(house.blipname, house.saleBlipSprite, 0.2, house.menuCoords.x, house.menuCoords.y, house.menuCoords.z)
-                    
+                -- Only create blips if blip.sale.active is true and blip hasn't been created yet
+                if house.blip.sale.active and not HouseBlips[house.uniqueName] then
+                    local houseSaleBlip = BccUtils.Blips:SetBlip(house.blip.sale.name, house.blip.sale.sprite, 0.2, house.menuCoords.x, house.menuCoords.y, house.menuCoords.z)
+
                     HouseBlips[house.uniqueName] = houseSaleBlip
-                    
-                    local blipModifier = BccUtils.Blips:AddBlipModifier(houseSaleBlip, Config.BlipColors[house.saleBlipModifier])
+
+                    local blipModifier = BccUtils.Blips:AddBlipModifier(houseSaleBlip, Config.BlipColors[house.blip.sale.color])
                     blipModifier:ApplyModifier()
                 end
 
