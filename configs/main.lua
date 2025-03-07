@@ -3,7 +3,7 @@ Config = {
     defaultlang = 'en_lang',
     -----------------------------------------------------
 
-    DevMode = true,               -- False on live server
+    DevMode = false,               -- False on live server
     DevModeCommand = "HousingDev", -- This command need to be sent after restarting the resource
     -----------------------------------------------------
 
@@ -46,9 +46,6 @@ Config = {
     WebhookAvatar = 'https://bcc-scripts.com/servericons/provision_jail_keys.png',
     -----------------------------------------------------
 
-    OwnedHouseBlip = 'blip_mp_base', -- Blip sprite for owned houses
-    -----------------------------------------------------
-
     doors = { -- Turn off/on the door buttons in house menu
         createNewDoors = true,
         removeDoors = true
@@ -82,7 +79,7 @@ Config = {
         Interior3 = {
             exitCoords = vector3(-60.36, 1238.86, 170.79),
             furnRadius = 10
-        }
+        },
     },
     -----------------------------------------------------
 
