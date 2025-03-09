@@ -183,6 +183,14 @@ AddEventHandler("onResourceStop", function(resource)
             end
         end
 
+        -- Remove blips from all hotels
+        for _, hotelCfg in pairs(Hotels) do
+            if hotelCfg.Blip then
+                RemoveBlip(hotelCfg.Blip)
+                hotelCfg.Blip = nil
+            end
+        end
+
         -- Notify the server to clean up any server-side resources
         TriggerServerEvent('bcc-housing:ServerSideRssStop')
         BCCHousingMenu:Close()

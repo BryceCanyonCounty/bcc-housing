@@ -104,7 +104,6 @@ Locales["ro_lang"] = {
 	furnNotPlaced = 'Nu ai achizitionat mobilierul',
 	toFar = 'Prea departe de casa ta',
 	cost = 'Costul de cumparare: ',
-	houseBlip = 'Casa Ta',
 	buyOwnerFurn = 'Cumpara mobilier',
 	sellOwnerFurn = 'Vinde mobilier',
 	sellOwnerFurn_desc = 'Vinzi mobilierul pe care Il detii?',
@@ -145,10 +144,9 @@ Locales["ro_lang"] = {
 	houseCreatedWebhookGivenToo = ' Casa a fost data la ID caracter: ',
 
 	--- Hoteluri ---
-	promptGroupName = 'Pret Hotel: ',
-	promptBuy = 'Cumpara Hotel',
+	promptGroupName = '~COLOR_GREYDARK~ |~q~ Room Price: ~t6~$',
+    promptBuy = 'Purchase Room',
 	promptEnterHotel = 'Intra In Hotel',
-	promptHotel = 'Hotel',
 	hotelInvName = 'Inventar',
 	promptLeaveHotel = 'Paraseste Hotelul',
 

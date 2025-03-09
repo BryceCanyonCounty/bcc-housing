@@ -104,7 +104,6 @@ Locales["en_lang"] = {
     furnNotPlaced = 'Funiture not placed',
     toFar = 'To far from your house',
     cost = 'Cost to buy: ',
-    houseBlip = 'Your House',
     buyOwnerFurn = 'Buy furniture',
     sellOwnerFurn = 'Sell furniture',
     sellOwnerFurn_desc = 'Sell furniture you own?',
@@ -145,10 +144,9 @@ Locales["en_lang"] = {
     houseCreatedWebhookGivenToo = ' House was given to character Id: ',
 
     --- Hotels ---
-    promptGroupName = 'Hotel Price: ',
-    promptBuy = 'Buy Hotel',
+    promptGroupName = '~COLOR_GREYDARK~ |~q~ Room Price: ~t6~$',
+    promptBuy = 'Purchase Room',
     promptEnterHotel = 'Enter Hotel',
-    promptHotel = 'Hotel',
     hotelInvName = 'Inventory',
     promptLeaveHotel = 'Leave Hotel',
 

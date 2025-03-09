@@ -33,12 +33,22 @@ Houses = {
         rentalDeposit = 15,                              -- First Rental deposit in gold bars
         rentCharge = 7.5,                                -- Monthly rent in gold bars
         name = "House",                                  -- Name of the house for display
-        blipname = "House",                              -- Name of the blip on the map
-        forSaleBlips = true,                             -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',            -- Set sprite of the blip
-        saleBlipModifier = 'WHITE',                      -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                                  -- Whether the player can sell the house later
         showmarker = true,                               -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
@@ -84,12 +94,22 @@ Houses = {
         rentalDeposit = 50,                            -- First Rental deposit in gold bars
         rentCharge = 25,                               -- Monthly rent in gold bars
         name = "Ranch",                                -- Name of the house for display
-        blipname = "Ranch",                            -- Name of the blip on the map
-        forSaleBlips = true,                           -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_mp_playlist_adversary', -- Set sprite of the blip
-        saleBlipModifier = 'WHITE',                    -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                                -- Whether the player can sell the house later
         showmarker = true,                             -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                         -- Show blip for houses for sale
+                name = "Ranch",                        -- Name of the sale blip on the map
+                sprite = 'blip_mp_playlist_adversary', -- Set sprite of the sale blip
+                color = 'WHITE',                       -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your Ranch",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
@@ -135,12 +155,22 @@ Houses = {
         rentalDeposit = 40,                             -- First Rental deposit in gold bars
         rentCharge = 20,                                -- Monthly rent in gold bars
         name = "Ranch",                                 -- Name of the house for display
-        blipname = "Ranch",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_mp_playlist_adversary',  -- Set sprite of the blip
-        saleBlipModifier = 'WHITE',                     -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                                 -- Whether the player can sell the house later
         showmarker = true,                              -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                         -- Show blip for houses for sale
+                name = "Ranch",                        -- Name of the sale blip on the map
+                sprite = 'blip_mp_playlist_adversary', -- Set sprite of the sale blip
+                color = 'WHITE',                       -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your Ranch",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
@@ -177,12 +207,22 @@ Houses = {
         rentalDeposit = 5,                             -- First Rental deposit in gold bars
         rentCharge = 2.5,                              -- Monthly rent in gold bars
         name = "House",                                -- Name of the house for display
-        blipname = "House",                            -- Name of the blip on the map
-        forSaleBlips = true,                           -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',          -- Set sprite of the blip
-        saleBlipModifier = 'WHITE',                    -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                                -- Whether the player can sell the house later
         showmarker = true,                             -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
@@ -219,12 +259,22 @@ Houses = {
         rentalDeposit = 15,                             -- First Rental deposit in gold bars
         rentCharge = 7.5,                               -- Monthly rent in gold bars
         name = "House",                                 -- Name of the house for display
-        blipname = "House",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',           -- Set sprite of the blip
-        saleBlipModifier = 'WHITE',                     -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                                 -- Whether the player can sell the house later
         showmarker = true,                              -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
@@ -242,14 +292,10 @@ Houses = {
             -- We need to copy only what's between {...}
             -- 1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25
             {
-                doorinfo =
-                '[2847752952,-628686073,"p_door_tax_shack01x",-1678.7446289063,-336.68927001953,172.99304199219]',
-                locked = true
+                doorinfo = '[2847752952,-628686073,"p_door_tax_shack01x",-1678.7446289063,-336.68927001953,172.99304199219]', locked = true
             },
             {
-                doorinfo =
-                '[1963415953,-628686073,"p_door_tax_shack01x",-1682.8327636719,-340.61013793945,172.98583984375]',
-                locked = true
+                doorinfo = '[1963415953,-628686073,"p_door_tax_shack01x",-1682.8327636719,-340.61013793945,172.98583984375]', locked = true
             },
             -- If the house has more than one door, copy the above same as these below
             -- {
@@ -268,12 +314,22 @@ Houses = {
         rentalDeposit = 15,                             -- First Rental deposit in gold bars
         rentCharge = 7.5,                               -- Monthly rent in gold bars
         name = "House",                                 -- Name of the house for display
-        blipname = "House",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',           -- Set sprite of the blip
-        saleBlipModifier = 'WHITE',                     -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                                 -- Whether the player can sell the house later
         showmarker = true,                              -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
@@ -281,7 +337,7 @@ Houses = {
     -----------------------------------------------------
     {
         uniqueName = "house6", -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
-        houseCoords = vector3(-1675.88, -340.27, 170.79),
+        houseCoords = vector3(-613.23, -26.92, 85.98),
         houseRadiusLimit = 35,
         doors = {
             -- Make sure you add the exact door from doorhashes.lua (you can find that in bcc-doorlocks in the client folder)
@@ -307,24 +363,34 @@ Houses = {
             --     doorinfo = '[1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25]', locked = true
             -- },
         },
-        invLimit = 2000,                               -- Inventory limit for the house
-        taxAmount = 800,                               -- Tax amount for the house
-        playerMax = 5,                                 -- Maximum number of players that can own the house
-        tpInt = 0,                                     -- TP Interior ID
-        tpInstance = 0,                                -- TP Instance ID
-        menuCoords = vector3(-622.36, -33.88, 85.3),   -- House Info (to buy or rent) / Marker location
-        menuRadius = 2.0,                              -- Radius for the menu
-        price = 8000,                                  -- The price of the house
-        sellPrice = 4000,                              -- Amount received when selling the house
-        rentalDeposit = 25,                            -- First Rental deposit in gold bars
-        rentCharge = 12.5,                             -- Monthly rent in gold bars
-        name = "Ranch",                                -- Name of the house for display
-        blipname = "Ranch",                            -- Name of the blip on the map
-        forSaleBlips = true,                           -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_mp_playlist_adversary', -- Set sprite of the blip
-        saleBlipModifier = 'WHITE',                    -- Set color of the blip (see BlipColors in config_main.lua)
-        canSell = true,                                -- Whether the player can sell the house later
-        showmarker = true,                             -- Show marker on the ground for house sale info
+        invLimit = 2000,                             -- Inventory limit for the house
+        taxAmount = 800,                             -- Tax amount for the house
+        playerMax = 5,                               -- Maximum number of players that can own the house
+        tpInt = 0,                                   -- TP Interior ID
+        tpInstance = 0,                              -- TP Instance ID
+        menuCoords = vector3(-622.36, -33.88, 85.3), -- House Info (to buy or rent) / Marker location
+        menuRadius = 2.0,                            -- Radius for the menu
+        price = 8000,                                -- The price of the house
+        sellPrice = 4000,                            -- Amount received when selling the house
+        rentalDeposit = 25,                          -- First Rental deposit in gold bars
+        rentCharge = 12.5,                           -- Monthly rent in gold bars
+        name = "Ranch",                              -- Name of the house for display
+        canSell = true,                              -- Whether the player can sell the house later
+        showmarker = true,                           -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                         -- Show blip for houses for sale
+                name = "Ranch",                        -- Name of the sale blip on the map
+                sprite = 'blip_mp_playlist_adversary', -- Set sprite of the sale blip
+                color = 'WHITE',                       -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your Ranch",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
@@ -364,12 +430,22 @@ Houses = {
         rentalDeposit = 10,                              -- First Rental deposit in gold bars
         rentCharge = 5,                                  -- Monthly rent in gold bars
         name = "House",                                  -- Name of the house for display
-        blipname = "House",                              -- Name of the blip on the map
-        forSaleBlips = true,                             -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',            -- Set sprite of the blip
-        saleBlipModifier = 'WHITE',                      -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                                  -- Whether the player can sell the house later
         showmarker = true,                               -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
@@ -387,30 +463,25 @@ Houses = {
             -- We need to copy only what's between {...}
             -- 1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25
             {
-                doorinfo =
-                '[1606546482,-619255230,"p_door11x_beecher",-1646.2409667969,-1367.1358642578,83.465660095215]', locked = true
+                doorinfo = '[1606546482,-619255230,"p_door11x_beecher",-1646.2409667969,-1367.1358642578,83.465660095215]', locked = true
             },
             {
-                doorinfo =
-                '[2310818050,-619255230,"p_door11x_beecher",-1637.7155761719,-1352.6480712891,83.466453552246]', locked = true
+                doorinfo = '[2310818050,-619255230,"p_door11x_beecher",-1637.7155761719,-1352.6480712891,83.466453552246]', locked = true
             },
             {
                 doorinfo = '[818583340,-619255230,"p_door11x_beecher",-1649.2072753906,-1359.2379150391,83.464546203613]', locked = true
             },
             {
-                doorinfo =
-                '[673683647,-1560536379,"p_bee_barn_door_l",-1605.8223876953,-1411.5681152344,81.054786682129]', locked = true
+                doorinfo = '[673683647,-1560536379,"p_bee_barn_door_l",-1605.8223876953,-1411.5681152344,81.054786682129]', locked = true
             },
             {
-                doorinfo =
-                '[630460389,-1560536379,"p_bee_barn_door_l",-1604.9971923828,-1409.8764648438,81.054786682129]', locked = true
+                doorinfo = '[630460389,-1560536379,"p_bee_barn_door_l",-1604.9971923828,-1409.8764648438,81.054786682129]', locked = true
             },
             {
                 doorinfo = '[258275690,-1560536379,"p_bee_barn_door_l",-1596.84375,-1413.8291015625,81.054786682129]', locked = true
             },
             {
-                doorinfo =
-                '[1796845786,-1560536379,"p_bee_barn_door_l",-1597.6673583984,-1415.5177001953,81.054786682129]', locked = true
+                doorinfo = '[1796845786,-1560536379,"p_bee_barn_door_l",-1597.6673583984,-1415.5177001953,81.054786682129]', locked = true
             },
             -- If the house has more than one door, copy the above same as these below
             -- {
@@ -429,19 +500,29 @@ Houses = {
         rentalDeposit = 50,                              -- First Rental deposit in gold bars
         rentCharge = 25,                                 -- Monthly rent in gold bars
         name = "Ranch",                                  -- Name of the house for display
-        blipname = "Ranch",                              -- Name of the blip on the map
-        forSaleBlips = true,                             -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_mp_playlist_adversary',   -- Set sprite of the blip
-        saleBlipModifier = 'WHITE',                      -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                                  -- Whether the player can sell the house later
         showmarker = true,                               -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                         -- Show blip for houses for sale
+                name = "Ranch",                        -- Name of the sale blip on the map
+                sprite = 'blip_mp_playlist_adversary', -- Set sprite of the sale blip
+                color = 'WHITE',                       -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your Ranch",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
     -- Unfinished empty house at Wallace Station
     -----------------------------------------------------
     {
-        uniqueName = "house20",                            -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
+        uniqueName = "house20", -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
         houseCoords = vector3(-1551.6, 255.4, 114.8),
         houseRadiusLimit = 20,
         doors = {
@@ -462,24 +543,34 @@ Houses = {
             --     doorinfo = '[1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25]', locked = true
             -- },
         },
-        invLimit = 1500,                                -- Inventory limit for the house
-        taxAmount = 500,                                -- Tax amount for the house
-        playerMax = 4,                                  -- Maximum number of players that can own the house
-        tpInt = 0,                                      -- TP Interior ID
-        tpInstance = 0,                                 -- TP Instance ID
+        invLimit = 1500,                               -- Inventory limit for the house
+        taxAmount = 500,                               -- Tax amount for the house
+        playerMax = 4,                                 -- Maximum number of players that can own the house
+        tpInt = 0,                                     -- TP Interior ID
+        tpInstance = 0,                                -- TP Instance ID
         menuCoords = vector3(-1620.8, 234.76, 106.05), -- House Info (to buy or rent) / Marker location
-        menuRadius = 2.0,                               -- Radius for the menu
-        price = 5000,                                   -- The price of the house
-        sellPrice = 2500,                               -- Amount received when selling the house
-        rentalDeposit = 20,                             -- First Rental deposit in gold bars
-        rentCharge = 10,                                -- Monthly rent in gold bars
-        name = "House",                                 -- Name of the house for display
-        blipname = "House",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',           -- Set sprite of the blip
-        saleBlipModifier = 'WHITE', -- Set color of the blip (see BlipColors in config_main.lua)
-        canSell = true,                                 -- Whether the player can sell the house later
-        showmarker = true,                              -- Show marker on the ground for house sale info
+        menuRadius = 2.0,                              -- Radius for the menu
+        price = 5000,                                  -- The price of the house
+        sellPrice = 2500,                              -- Amount received when selling the house
+        rentalDeposit = 20,                            -- First Rental deposit in gold bars
+        rentCharge = 10,                               -- Monthly rent in gold bars
+        name = "House",                                -- Name of the house for display
+        canSell = true,                                -- Whether the player can sell the house later
+        showmarker = true,                             -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------
@@ -520,12 +611,22 @@ Houses = {
         rentalDeposit = 10,                             -- First Rental deposit in gold bars
         rentCharge = 5,                                 -- Monthly rent in gold bars
         name = "House",                                 -- Name of the house for display
-        blipname = "House",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',           -- Set sprite of the blip
-        saleBlipModifier = 'WHITE',                     -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                                 -- Whether the player can sell the house later
         showmarker = true,                              -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
@@ -574,12 +675,22 @@ Houses = {
         rentalDeposit = 40,                             -- First Rental deposit in gold bars
         rentCharge = 20,                                -- Monthly rent in gold bars
         name = "Ranch",                                 -- Name of the house for display
-        blipname = "Ranch",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_mp_playlist_adversary',  -- Set sprite of the blip
-        saleBlipModifier = 'WHITE',                     -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                                 -- Whether the player can sell the house later
         showmarker = true,                              -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                         -- Show blip for houses for sale
+                name = "Ranch",                        -- Name of the sale blip on the map
+                sprite = 'blip_mp_playlist_adversary', -- Set sprite of the sale blip
+                color = 'WHITE',                       -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your Ranch",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
@@ -619,19 +730,29 @@ Houses = {
         rentalDeposit = 15,                             -- First Rental deposit in gold bars
         rentCharge = 7.5,                               -- Monthly rent in gold bars
         name = "House",                                 -- Name of the house for display
-        blipname = "House",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',           -- Set sprite of the blip
-        saleBlipModifier = 'WHITE',                     -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                                 -- Whether the player can sell the house later
         showmarker = true,                              -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
     -- Three Sisters
     -----------------------------------------------------
     {
-        uniqueName = "house14",                            -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
+        uniqueName = "house14", -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
         houseCoords = vector3(1981.05, 1191.35, 171.4),
         houseRadiusLimit = 15,
         doors = {
@@ -649,7 +770,7 @@ Houses = {
             --     doorinfo = '[1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25]', locked = true
             -- },
         },
-        invLimit = 700,                                -- Inventory limit for the house
+        invLimit = 700,                                 -- Inventory limit for the house
         taxAmount = 320,                                -- Tax amount for the house
         playerMax = 2,                                  -- Maximum number of players that can own the house
         tpInt = 0,                                      -- TP Interior ID
@@ -661,19 +782,29 @@ Houses = {
         rentalDeposit = 10,                             -- First Rental deposit in gold bars
         rentCharge = 5,                                 -- Monthly rent in gold bars
         name = "House",                                 -- Name of the house for display
-        blipname = "House",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',           -- Set sprite of the blip
-        saleBlipModifier = 'WHITE', -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                                 -- Whether the player can sell the house later
         showmarker = true,                              -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
     -- Tower near Annesburg
     -----------------------------------------------------
     {
-        uniqueName = "house15",                            -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
+        uniqueName = "house15", -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
         houseCoords = vector3(1932.37, 1945.95, 266.1),
         houseRadiusLimit = 30,
         doors = {
@@ -691,24 +822,34 @@ Houses = {
             --     doorinfo = '[1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25]', locked = true
             -- },
         },
-        invLimit = 1500,                                -- Inventory limit for the house
-        taxAmount = 600,                                -- Tax amount for the house
-        playerMax = 4,                                  -- Maximum number of players that can own the house
-        tpInt = 0,                                      -- TP Interior ID
-        tpInstance = 0,                                 -- TP Instance ID
+        invLimit = 1500,                               -- Inventory limit for the house
+        taxAmount = 600,                               -- Tax amount for the house
+        playerMax = 4,                                 -- Maximum number of players that can own the house
+        tpInt = 0,                                     -- TP Interior ID
+        tpInstance = 0,                                -- TP Instance ID
         menuCoords = vector3(1946.33, 1967.25, 261.4), -- House Info (to buy or rent) / Marker location
-        menuRadius = 2.0,                               -- Radius for the menu
-        price = 6000,                                   -- The price of the house
-        sellPrice = 3000,                               -- Amount received when selling the house
-        rentalDeposit = 20,                             -- First Rental deposit in gold bars
-        rentCharge = 10,                                -- Monthly rent in gold bars
-        name = "House",                                 -- Name of the house for display
-        blipname = "House",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',           -- Set sprite of the blip
-        saleBlipModifier = 'WHITE', -- Set color of the blip (see BlipColors in config_main.lua)
-        canSell = true,                                 -- Whether the player can sell the house later
-        showmarker = true,                              -- Show marker on the ground for house sale info
+        menuRadius = 2.0,                              -- Radius for the menu
+        price = 6000,                                  -- The price of the house
+        sellPrice = 3000,                              -- Amount received when selling the house
+        rentalDeposit = 20,                            -- First Rental deposit in gold bars
+        rentCharge = 10,                               -- Monthly rent in gold bars
+        name = "House",                                -- Name of the house for display
+        canSell = true,                                -- Whether the player can sell the house later
+        showmarker = true,                             -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
@@ -745,12 +886,22 @@ Houses = {
         rentalDeposit = 5,                              -- First Rental deposit in gold bars
         rentCharge = 2.5,                               -- Monthly rent in gold bars
         name = "House",                                 -- Name of the house for display
-        blipname = "House",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',           -- Set sprite of the blip
-        saleBlipModifier = 'WHITE',                     -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                                 -- Whether the player can sell the house later
         showmarker = true,                              -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
@@ -796,19 +947,29 @@ Houses = {
         rentalDeposit = 30,                             -- First Rental deposit in gold bars
         rentCharge = 15,                                -- Monthly rent in gold bars
         name = "Ranch",                                 -- Name of the house for display
-        blipname = "Ranch",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_mp_playlist_adversary',  -- Set sprite of the blip
-        saleBlipModifier = 'WHITE',                     -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                                 -- Whether the player can sell the house later
         showmarker = true,                              -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                         -- Show blip for houses for sale
+                name = "Ranch",                        -- Name of the sale blip on the map
+                sprite = 'blip_mp_playlist_adversary', -- Set sprite of the sale blip
+                color = 'WHITE',                       -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your Ranch",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
     -- Hut near Deadboot Creek
     -----------------------------------------------------
     {
-        uniqueName = "house18",                            -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
+        uniqueName = "house18", -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
         houseCoords = vector3(-1963.36, 2158.4, 327.6),
         houseRadiusLimit = 15,
         doors = {
@@ -826,7 +987,7 @@ Houses = {
             --     doorinfo = '[1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25]', locked = true
             -- },
         },
-        invLimit = 700,                                -- Inventory limit for the house
+        invLimit = 700,                                 -- Inventory limit for the house
         taxAmount = 180,                                -- Tax amount for the house
         playerMax = 2,                                  -- Maximum number of players that can own the house
         tpInt = 0,                                      -- TP Interior ID
@@ -838,19 +999,29 @@ Houses = {
         rentalDeposit = 10,                             -- First Rental deposit in gold bars
         rentCharge = 5,                                 -- Monthly rent in gold bars
         name = "House",                                 -- Name of the house for display
-        blipname = "House",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',           -- Set sprite of the blip
-        saleBlipModifier = 'WHITE', -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                                 -- Whether the player can sell the house later
         showmarker = true,                              -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
     -- Tower on Mount Hagen
     -----------------------------------------------------
     {
-        uniqueName = "house19",                            -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
+        uniqueName = "house19", -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
         houseCoords = vector3(-1488.83, 1248.61, 314.49),
         houseRadiusLimit = 20,
         doors = {
@@ -880,12 +1051,22 @@ Houses = {
         rentalDeposit = 15,                             -- First Rental deposit in gold bars
         rentCharge = 7.5,                               -- Monthly rent in gold bars
         name = "House",                                 -- Name of the house for display
-        blipname = "House",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',           -- Set sprite of the blip
-        saleBlipModifier = 'WHITE', -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                                 -- Whether the player can sell the house later
         showmarker = true,                              -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     ------------------------------
@@ -907,9 +1088,7 @@ Houses = {
             -- We need to copy only what's between {...}
             -- 1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25
             {
-                doorinfo =
-                '[1299456376,1281919024,"ann_jail_main_door_01",-64.242599987305,-393.56112670898,71.248695373535]',
-                locked = true
+                doorinfo = '[1299456376,1281919024,"ann_jail_main_door_01",-64.242599987305,-393.56112670898,71.248695373535]', locked = true
             },
             -- If the house has more than one door, copy the above same as these below
             -- {
@@ -928,12 +1107,22 @@ Houses = {
         rentalDeposit = 15,                         -- First Rental deposit in gold bars
         rentCharge = 7.5,                           -- Monthly rent in gold bars
         name = "House",                             -- Name of the house for display
-        blipname = "House",                         -- Name of the blip on the map
-        forSaleBlips = true,                        -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',       -- Set sprite of the blip
-        saleBlipModifier = 'WHITE',                 -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                             -- Whether the player can sell the house later
         showmarker = true,                          -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
@@ -970,19 +1159,29 @@ Houses = {
         rentalDeposit = 20,                           -- First Rental deposit in gold bars
         rentCharge = 10,                              -- Monthly rent in gold bars
         name = "House",                               -- Name of the house for display
-        blipname = "House",                           -- Name of the blip on the map
-        forSaleBlips = true,                          -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',         -- Set sprite of the blip
-        saleBlipModifier = 'WHITE',                   -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                               -- Whether the player can sell the house later
         showmarker = true,                            -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
     -- Ranch near Heartland Overflow
     -----------------------------------------------------
     {
-        uniqueName = "house23",                            -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
+        uniqueName = "house23", -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
         houseCoords = vector3(1120.57, 492.46, 97.28),
         houseRadiusLimit = 50,
         doors = {
@@ -1003,24 +1202,34 @@ Houses = {
             --     doorinfo = '[1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25]', locked = true
             -- },
         },
-        invLimit = 3000,                                -- Inventory limit for the house
-        taxAmount = 1500,                               -- Tax amount for the house
-        playerMax = 6,                                  -- Maximum number of players that can own the house
-        tpInt = 0,                                      -- TP Interior ID
-        tpInstance = 0,                                 -- TP Instance ID
+        invLimit = 3000,                             -- Inventory limit for the house
+        taxAmount = 1500,                            -- Tax amount for the house
+        playerMax = 6,                               -- Maximum number of players that can own the house
+        tpInt = 0,                                   -- TP Interior ID
+        tpInstance = 0,                              -- TP Instance ID
         menuCoords = vector3(1098.37, 496.9, 95.38), -- House Info (to buy or rent) / Marker location
-        menuRadius = 2.0,                               -- Radius for the menu
-        price = 15000,                                  -- The price of the house
-        sellPrice = 7500,                               -- Amount received when selling the house
-        rentalDeposit = 30,                             -- First Rental deposit in gold bars
-        rentCharge = 15,                                -- Monthly rent in gold bars
-        name = "Ranch",                                 -- Name of the house for display
-        blipname = "Ranch",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_mp_playlist_adversary',   -- Set sprite of the blip
-        saleBlipModifier = 'WHITE', -- Set color of the blip (see BlipColors in config_main.lua)
-        canSell = true,                                 -- Whether the player can sell the house later
-        showmarker = true,                              -- Show marker on the ground for house sale info
+        menuRadius = 2.0,                            -- Radius for the menu
+        price = 15000,                               -- The price of the house
+        sellPrice = 7500,                            -- Amount received when selling the house
+        rentalDeposit = 30,                          -- First Rental deposit in gold bars
+        rentCharge = 15,                             -- Monthly rent in gold bars
+        name = "Ranch",                              -- Name of the house for display
+        canSell = true,                              -- Whether the player can sell the house later
+        showmarker = true,                           -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                         -- Show blip for houses for sale
+                name = "Ranch",                        -- Name of the sale blip on the map
+                sprite = 'blip_mp_playlist_adversary', -- Set sprite of the sale blip
+                color = 'WHITE',                       -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your Ranch",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
@@ -1060,19 +1269,29 @@ Houses = {
         rentalDeposit = 10,                           -- First Rental deposit in gold bars
         rentCharge = 5,                               -- Monthly rent in gold bars
         name = "House",                               -- Name of the house for display
-        blipname = "House",                           -- Name of the blip on the map
-        forSaleBlips = true,                          -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',         -- Set sprite of the blip
-        saleBlipModifier = 'WHITE',                   -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                               -- Whether the player can sell the house later
         showmarker = true,                            -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
     -- Ranch on the banks of Kamassa River
     -----------------------------------------------------
     {
-        uniqueName = "house25",                            -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
+        uniqueName = "house25", -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
         houseCoords = vector3(2233.67, -141.78, 47.62),
         houseRadiusLimit = 40,
         doors = {
@@ -1093,31 +1312,41 @@ Houses = {
             --     doorinfo = '[1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25]', locked = true
             -- },
         },
-        invLimit = 3000,                                -- Inventory limit for the house
-        taxAmount = 1200,                               -- Tax amount for the house
-        playerMax = 6,                                  -- Maximum number of players that can own the house
-        tpInt = 0,                                      -- TP Interior ID
-        tpInstance = 0,                                 -- TP Instance ID
+        invLimit = 3000,                              -- Inventory limit for the house
+        taxAmount = 1200,                             -- Tax amount for the house
+        playerMax = 6,                                -- Maximum number of players that can own the house
+        tpInt = 0,                                    -- TP Interior ID
+        tpInstance = 0,                               -- TP Instance ID
         menuCoords = vector3(2224.7, -127.98, 47.63), -- House Info (to buy or rent) / Marker location
-        menuRadius = 2.0,                               -- Radius for the menu
-        price = 12000,                                  -- The price of the house
-        sellPrice = 6000,                               -- Amount received when selling the house
-        rentalDeposit = 30,                             -- First Rental deposit in gold bars
-        rentCharge = 15,                                -- Monthly rent in gold bars
-        name = "Ranch",                                 -- Name of the house for display
-        blipname = "Ranch",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_mp_playlist_adversary',   -- Set sprite of the blip
-        saleBlipModifier = 'WHITE', -- Set color of the blip (see BlipColors in config_main.lua)
-        canSell = true,                                 -- Whether the player can sell the house later
-        showmarker = true,                              -- Show marker on the ground for house sale info
+        menuRadius = 2.0,                             -- Radius for the menu
+        price = 12000,                                -- The price of the house
+        sellPrice = 6000,                             -- Amount received when selling the house
+        rentalDeposit = 30,                           -- First Rental deposit in gold bars
+        rentCharge = 15,                              -- Monthly rent in gold bars
+        name = "Ranch",                               -- Name of the house for display
+        canSell = true,                               -- Whether the player can sell the house later
+        showmarker = true,                            -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                         -- Show blip for houses for sale
+                name = "Ranch",                        -- Name of the sale blip on the map
+                sprite = 'blip_mp_playlist_adversary', -- Set sprite of the sale blip
+                color = 'WHITE',                       -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your Ranch",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
     -- House on the shore near Van Horn
     -----------------------------------------------------
     {
-        uniqueName = "house26",                            -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
+        uniqueName = "house26", -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
         houseCoords = vector3(2820.68, 274.05, 51.08),
         houseRadiusLimit = 20,
         doors = {
@@ -1138,24 +1367,34 @@ Houses = {
             --     doorinfo = '[1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25]', locked = true
             -- },
         },
-        invLimit = 700,                                -- Inventory limit for the house
-        taxAmount = 2800,                               -- Tax amount for the house
-        playerMax = 3,                                  -- Maximum number of players that can own the house
-        tpInt = 0,                                      -- TP Interior ID
-        tpInstance = 0,                                 -- TP Instance ID
+        invLimit = 700,                               -- Inventory limit for the house
+        taxAmount = 2800,                             -- Tax amount for the house
+        playerMax = 3,                                -- Maximum number of players that can own the house
+        tpInt = 0,                                    -- TP Interior ID
+        tpInstance = 0,                               -- TP Instance ID
         menuCoords = vector3(2810.68, 289.01, 49.74), -- House Info (to buy or rent) / Marker location
-        menuRadius = 2.0,                               -- Radius for the menu
-        price = 2800,                                   -- The price of the house
-        sellPrice = 1400,                               -- Amount received when selling the house
-        rentalDeposit = 15,                             -- First Rental deposit in gold bars
-        rentCharge = 7.5,                               -- Monthly rent in gold bars
-        name = "House",                                 -- Name of the house for display
-        blipname = "House",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',           -- Set sprite of the blip
-        saleBlipModifier = 'WHITE', -- Set color of the blip (see BlipColors in config_main.lua)
-        canSell = true,                                 -- Whether the player can sell the house later
-        showmarker = true,                              -- Show marker on the ground for house sale info
+        menuRadius = 2.0,                             -- Radius for the menu
+        price = 2800,                                 -- The price of the house
+        sellPrice = 1400,                             -- Amount received when selling the house
+        rentalDeposit = 15,                           -- First Rental deposit in gold bars
+        rentCharge = 7.5,                             -- Monthly rent in gold bars
+        name = "House",                               -- Name of the house for display
+        canSell = true,                               -- Whether the player can sell the house later
+        showmarker = true,                            -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
@@ -1192,12 +1431,22 @@ Houses = {
         rentalDeposit = 15,                           -- First Rental deposit in gold bars
         rentCharge = 7.5,                             -- Monthly rent in gold bars
         name = "House",                               -- Name of the house for display
-        blipname = "House",                           -- Name of the blip on the map
-        forSaleBlips = true,                          -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',         -- Set sprite of the blip
-        saleBlipModifier = 'WHITE',                   -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                               -- Whether the player can sell the house later
         showmarker = true,                            -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
@@ -1221,45 +1470,51 @@ Houses = {
                 doorinfo = '[417362979,1045059103,"p_door_val_jail02x",772.65289366641,841.26782226563,117.91557358398]', locked = true
             },
             {
-                doorinfo =
-                '[1038094132,-385493140,"p_door_carmodydellbarn_new",773.16864013672,872.33294677734,119.96391296387]',
-                locked = true
+                doorinfo = '[1038094132,-385493140,"p_door_carmodydellbarn_new",773.16864013672,872.33294677734,119.96391296387]', locked = true
             },
             {
-                doorinfo =
-                '[883522755,-385493140,"p_door_carmodydellbarn_new",775.56634521484,876.37341308594,119.96391296387]',
-                locked = true
+                doorinfo = '[883522755,-385493140,"p_door_carmodydellbarn_new",775.56634521484,876.37341308594,119.96391296387]', locked = true
             },
             -- If the house has more than one door, copy the above same as these below
             -- {
             --     doorinfo = '[1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25]', locked = true
             -- },
         },
-        invLimit = 5000,                               -- Inventory limit for the house
-        taxAmount = 1800,                              -- Tax amount for the house
-        playerMax = 8,                                 -- Maximum number of players that can own the house
-        tpInt = 0,                                     -- TP Interior ID
-        tpInstance = 0,                                -- TP Instance ID
-        menuCoords = vector3(793.48, 848.22, 117.7),   -- House Info (to buy or rent) / Marker location
-        menuRadius = 2.0,                              -- Radius for the menu
-        price = 18000,                                 -- The price of the house
-        sellPrice = 9000,                              -- Amount received when selling the house
-        rentalDeposit = 40,                            -- First Rental deposit in gold bars
-        rentCharge = 20,                               -- Monthly rent in gold bars
-        name = "Ranch",                                -- Name of the house for display
-        blipname = "Ranch",                            -- Name of the blip on the map
-        forSaleBlips = true,                           -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_mp_playlist_adversary', -- Set sprite of the blip
-        saleBlipModifier = 'WHITE',                    -- Set color of the blip (see BlipColors in config_main.lua)
-        canSell = true,                                -- Whether the player can sell the house later
-        showmarker = true,                             -- Show marker on the ground for house sale info
+        invLimit = 5000,                             -- Inventory limit for the house
+        taxAmount = 1800,                            -- Tax amount for the house
+        playerMax = 8,                               -- Maximum number of players that can own the house
+        tpInt = 0,                                   -- TP Interior ID
+        tpInstance = 0,                              -- TP Instance ID
+        menuCoords = vector3(793.48, 848.22, 117.7), -- House Info (to buy or rent) / Marker location
+        menuRadius = 2.0,                            -- Radius for the menu
+        price = 18000,                               -- The price of the house
+        sellPrice = 9000,                            -- Amount received when selling the house
+        rentalDeposit = 40,                          -- First Rental deposit in gold bars
+        rentCharge = 20,                             -- Monthly rent in gold bars
+        name = "Ranch",                              -- Name of the house for display
+        canSell = true,                              -- Whether the player can sell the house later
+        showmarker = true,                           -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                         -- Show blip for houses for sale
+                name = "Ranch",                        -- Name of the sale blip on the map
+                sprite = 'blip_mp_playlist_adversary', -- Set sprite of the sale blip
+                color = 'WHITE',                       -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your Ranch",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
     -- House in Cumberland Forest Lower
     -----------------------------------------------------
     {
-        uniqueName = "house30",                            -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
+        uniqueName = "house30", -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
         houseCoords = vector3(218.61, 984.56, 190.9),
         houseRadiusLimit = 75,
         doors = {
@@ -1286,24 +1541,34 @@ Houses = {
             --     doorinfo = '[1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25]', locked = true
             -- },
         },
-        invLimit = 2000,                                -- Inventory limit for the house
-        taxAmount = 700,                                -- Tax amount for the house
-        playerMax = 4,                                  -- Maximum number of players that can own the house
-        tpInt = 0,                                      -- TP Interior ID
-        tpInstance = 0,                                 -- TP Instance ID
+        invLimit = 2000,                            -- Inventory limit for the house
+        taxAmount = 700,                            -- Tax amount for the house
+        playerMax = 4,                              -- Maximum number of players that can own the house
+        tpInt = 0,                                  -- TP Interior ID
+        tpInstance = 0,                             -- TP Instance ID
         menuCoords = vector3(202.4, 963.14, 190.4), -- House Info (to buy or rent) / Marker location
-        menuRadius = 2.0,                               -- Radius for the menu
-        price = 7000,                                   -- The price of the house
-        sellPrice = 3500,                               -- Amount received when selling the house
-        rentalDeposit = 20,                             -- First Rental deposit in gold bars
-        rentCharge = 10,                                -- Monthly rent in gold bars
-        name = "House",                                 -- Name of the house for display
-        blipname = "House",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',           -- Set sprite of the blip
-        saleBlipModifier = 'WHITE', -- Set color of the blip (see BlipColors in config_main.lua)
-        canSell = true,                                 -- Whether the player can sell the house later
-        showmarker = true,                              -- Show marker on the ground for house sale info
+        menuRadius = 2.0,                           -- Radius for the menu
+        price = 7000,                               -- The price of the house
+        sellPrice = 3500,                           -- Amount received when selling the house
+        rentalDeposit = 20,                         -- First Rental deposit in gold bars
+        rentCharge = 10,                            -- Monthly rent in gold bars
+        name = "House",                             -- Name of the house for display
+        canSell = true,                             -- Whether the player can sell the house later
+        showmarker = true,                          -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
@@ -1340,19 +1605,29 @@ Houses = {
         rentalDeposit = 20,                            -- First Rental deposit in gold bars
         rentCharge = 10,                               -- Monthly rent in gold bars
         name = "House",                                -- Name of the house for display
-        blipname = "House",                            -- Name of the blip on the map
-        forSaleBlips = true,                           -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',          -- Set sprite of the blip
-        saleBlipModifier = 'WHITE',                    -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                                -- Whether the player can sell the house later
         showmarker = true,                             -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
     -- Ranch near Keliban's Run
     -----------------------------------------------------
     {
-        uniqueName = "house32",                            -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
+        uniqueName = "house32", -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
         houseCoords = vector3(-820.81, 355.01, 98.08),
         houseRadiusLimit = 100,
         doors = {
@@ -1385,31 +1660,41 @@ Houses = {
             --     doorinfo = '[1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25]', locked = true
             -- },
         },
-        invLimit = 3500,                                -- Inventory limit for the house
-        taxAmount = 1400,                               -- Tax amount for the house
-        playerMax = 5,                                  -- Maximum number of players that can own the house
-        tpInt = 0,                                      -- TP Interior ID
-        tpInstance = 0,                                 -- TP Instance ID
+        invLimit = 3500,                             -- Inventory limit for the house
+        taxAmount = 1400,                            -- Tax amount for the house
+        playerMax = 5,                               -- Maximum number of players that can own the house
+        tpInt = 0,                                   -- TP Interior ID
+        tpInstance = 0,                              -- TP Instance ID
         menuCoords = vector3(-814.74, 340.2, 96.46), -- House Info (to buy or rent) / Marker location
-        menuRadius = 2.0,                               -- Radius for the menu
-        price = 14000,                                  -- The price of the house
-        sellPrice = 7000,                               -- Amount received when selling the house
-        rentalDeposit = 25,                             -- First Rental deposit in gold bars
-        rentCharge = 12.5,                              -- Monthly rent in gold bars
-        name = "Ranch",                                 -- Name of the house for display
-        blipname = "Ranch",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_mp_playlist_adversary',   -- Set sprite of the blip
-        saleBlipModifier = 'WHITE', -- Set color of the blip (see BlipColors in config_main.lua)
-        canSell = true,                                 -- Whether the player can sell the house later
-        showmarker = true,                              -- Show marker on the ground for house sale info
+        menuRadius = 2.0,                            -- Radius for the menu
+        price = 14000,                               -- The price of the house
+        sellPrice = 7000,                            -- Amount received when selling the house
+        rentalDeposit = 25,                          -- First Rental deposit in gold bars
+        rentCharge = 12.5,                           -- Monthly rent in gold bars
+        name = "Ranch",                              -- Name of the house for display
+        canSell = true,                              -- Whether the player can sell the house later
+        showmarker = true,                           -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                         -- Show blip for houses for sale
+                name = "Ranch",                        -- Name of the sale blip on the map
+                sprite = 'blip_mp_playlist_adversary', -- Set sprite of the sale blip
+                color = 'WHITE',                       -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your Ranch",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
     -- Hut west of Van Horn
     -----------------------------------------------------
     {
-        uniqueName = "house33",                            -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
+        uniqueName = "house33", -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
         houseCoords = vector3(2716.12, 709.84, 79.52),
         houseRadiusLimit = 20,
         doors = {
@@ -1427,31 +1712,41 @@ Houses = {
             --     doorinfo = '[1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25]', locked = true
             -- },
         },
-        invLimit = 500,                                -- Inventory limit for the house
-        taxAmount = 250,                                -- Tax amount for the house
-        playerMax = 2,                                  -- Maximum number of players that can own the house
-        tpInt = 0,                                      -- TP Interior ID
-        tpInstance = 0,                                 -- TP Instance ID
+        invLimit = 500,                               -- Inventory limit for the house
+        taxAmount = 250,                              -- Tax amount for the house
+        playerMax = 2,                                -- Maximum number of players that can own the house
+        tpInt = 0,                                    -- TP Interior ID
+        tpInstance = 0,                               -- TP Instance ID
         menuCoords = vector3(2718.31, 702.96, 78.29), -- House Info (to buy or rent) / Marker location
-        menuRadius = 2.0,                               -- Radius for the menu
-        price = 2500,                                   -- The price of the house
-        sellPrice = 1250,                               -- Amount received when selling the house
-        rentalDeposit = 10,                             -- First Rental deposit in gold bars
-        rentCharge = 5,                                 -- Monthly rent in gold bars
-        name = "House",                                 -- Name of the house for display
-        blipname = "House",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',           -- Set sprite of the blip
-        saleBlipModifier = 'WHITE', -- Set color of the blip (see BlipColors in config_main.lua)
-        canSell = true,                                 -- Whether the player can sell the house later
-        showmarker = true,                              -- Show marker on the ground for house sale info
+        menuRadius = 2.0,                             -- Radius for the menu
+        price = 2500,                                 -- The price of the house
+        sellPrice = 1250,                             -- Amount received when selling the house
+        rentalDeposit = 10,                           -- First Rental deposit in gold bars
+        rentCharge = 5,                               -- Monthly rent in gold bars
+        name = "House",                               -- Name of the house for display
+        canSell = true,                               -- Whether the player can sell the house later
+        showmarker = true,                            -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
     -- Small Ranch near Lumber Mill
     -----------------------------------------------------
     {
-        uniqueName = "house34",                            -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
+        uniqueName = "house34", -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
         houseCoords = vector3(2991.98, 2194.01, 166.76),
         houseRadiusLimit = 50,
         doors = {
@@ -1484,19 +1779,29 @@ Houses = {
         rentalDeposit = 25,                             -- First Rental deposit in gold bars
         rentCharge = 12.5,                              -- Monthly rent in gold bars
         name = "Ranch",                                 -- Name of the house for display
-        blipname = "Ranch",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_mp_playlist_adversary',   -- Set sprite of the blip
-        saleBlipModifier = 'WHITE', -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                                 -- Whether the player can sell the house later
         showmarker = true,                              -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                         -- Show blip for houses for sale
+                name = "Ranch",                        -- Name of the sale blip on the map
+                sprite = 'blip_mp_playlist_adversary', -- Set sprite of the sale blip
+                color = 'WHITE',                       -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your Ranch",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
     -- Fisherman's House
     -----------------------------------------------------
     {
-        uniqueName = "house35",                            -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
+        uniqueName = "house35", -- Unique identifier for the house. You can use any name but make sure you don't use duplicates
         houseCoords = vector3(341.64, -664.92, 42.82),
         houseRadiusLimit = 30,
         doors = {
@@ -1517,24 +1822,34 @@ Houses = {
             --     doorinfo = '[1610014965,990179346,"p_door_val_bank02",-2371.8505859375,475.1383972168,131.25]', locked = true
             -- },
         },
-        invLimit = 1100,                                -- Inventory limit for the house
-        taxAmount = 450,                                -- Tax amount for the house
-        playerMax = 3,                                  -- Maximum number of players that can own the house
-        tpInt = 0,                                      -- TP Interior ID
-        tpInstance = 0,                                 -- TP Instance ID
+        invLimit = 1100,                              -- Inventory limit for the house
+        taxAmount = 450,                              -- Tax amount for the house
+        playerMax = 3,                                -- Maximum number of players that can own the house
+        tpInt = 0,                                    -- TP Interior ID
+        tpInstance = 0,                               -- TP Instance ID
         menuCoords = vector3(352.73, -656.13, 41.98), -- House Info (to buy or rent) / Marker location
-        menuRadius = 2.0,                               -- Radius for the menu
-        price = 4500,                                   -- The price of the house
-        sellPrice = 2250,                               -- Amount received when selling the house
-        rentalDeposit = 15,                             -- First Rental deposit in gold bars
-        rentCharge = 7.5,                               -- Monthly rent in gold bars
-        name = "House",                                 -- Name of the house for display
-        blipname = "House",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_robbery_home',           -- Set sprite of the blip
-        saleBlipModifier = 'WHITE', -- Set color of the blip (see BlipColors in config_main.lua)
-        canSell = true,                                 -- Whether the player can sell the house later
-        showmarker = true,                              -- Show marker on the ground for house sale info
+        menuRadius = 2.0,                             -- Radius for the menu
+        price = 4500,                                 -- The price of the house
+        sellPrice = 2250,                             -- Amount received when selling the house
+        rentalDeposit = 15,                           -- First Rental deposit in gold bars
+        rentCharge = 7.5,                             -- Monthly rent in gold bars
+        name = "House",                               -- Name of the house for display
+        canSell = true,                               -- Whether the player can sell the house later
+        showmarker = true,                            -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "House",               -- Name of the sale blip on the map
+                sprite = 'blip_robbery_home', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your House",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },
 
     -----------------------------------------------------
@@ -1574,11 +1889,21 @@ Houses = {
         rentalDeposit = 40,                             -- First Rental deposit in gold bars
         rentCharge = 20,                                -- Monthly rent in gold bars
         name = "Ranch",                                 -- Name of the house for display
-        blipname = "Ranch",                             -- Name of the blip on the map
-        forSaleBlips = true,                            -- Show blips for houses that are for sale
-        saleBlipSprite = 'blip_mp_playlist_adversary',   -- Set sprite of the blip
-        saleBlipModifier = 'WHITE', -- Set color of the blip (see BlipColors in config_main.lua)
         canSell = true,                                 -- Whether the player can sell the house later
         showmarker = true,                              -- Show marker on the ground for house sale info
+        blip = {
+            sale = {
+                active = true,                -- Show blip for houses for sale
+                name = "Ranch",               -- Name of the sale blip on the map
+                sprite = 'blip_mp_playlist_adversary', -- Set sprite of the sale blip
+                color = 'WHITE',              -- Set color of the sale blip (see BlipColors in main.lua config)
+            },
+            owned = {
+                active = true,           -- Show blip for owned houses
+                name = "Your Ranch",     -- Name of the owned blip on the map
+                sprite = 'blip_mp_base', -- Set sprite of the owned blip
+                color = 'WHITE',         -- Set color of the owned blip (see BlipColors in main.lua config)
+            }
+        }
     },--]]
 }

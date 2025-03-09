@@ -84,7 +84,6 @@ Locales["ua_lang"] = {
     furnNotPlaced = "Меблі не встановлено",
     toFar = "Занадто далеко від вашого будинку",
     cost = "Вартість покупки: ",
-    houseBlip = "Ваш будинок",
     buyOwnerFurn = "Купити меблі",
     sellOwnerFurn = "Продати меблі",
     sellOwnerFurn_desc = "Продати ваші меблі?",
@@ -125,10 +124,9 @@ Locales["ua_lang"] = {
     houseCreatedWebhookGivenToo = " Будинок передано персонажу з ID: ",
 
     --- Hotels ---
-    promptGroupName = "Ціна готелю: ",
-    promptBuy = "Купити готель",
+    promptGroupName = '~COLOR_GREYDARK~ |~q~ Room Price: ~t6~$',
+    promptBuy = 'Purchase Room',
     promptEnterHotel = "Увійти до готелю",
-    promptHotel = "Готель",
     hotelInvName = "Інвентар",
     promptLeaveHotel = "Залишити готель",
 

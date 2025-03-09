@@ -837,13 +837,14 @@ function enterOrExitHouse(enter, tpHouseIndex)
         CurrentTpHouse = tpHouseIndex
         enterTpHouse(houseTable)
     else
+        local playerPed = PlayerPedId()
         devPrint("Exiting house")
-        SetEntityCoords(PlayerPedId(), HouseCoords.x, HouseCoords.y, HouseCoords.z)
-        FreezeEntityPosition(PlayerPedId(), true)
+        SetEntityCoords(playerPed, HouseCoords.x, HouseCoords.y, HouseCoords.z, false, false, false, false)
+        FreezeEntityPosition(playerPed, true)
         Wait(500)
-        FreezeEntityPosition(PlayerPedId(), false)
+        FreezeEntityPosition(playerPed, false)
         InTpHouse = false
-        showManageOpt(HouseCoords.x, HouseCoords.y, HouseCoords.z)
+        showManageOpt(HouseCoords.x, HouseCoords.y, HouseCoords.z, HouseId)
     end
 end
 
@@ -976,12 +977,12 @@ end)
 function enterTpHouse(houseTable)
     devPrint("Entering TP house")
     InTpHouse = true
-    local pped = PlayerPedId()
+    local playerPed = PlayerPedId()
     VORPcore.instancePlayers(tonumber(GetPlayerServerId(PlayerId())) + TpHouseInstance)
-    SetEntityCoords(pped, houseTable.exitCoords.x, houseTable.exitCoords.y, houseTable.exitCoords.z)
+    SetEntityCoords(playerPed, houseTable.exitCoords.x, houseTable.exitCoords.y, houseTable.exitCoords.z, false, false, false, false)
 
-    FreezeEntityPosition(pped, true)
+    FreezeEntityPosition(playerPed, true)
     Wait(1000)
-    FreezeEntityPosition(pped, false)
-    showManageOpt(houseTable.exitCoords.x, houseTable.exitCoords.y, houseTable.exitCoords.z)
+    FreezeEntityPosition(playerPed, false)
+    showManageOpt(houseTable.exitCoords.x, houseTable.exitCoords.y, houseTable.exitCoords.z, HouseId)
 end
