@@ -83,8 +83,17 @@ Config = {
     },
     -----------------------------------------------------
 
-    SellToPlayer = false, -- Set to false if you don't want players to sell houses to other players   
+    SellToPlayer = false,             -- Set to false if you don't want players to sell houses to other players
     DefaultSellPricetoPlayer = 50000, -- Default sell price for houses to a player
+    -----------------------------------------------------
+
+    -- Global Blip Settings for menu created owned houses (not for owned houses by config)
+    HouseBlip = {
+        active = true,           -- Show blip for owned houses
+        name = 'Your House',     -- Name of the owned blip on the map
+        sprite = 'blip_mp_base', -- Set sprite of the owned blip
+        color = 'WHITE',         -- Set color of the owned blip (see BlipColors below)
+    },
     -----------------------------------------------------
 
     DefaultMenuManageRadius = 1.2,
