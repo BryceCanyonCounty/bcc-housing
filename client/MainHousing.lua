@@ -59,16 +59,27 @@ RegisterNetEvent('bcc-housing:OwnsHouseClientHandler', function(houseTable, owne
     TriggerEvent('bcc-housing:FurnCheckHandler')
 
     -- Create the blip for the owned house
+    local houseCfgFound = false
     local uniqueName = houseTable.uniqueName
     for _, houseCfg in pairs(Houses) do
         if houseCfg.uniqueName == uniqueName then
+            houseCfgFound = true
             if houseCfg.blip.owned.active then
                 local blip = BccUtils.Blips:SetBlip(houseCfg.blip.owned.name, houseCfg.blip.owned.sprite, 0.2, HouseCoords.x, HouseCoords.y, HouseCoords.z)
-                Citizen.InvokeNative(0x662D364ABF16DE2F, houseCfg.Blip, joaat(Config.BlipColors[houseCfg.blip.owned.color])) -- BlipAddModifier
+                local blipModifier = BccUtils.Blips:AddBlipModifier(blip, Config.BlipColors[houseCfg.blip.owned.color])
+                blipModifier:ApplyModifier()
                 table.insert(HouseBlips, blip)
                 break
             end
         end
+    end
+
+    if not houseCfgFound and Config.HouseBlip.active then
+        local houseBlip = Config.HouseBlip
+        local blip = BccUtils.Blips:SetBlip(houseBlip.name, houseBlip.sprite, 0.2, HouseCoords.x, HouseCoords.y, HouseCoords.z)
+        local blipModifier = BccUtils.Blips:AddBlipModifier(blip, Config.BlipColors[houseBlip.color])
+        blipModifier:ApplyModifier()
+        table.insert(HouseBlips, blip)
     end
 
     showManageOpt(HouseCoords.x, HouseCoords.y, HouseCoords.z, HouseId) -- Ensure HouseId is passed here
