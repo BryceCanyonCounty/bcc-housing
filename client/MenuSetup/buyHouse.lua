@@ -1,24 +1,43 @@
-local purchasedHouses = {}
+-- ensure table exists
+PurchasedHouses = PurchasedHouses or {}
 
 CreateThread(function()
     -- Request the purchased houses list from the server when the resource starts
-    TriggerServerEvent('bcc-housing:getPurchasedHouses')
+    local success, houses = BccUtils.RPC:CallAsync('bcc-housing:getPurchasedHouses', {})
+    if success and type(houses) == 'table' then
+        PurchasedHouses = {}
+        for _, coords in ipairs(houses) do
+            if type(coords) == "table" and coords.x and coords.y and coords.z then
+                PurchasedHouses[#PurchasedHouses + 1] = vector3(coords.x, coords.y, coords.z)
+            else
+                PurchasedHouses[#PurchasedHouses + 1] = coords
+            end
+        end
+    else
+        devPrint("Failed to fetch purchased houses via RPC")
+    end
+
     local PromptGroup = BccUtils.Prompt:SetupPromptGroup()
-    local BuyHousePrompt = PromptGroup:RegisterPrompt(_U("moreInfo"), BccUtils.Keys[Config.keys.buy], 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })                                                                                                               -- Register your first prompt
+    local BuyHousePrompt = PromptGroup:RegisterPrompt(
+        _U("moreInfo"),
+        BccUtils.Keys[Config.keys.buy],
+        1, 1, true, 'hold',
+        { timedeventhash = "MEDIUM_TIMED_EVENT" }
+    )
 
     while true do
-        Wait(0) -- Run the loop continuously
+        Wait(0)
 
-        local playerCoords = GetEntityCoords(PlayerPedId())
         local playerPed = PlayerPedId()
-
         if IsEntityDead(playerPed) then goto END end
-        
+
+        local playerCoords = GetEntityCoords(playerPed)
+
         for _, house in pairs(Houses) do
             local isPurchased = false
 
             -- Check if the house has been purchased
-            for _, purchasedHouse in pairs(purchasedHouses) do
+            for _, purchasedHouse in pairs(PurchasedHouses) do
                 if #(house.houseCoords - purchasedHouse) < 0.1 then
                     isPurchased = true
                     break
@@ -34,22 +53,32 @@ CreateThread(function()
 
                 -- Only create blips if blip.sale.active is true and blip hasn't been created yet
                 if house.blip.sale.active and not HouseBlips[house.uniqueName] then
-                    local houseSaleBlip = BccUtils.Blips:SetBlip(house.blip.sale.name, house.blip.sale.sprite, 0.2, house.menuCoords.x, house.menuCoords.y, house.menuCoords.z)
-
+                    local houseSaleBlip = BccUtils.Blips:SetBlip(
+                        house.blip.sale.name, house.blip.sale.sprite, 0.2,
+                        house.menuCoords.x, house.menuCoords.y, house.menuCoords.z
+                    )
                     HouseBlips[house.uniqueName] = houseSaleBlip
 
-                    local blipModifier = BccUtils.Blips:AddBlipModifier(houseSaleBlip, Config.BlipColors[house.blip.sale.color])
+                    local blipModifier = BccUtils.Blips:AddBlipModifier(houseSaleBlip,
+                        Config.BlipColors[house.blip.sale.color])
                     blipModifier:ApplyModifier()
                 end
 
                 if distance < house.menuRadius then
                     PromptGroup:ShowGroup(_U("buyPricePrompt", house.price, house.rentalDeposit))
                     if BuyHousePrompt:HasCompleted() then
-                        TriggerEvent('bcc-housing:openBuyHouseMenu', house)
+                        OpenBuyHouseMenu(house)
                     end
                 end
+
                 if house.showmarker and distance < 100 then
-                    Citizen.InvokeNative(0x2A32FAA57B937173, 0x94FDAE17, house.menuCoords.x, house.menuCoords.y, house.menuCoords.z - 1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.3, 0, 128, 0, 155, false, false, false, 0, false, false, false)
+                    DrawMarker(0x94FDAE17,
+                        house.menuCoords.x, house.menuCoords.y, house.menuCoords.z - 1,
+                        0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                        1.0, 1.0, 0.3,
+                        0, 128, 0, 155,
+                        false, false, false, 0, false, false, false
+                    )
                 end
             end
         end
@@ -57,28 +86,50 @@ CreateThread(function()
     end
 end)
 
-RegisterNetEvent('bcc-housing:sendPurchasedHouses')
-AddEventHandler('bcc-housing:sendPurchasedHouses', function(houses)
-    purchasedHouses = houses
+
+BccUtils.RPC:Register('bcc-housing:housePurchased', function(params)
+    if not params then return end
+    local coords = params.houseCoords or params
+    if type(coords) == "table" and coords.x and coords.y and coords.z then
+        table.insert(PurchasedHouses, vector3(coords.x, coords.y, coords.z))
+    end
 end)
 
-RegisterNetEvent('bcc-housing:housePurchased')
-AddEventHandler('bcc-housing:housePurchased', function(houseCoords)
-    table.insert(purchasedHouses, houseCoords)
+BccUtils.RPC:Register('bcc-housing:ReinitializeChecksAfterSale', function()
+    local success, houses = BccUtils.RPC:CallAsync('bcc-housing:getPurchasedHouses', {})
+    if success and type(houses) == "table" then
+        PurchasedHouses = {}
+        for _, coords in ipairs(houses) do
+            if type(coords) == "table" and coords.x and coords.y and coords.z then
+                PurchasedHouses[#PurchasedHouses + 1] = vector3(coords.x, coords.y, coords.z)
+            else
+                PurchasedHouses[#PurchasedHouses + 1] = coords
+            end
+        end
+    end
 end)
 
-RegisterNetEvent('bcc-housing:ReinitializeChecksAfterSale')
-AddEventHandler('bcc-housing:ReinitializeChecksAfterSale', function()
-    -- Reinitialize the house purchase list
-    TriggerServerEvent('bcc-housing:getPurchasedHouses')
-end)
 
-AddEventHandler('bcc-housing:openBuyHouseMenu', function(house)
+function OpenBuyHouseMenu(house)
+    if not house then
+        devPrint("OpenBuyHouseMenu: missing 'house' param"); return
+    end
+
     devPrint("Opening buy house menu for house with coordinates: " .. tostring(house.houseCoords))
 
     if HandlePlayerDeathAndCloseMenu() then
         return -- Skip opening the menu if the player is dead
     end
+
+    local price        = tonumber(house.price or 0) or 0
+    local sellPrice    = tonumber(house.sellPrice or 0) or 0
+    local canSell      = not not house.canSell
+    local rentalDep    = tonumber(house.rentalDeposit or 0) or 0
+    local rentCharge   = tonumber(house.rentCharge or 0) or 0
+    local playerMax    = tonumber(house.playerMax or 1) or 1
+    local invLimit     = tonumber(house.invLimit or 0) or 0
+    local taxAmount    = tonumber(house.taxAmount or 0) or 0
+    local houseName    = house.name or "House"
 
     local buyHouseMenu = BCCHousingMenu:RegisterPage("bcc-housing:BuyHousePage")
 
@@ -89,29 +140,40 @@ AddEventHandler('bcc-housing:openBuyHouseMenu', function(house)
     })
 
     buyHouseMenu:RegisterElement('subheader', {
-        value = house.name,
+        value = houseName,
         slot = "content",
         style = {}
     })
 
-    buyHouseMenu:RegisterElement('line', {
-        style = {},
-        slot = 'content',
-    })
+    buyHouseMenu:RegisterElement('line', { style = {}, slot = 'content' })
 
-    local htmlContent = [[
-        <div style="text-align:center; margin: 20px;">]] ..
-            [[<p style="font-size:18px; margin-bottom: 10px;">]] .. _U('listBuyPrice')   .. [[$<strong style="color:#28A745;">]] .. tonumber(house.price or 0) .. [[</strong>]] .. [[</p>]] ..
-            (house.canSell and
-            ([[<p style="font-size:18px; margin-bottom: 10px;">]] .. _U('listSellPrice')  .. [[$<strong>]] .. tonumber(house.sellPrice or 0) .. [[</strong>]] .. [[</p>]]) or -- <strong style="color:#17A2B8;">$%d</strong></p>
-            ([[<p style="font-size:18px; margin-bottom: 10px;">]] .. _U('listCanSell')    .. [[<strong>]] .. tostring(house.canSell and _U('Yes') or _U('No')) .. [[</strong>]] .. [[</p>]])) .. -- [[<strong style="color:#FFC107;">]] .. [[</strong></p>]] ..
-            [[<p style="font-size:18px; margin-bottom: 10px;">]] .. _U('rentalDeposit')  .. [[<strong>]] .. tonumber(house.rentalDeposit) .. [[</strong>]] .. [[</p>]] ..
-            [[<p style="font-size:18px; margin-bottom: 10px;">]] .. _U('rentCharge')     .. [[<strong>]] .. tonumber(house.rentCharge) .. [[</strong>]] .. [[</p>]] ..
-            [[<p style="font-size:18px; margin-bottom: 10px;">]] .. _U('listRoomateLim') .. [[<strong>]] .. tonumber(house.playerMax or 1) .. [[</strong>]] .. [[</p>]] ..
-            [[<p style="font-size:18px; margin-bottom: 10px;">]] .. _U('listInvLimit')   .. [[<strong>]] .. tonumber(house.invLimit or 0) .. [[</strong>]] .. [[</p>]] ..
-            [[<p style="font-size:18px; margin-bottom: 10px;">]] .. _U('listTaxAmount')  .. [[$<strong style="color:#DC3545;">]] .. tonumber(house.taxAmount or 0) .. [[</strong>]] .. [[</p>]] .. [[
-        </div>
-    ]]
+    local sellLine
+    if canSell then
+        sellLine =
+            '<p style="font-size:18px; margin-bottom: 10px;">' ..
+            _U('listSellPrice') .. '$<strong>' .. tostring(sellPrice) .. '</strong></p>'
+    else
+        sellLine =
+            '<p style="font-size:18px; margin-bottom: 10px;">' ..
+            _U('listCanSell') .. '<strong>' .. _U('No') .. '</strong></p>'
+    end
+
+    local htmlContent =
+        '<div style="text-align:center; margin: 20px;">' ..
+        '<p style="font-size:18px; margin-bottom: 10px;">' ..
+        _U('listBuyPrice') .. '$<strong style="color:#28A745;">' .. tostring(price) .. '</strong></p>' ..
+        sellLine ..
+        '<p style="font-size:18px; margin-bottom: 10px;">' ..
+        _U('rentalDeposit') .. '<strong>' .. tostring(rentalDep) .. '</strong></p>' ..
+        '<p style="font-size:18px; margin-bottom: 10px;">' ..
+        _U('rentCharge') .. '<strong>' .. tostring(rentCharge) .. '</strong></p>' ..
+        '<p style="font-size:18px; margin-bottom: 10px;">' ..
+        _U('listRoomateLim') .. '<strong>' .. tostring(playerMax) .. '</strong></p>' ..
+        '<p style="font-size:18px; margin-bottom: 10px;">' ..
+        _U('listInvLimit') .. '<strong>' .. tostring(invLimit) .. '</strong></p>' ..
+        '<p style="font-size:18px; margin-bottom: 10px;">' ..
+        _U('listTaxAmount') .. '$<strong style="color:#DC3545;">' .. tostring(taxAmount) .. '</strong></p>' ..
+        '</div>'
 
 
     buyHouseMenu:RegisterElement("html", {
@@ -120,43 +182,47 @@ AddEventHandler('bcc-housing:openBuyHouseMenu', function(house)
         style = {}
     })
 
-    buyHouseMenu:RegisterElement('line', {
-        style = {},
-        slot = 'footer',
-    })
+    buyHouseMenu:RegisterElement('line', { style = {}, slot = 'footer' })
 
     buyHouseMenu:RegisterElement('button', {
-        label = _U('buyHouseFor') .. house.price,
+        label = _U('buyHouseFor') .. price,
         style = {},
         slot = "footer"
     }, function()
-        local moneyType = 0 -- Cash
-        TriggerServerEvent('bcc-housing:buyHouse', house.houseCoords, moneyType)
         BCCHousingMenu:Close()
+        local success, err = BccUtils.RPC:CallAsync('bcc-housing:buyHouse', {
+            houseCoords = house.houseCoords,
+            moneyType = 0 -- Cash
+        })
+        if not success then
+            devPrint("House purchase RPC failed: " .. tostring(err and err.error))
+        end
     end)
 
     buyHouseMenu:RegisterElement('button', {
-        label = _U('buyGoldHouseFor', house.rentalDeposit),
+        label = _U('buyGoldHouseFor', rentalDep),
         style = {},
         slot = "footer"
     }, function()
-        local moneyType = 1 -- Gold
-        TriggerServerEvent('bcc-housing:buyHouse', house.houseCoords, moneyType)
         BCCHousingMenu:Close()
+        local success, err = BccUtils.RPC:CallAsync('bcc-housing:buyHouse', {
+            houseCoords = house.houseCoords,
+            moneyType = 1 -- Gold
+        })
+        if not success then
+            devPrint("House purchase RPC failed: " .. tostring(err and err.error))
+        end
     end)
 
     buyHouseMenu:RegisterElement('button', {
         label = _U('cancel'),
-        style = {['position'] = 'relative', ['z-index'] = 9,},
+        style = { ['position'] = 'relative', ['z-index'] = 9 },
         slot = "footer"
     }, function()
         BCCHousingMenu:Close()
     end)
 
-    buyHouseMenu:RegisterElement('bottomline', {
-        style = {},
-        slot = "footer"
-    })
+    buyHouseMenu:RegisterElement('bottomline', { style = {}, slot = "footer" })
 
     BCCHousingMenu:Open({ startupPage = buyHouseMenu })
-end)
+end

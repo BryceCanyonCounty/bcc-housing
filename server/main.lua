@@ -1,16 +1,14 @@
--- Check if player is admin to use 'AdminManagementMenuCommand'
-VORPcore.Callback.Register('bcc-housing:CheckIfAdmin', function(source, cb)
-    local src = source
+BccUtils.RPC:Register('bcc-housing:CheckIfAdmin', function(params, cb, src)
     local user = VORPcore.getUser(src)
     if not user then return cb(false) end
 
     local character = user.getUsedCharacter
-    if character.group == Config.adminGroup then
+    if character and character.group == Config.adminGroup then
         return cb(true)
     end
 
     for _, jobCfg in ipairs(Config.ALlowedJobs) do
-        if character.job == jobCfg.jobname then
+        if character and character.job == jobCfg.jobname then
             return cb(true)
         end
     end
@@ -18,18 +16,21 @@ VORPcore.Callback.Register('bcc-housing:CheckIfAdmin', function(source, cb)
     cb(false)
 end)
 
--- Job check to use NPC Real Estate Agent
-VORPcore.Callback.Register('bcc-housing:CheckJob', function(source, cb, location)
-    local src = source
+BccUtils.RPC:Register('bcc-housing:CheckJob', function(params, cb, src)
+    local location = params and params.location
     local user = VORPcore.getUser(src)
-    if not user then return cb(false) end
+    if not user or not location then return cb(false) end
 
     local character = user.getUsedCharacter
-    local jobCfg = Agents[location].shop.jobs
-    local hasJob = false
+    local agent = Agents[location]
+    local jobCfg = agent and agent.shop and agent.shop.jobs
+    if type(jobCfg) ~= 'table' then return cb(false) end
 
+    local hasJob = false
     for _, job in pairs(jobCfg) do
-        if (character.job == job.name) and (tonumber(character.jobGrade) >= tonumber(job.grade)) then
+        if character
+        and character.job == job.name
+        and tonumber(character.jobGrade) >= tonumber(job.grade) then
             hasJob = true
             break
         end
@@ -37,5 +38,3 @@ VORPcore.Callback.Register('bcc-housing:CheckJob', function(source, cb, location
 
     cb(hasJob)
 end)
-
-BccUtils.Versioner.checkFile(GetCurrentResourceName(), 'https://github.com/BryceCanyonCounty/bcc-housing')

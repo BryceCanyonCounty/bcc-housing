@@ -51,7 +51,12 @@ function sellHouseConfirmation(houseId, ownershipStatus)
         slot = "footer",
         style = {}
     }, function()
-        TriggerServerEvent('bcc-housing:sellHouse', houseId)
+        local success, err = BccUtils.RPC:CallAsync('bcc-housing:sellHouse', { houseId = houseId })
+        if success then
+            RemoveManagePrompt()
+        else
+            devPrint("sellHouse RPC failed: " .. tostring(err and err.error))
+        end
         BCCHousingMenu:Close()
     end)
 
@@ -60,7 +65,7 @@ function sellHouseConfirmation(houseId, ownershipStatus)
         slot = "footer",
         style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
-        TriggerEvent('bcc-housing:openmenu', houseId, true, ownershipStatus)
+        OpenHousingMainMenu(houseId, true, ownershipStatus)
     end)
 
     sellHouseConfirmation:RegisterElement('bottomline', {
@@ -136,7 +141,7 @@ function sellHouseToPlayer(houseId, ownershipStatus)
         slot = "footer",
         style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
-        TriggerEvent('bcc-housing:openmenu', houseId, true, ownershipStatus)
+        OpenHousingMainMenu(houseId, true, ownershipStatus)
     end)
 
     sellHouseToPlayer:RegisterElement('bottomline', {
@@ -260,12 +265,30 @@ function OpenConfirmSellHouseMenu(houseId, targetPlayerId, targetPlayerName, wit
         label = _U('Yes'),
         style = {}
     }, function()
-        if withInventory then
-            TriggerServerEvent('bcc-housing:sellHouseToPlayerWithInventory', houseId, targetPlayerId, salePrice)
-        else
-            TriggerServerEvent('bcc-housing:sellHouseToPlayerWithoutInventory', houseId, targetPlayerId, salePrice)
-        end
         BCCHousingMenu:Close()
+        if withInventory then
+            local success, err = BccUtils.RPC:CallAsync('bcc-housing:sellHouseToPlayerWithInventory', {
+                houseId = houseId,
+                targetPlayerId = targetPlayerId,
+                salePrice = salePrice
+            })
+            if success then
+                RemoveManagePrompt()
+            else
+                devPrint("sellHouseToPlayerWithInventory RPC failed: " .. tostring(err and err.error))
+            end
+        else
+            local success, err = BccUtils.RPC:CallAsync('bcc-housing:sellHouseToPlayerWithoutInventory', {
+                houseId = houseId,
+                targetPlayerId = targetPlayerId,
+                salePrice = salePrice
+            })
+            if success then
+                RemoveManagePrompt()
+            else
+                devPrint("sellHouseToPlayerWithoutInventory RPC failed: " .. tostring(err and err.error))
+            end
+        end
     end)
 
     confirmMenu:RegisterElement('button', {

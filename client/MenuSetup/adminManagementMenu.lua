@@ -1,9 +1,14 @@
-RegisterNetEvent('bcc-housing:AdminManagementMenu', function(allHouses)
-    AdminManagementMenu(allHouses)
+BccUtils.RPC:Register('bcc-housing:AdminManagementMenu', function(params)
+    if params and params.houses then
+        AdminManagementMenu(params.houses)
+    end
 end)
 
-RegisterNetEvent('bcc-housing:GetHouseInfo', function(houseInfo)
-    AdminManagementMenuHouseChose(houseInfo)
+BccUtils.RPC:Register('bcc-housing:GetHouseInfo', function(params)
+    if params then
+        local houseInfo = params.houseInfo or params
+        AdminManagementMenuHouseChose(houseInfo)
+    end
 end)
 
 function AdminManagementMenu(allHouses)
@@ -145,9 +150,14 @@ function AdminManagementMenuHouseChose(houseInfo)
     houseOptionsPage:RegisterElement('button', {
         label = _U("backButton"),
         slot = "footer",
-        style = {['position'] = 'relative', ['z-index'] = 9,}
+        style = { ['position'] = 'relative', ['z-index'] = 9 }
     }, function()
-        TriggerServerEvent('bcc-housing:AdminGetAllHouses')
+        local success, houses = BccUtils.RPC:CallAsync('bcc-housing:AdminGetAllHouses', {})
+        if success and houses then
+            AdminManagementMenu(houses)
+        else
+            devPrint("Failed to refresh admin house list: " .. tostring(houses and houses.error))
+        end
     end)
 
     houseOptionsPage:RegisterElement('bottomline', {
@@ -203,7 +213,10 @@ function deleteHouse(houseInfo)
         slot = "footer",
         style = {}
     }, function()
-        TriggerServerEvent('bcc-house:AdminManagementDelHouse', houseInfo.houseid)
+        local success, err = BccUtils.RPC:CallAsync('bcc-house:AdminManagementDelHouse', { houseId = houseInfo.houseid })
+        if not success then
+            devPrint("AdminManagementDelHouse RPC failed: " .. tostring(err and err.error))
+        end
         BCCHousingMenu:Close()
     end)
 
@@ -265,7 +278,7 @@ function changeHouseRadius(houseInfo)
             radiusValue = tonumber(data.value)
         else
             radiusValue = nil
-            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+            Notify(_U("InvalidInput"), "error", 4000)
         end
     end)
 
@@ -280,10 +293,16 @@ function changeHouseRadius(houseInfo)
         style = {},
     }, function()
         if radiusValue then
-            TriggerServerEvent('bcc-house:AdminManagementChangeHouseRadius', houseInfo.houseid, radiusValue)
+            local success, err = BccUtils.RPC:CallAsync('bcc-house:AdminManagementChangeHouseRadius', {
+                houseId = houseInfo.houseid,
+                radius = radiusValue
+            })
+            if not success then
+                devPrint("AdminManagementChangeHouseRadius RPC failed: " .. tostring(err and err.error))
+            end
             AdminManagementMenuHouseChose(houseInfo)
         else
-            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+            Notify(_U("InvalidInput"), "error", 4000)
         end
     end)
 
@@ -346,7 +365,7 @@ function changeHouseTaxes(houseInfo)
             taxAmount = tonumber(data.value)
         else
             taxAmount = nil
-            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+            Notify(_U("InvalidInput"), "error", 4000)
         end
     end)
 
@@ -361,10 +380,16 @@ function changeHouseTaxes(houseInfo)
         style = {},
     }, function()
         if taxAmount then
-            TriggerServerEvent('bcc-house:AdminManagementChangeTaxAmount', houseInfo.houseid, taxAmount)
+            local success, err = BccUtils.RPC:CallAsync('bcc-house:AdminManagementChangeTaxAmount', {
+                houseId = houseInfo.houseid,
+                tax = taxAmount
+            })
+            if not success then
+                devPrint("AdminManagementChangeTaxAmount RPC failed: " .. tostring(err and err.error))
+            end
             AdminManagementMenuHouseChose(houseInfo)
         else
-            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+            Notify(_U("InvalidInput"), "error", 4000)
         end
     end)
 
@@ -426,7 +451,7 @@ function changeHouseInventory(houseInfo)
             inventoryLimit = tonumber(data.value)
         else
             inventoryLimit = nil
-            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+            Notify(_U("InvalidInput"), "error", 4000)
         end
     end)
 
@@ -441,10 +466,16 @@ function changeHouseInventory(houseInfo)
         style = {},
     }, function()
         if inventoryLimit then
-            TriggerServerEvent('bcc-house:AdminManagementChangeInvLimit', houseInfo.houseid, inventoryLimit)
+            local success, err = BccUtils.RPC:CallAsync('bcc-house:AdminManagementChangeInvLimit', {
+                houseId = houseInfo.houseid,
+                invLimit = inventoryLimit
+            })
+            if not success then
+                devPrint("AdminManagementChangeInvLimit RPC failed: " .. tostring(err and err.error))
+            end
             AdminManagementMenuHouseChose(houseInfo)
         else
-            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+            Notify(_U("InvalidInput"), "error", 4000)
         end
     end)
 

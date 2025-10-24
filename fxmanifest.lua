@@ -18,6 +18,7 @@ client_scripts {
     'client/MainHousing.lua',
     'client/propertyCheck.lua',
     'client/furnitureSpawning.lua',
+    'client/furnitureVendor.lua',
     'client/MenuSetup/*.lua',
 }
 
@@ -47,4 +48,4 @@ dependency {
     'feather-menu'
 }
 
-version '1.5.2'
+version '2.0.0'

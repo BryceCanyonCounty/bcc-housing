@@ -142,4 +142,12 @@ Furniture = {
         { propModel = "p_toolbox01x",        displayName = "Toolbox",             costToBuy = 10, sellFor = 9 },
         { propModel = "p_group_barrelcor01", displayName = "Barrel with Tools",   costToBuy = 10, sellFor = 9 },
     },
+    {
+        name = 'Lights',
+        title = 'Lights',
+        desc = "View assorted light items",
+        { propModel = "p_lightpolenbx03x",   displayName = "Light Pole",          costToBuy = 580, sellFor = 78 },
+        { propModel = "p_lightpostnbx01x",   displayName = "Light Post",          costToBuy = 560, sellFor = 58 },
+    },
+
 }

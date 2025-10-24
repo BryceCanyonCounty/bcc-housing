@@ -11,9 +11,7 @@ DbUpdated = false -- Use this to stop taxes from running till db has been made
 local PlayersTable = {}
 
 -- Event to handle player data retrieval
-RegisterServerEvent('bcc-housing:GetPlayers')
-AddEventHandler('bcc-housing:GetPlayers', function()
-    local _source = source
+BccUtils.RPC:Register('bcc-housing:GetPlayers', function(params, cb, src)
     local data = {}
     local players = GetPlayers() -- Fetch all current players on the server
 
@@ -27,27 +25,26 @@ AddEventHandler('bcc-housing:GetPlayers', function()
                     local firstname = Character.firstname or "Unknown"
                     local lastname = Character.lastname or "Player"
                     local playerName = firstname .. ' ' .. lastname
-                    data[tostring(playerId)] = {
+                    table.insert(data, {
                         serverId = playerId,
                         PlayerName = playerName,
                         staticid = Character.charIdentifier,
-                    }
+                    })
                 end
             end
         end
     else
         devPrint("No players returned from GetPlayers() or list is empty")
     end
-    TriggerClientEvent("bcc-housing:SendPlayers", _source, data)
+    if cb then cb(true, data) else return data end
 end)
 
 -- Event to update PlayersTable with player information for availability checks
-RegisterServerEvent("bcc-housing:getPlayersInfo")
-AddEventHandler("bcc-housing:getPlayersInfo", function()
-    local _source = source
-    if not table.contains(PlayersTable, _source) then
-        table.insert(PlayersTable, _source) -- Prevent duplicate entries
+BccUtils.RPC:Register("bcc-housing:getPlayersInfo", function(params, cb, src)
+    if not table.contains(PlayersTable, src) then
+        table.insert(PlayersTable, src) -- Prevent duplicate entries
     end
+    if cb then cb(true) end
 end)
 
 -- Helper function to check for duplicates in PlayersTable
@@ -63,17 +60,57 @@ end
 if Config.DevMode then
     -- Helper function for debugging
     function devPrint(message)
-        print("^1[DEV MODE] ^4" .. message)
+        print("^1[DEV MODE] ^4" .. message .. "^0")
     end
 else
     -- Define devPrint as a no-op function if DevMode is not enabled
     function devPrint(message) end
 end
 
-RegisterServerEvent('bcc-housing:ServerSideRssStop', function()
+function NotifyClient(src, message, durationOrType, maybeDuration)
+    local defaultDuration = (Config.NotifyOptions and Config.NotifyOptions.autoClose) or 4000
+    local defaultType = (Config.NotifyOptions and Config.NotifyOptions.type) or "info"
+
+    local notifyType = defaultType
+    local duration = defaultDuration
+
+    if type(durationOrType) == "string" then
+        notifyType = durationOrType
+        duration = tonumber(maybeDuration) or defaultDuration
+    elseif type(durationOrType) == "number" then
+        duration = durationOrType
+        if type(maybeDuration) == "string" then
+            notifyType = maybeDuration
+        end
+    elseif durationOrType ~= nil then
+        duration = defaultDuration
+    end
+
+    if maybeDuration == nil and notifyType ~= defaultType and type(durationOrType) == "string" then
+        duration = defaultDuration
+    end
+
+    if Config.Notify == "feather-menu" then
+        BccUtils.RPC:Notify("bcc-housing:NotifyClient", {
+            message = message,
+            type = notifyType,
+            duration = duration
+        }, src)
+    elseif Config.Notify == "vorp-core" then
+        VORPcore.NotifyRightTip(src, message, duration)
+    else
+        print("^1[Notify] Invalid Config.Notify: " .. tostring(Config.Notify))
+    end
+end
+
+BccUtils.RPC:Register('bcc-housing:ServerSideRssStop', function(_, cb, src)
     MySQL.update("UPDATE bcchousing SET player_source_spawnedfurn='none'")
+    if cb then cb(true) end
 end)
 
 AddEventHandler('playerDropped', function()
-    DelSpawnedFurn(source) --This will trigger the function inside furniture.lua
+    local src = source
+    if src then
+        DelSpawnedFurn(src) --This will trigger the function inside furniture.lua
+    end
 end)
