@@ -107,13 +107,13 @@ CreateThread(function()
                     if UiPromptHasHoldModeCompleted(AgentPrompt) then
                         Wait(500) -- ensures it is not triggered multiple times
                         if shopCfg.shop.jobsEnabled then
-                            local hasJob = VORPcore.Callback.TriggerAwait('bcc-housing:CheckJob', shop)
+                            local hasJob = BccUtils.RPC:CallAsync('bcc-housing:CheckJob', { location = shop })
                             if not hasJob then
-                                VORPcore.NotifyRightTip(_U('needJob'), 4000)
+                                Notify(_U('needJob'), "error", 4000)
                                 goto END
                             end
                         end
-                        TriggerEvent('bcc-housing:OpenCollectMoneyMenu')
+                        OpenCollectMoneyMenu()
                     end
                 end
             end
@@ -123,17 +123,18 @@ CreateThread(function()
     end
 end)
 
-AddEventHandler('bcc-housing:OpenCollectMoneyMenu', function()
+
+function OpenCollectMoneyMenu()
     devPrint("Opening collect money menu")
 
     if HandlePlayerDeathAndCloseMenu() then
         return -- Skip opening the menu if the player is dead
     end
 
-    local soldHouses = VORPcore.Callback.TriggerAwait('bcc-housing:RequestSoldHouses')
+    local soldHouses = BccUtils.RPC:CallAsync('bcc-housing:RequestSoldHouses')
     if soldHouses == false then return end
 
-    local collectMoneyMenu = BCCHousingMenu:RegisterPage("bcc-housing:CollectMoneyPage")
+    local collectMoneyMenu = self:RegisterPage("bcc-housing:CollectMoneyPage")
 
     collectMoneyMenu:RegisterElement('header', {
         value = _U("houseSaleMoney"),
@@ -141,14 +142,18 @@ AddEventHandler('bcc-housing:OpenCollectMoneyMenu', function()
         style = {}
     })
 
-    collectMoneyMenu:RegisterElement('line', {
-        style = {}
-    })
+    collectMoneyMenu:RegisterElement('line', { style = {} })
 
     if #soldHouses > 0 then
         for _, house in ipairs(soldHouses) do
             collectMoneyMenu:RegisterElement('textdisplay', {
-                value = string.format(_U("houseId") .. "%d" .. _U("soldFor") .. "$%d", house.houseId, house.amount),
+                value = string.format(
+                    "%s%d%s$%d",
+                    _U("houseId"),
+                    house.houseId,
+                    _U("soldFor"),
+                    house.amount
+                ),
                 slot = 'content',
                 style = {}
             })
@@ -171,8 +176,11 @@ AddEventHandler('bcc-housing:OpenCollectMoneyMenu', function()
         style = {},
         slot = "footer"
     }, function()
-        TriggerServerEvent('bcc-housing:collectHouseSaleMoneyFromNpc')
-        BCCHousingMenu:Close()
+        local success, response = BccUtils.RPC:CallAsync('bcc-housing:collectHouseSaleMoneyFromNpc', {})
+        if not success then
+            devPrint("Failed to collect house sale money: " .. tostring(response and response.error))
+        end
+        self:Close()
     end)
 
     collectMoneyMenu:RegisterElement('button', {
@@ -180,7 +188,7 @@ AddEventHandler('bcc-housing:OpenCollectMoneyMenu', function()
         style = {},
         slot = "footer"
     }, function()
-        BCCHousingMenu:Close()
+        self:Close()
     end)
 
     collectMoneyMenu:RegisterElement('bottomline', {
@@ -188,5 +196,5 @@ AddEventHandler('bcc-housing:OpenCollectMoneyMenu', function()
         slot = "footer"
     })
 
-    BCCHousingMenu:Open({ startupPage = collectMoneyMenu })
-end)
+    self:Open({ startupPage = collectMoneyMenu })
+end

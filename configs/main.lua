@@ -14,6 +14,45 @@ Config = {
     },
     -----------------------------------------------------
 
+    Notify = "feather-menu",
+    NotifyOptions = {
+        type = "info",
+        autoClose = 4000,
+        position = "bottom-center",
+        transition = "slide"
+    },
+    -----------------------------------------------------
+
+    FurnitureMenuItem = 'furniture_book', -- Inventory item that opens the owned furniture list
+    FurnitureVendors = {
+        {
+            name = 'Furniture Catalog',
+            coords = vector3(-1821.2, -429.0, 160.0), -- Sample location, update to your preferred vendor spots
+            radius = 2.0,
+            key = 'G',
+            blip = {
+                name = 'Furniture Vendor',
+                sprite = 'blip_ambient_quartermaster',
+                color = 'GREEN',
+                scale = 0.2
+            },
+            npc = {
+                model = 'u_m_m_strwelcomecenter_01',
+                heading = 45.0,
+                scenario = 'WORLD_HUMAN_WRITE_NOTEBOOK'
+            }
+        }
+    },
+    CameraCoords = {
+        itemPreview = {
+            x = -1826.5, y = -429.53, z = 159.94, h = 265.93,
+        },
+        creation = {
+            x = -1830.36, y = -429.49, z = 159.8, h = 265.93, zoom = 100.0,
+        }
+    },
+    -----------------------------------------------------
+
     -- Set your admin group here
     adminGroup = 'admin',
     -----------------------------------------------------

@@ -1,7 +1,9 @@
-RegisterNetEvent('bcc-housing:HotelDbRegistry', function()
-    local src = source
+BccUtils.RPC:Register('bcc-housing:HotelDbRegistry', function(params, cb, src)
     local user = VORPcore.getUser(src)
-    if not user then return end
+    if not user then
+        if cb then cb(false) end
+        return
+    end
 
     local character = user.getUsedCharacter
     local charId = character.charIdentifier
@@ -13,26 +15,24 @@ RegisterNetEvent('bcc-housing:HotelDbRegistry', function()
     end
 
     local hotelsData = result[1].hotels
+    local ownedHotelsTable = {}
     if hotelsData ~= 'none' then
         local hotelsTable = json.decode(hotelsData)
         if hotelsTable and #hotelsTable > 0 then
-            for _, hotelId in ipairs(hotelsTable) do
-                TriggerClientEvent('bcc-housing:UpdateHotelTable', src, hotelId)
-            end
-        end
-    else
-        for _, hotelId in ipairs(result) do
-            TriggerClientEvent('bcc-housing:UpdateHotelTable', src, hotelId)
+            ownedHotelsTable = hotelsTable
         end
     end
 
-    TriggerClientEvent('bcc-housing:MainHotelHandler', src)
+    if cb then cb(true, ownedHotelsTable) end
 end)
 
-RegisterNetEvent('bcc-housing:HotelBought', function(hotelTable)
-    local src = source
+BccUtils.RPC:Register('bcc-housing:HotelBought', function(params, cb, src)
+    local hotelTable = params and params.hotel
     local user = VORPcore.getUser(src)
-    if not user then return end
+    if not user then
+        if cb then cb(false, _U('noFurn')) end
+        return
+    end
 
     local character = user.getUsedCharacter
     local charId = character.charIdentifier
@@ -40,8 +40,14 @@ RegisterNetEvent('bcc-housing:HotelBought', function(hotelTable)
     local result = MySQL.query.await('SELECT * FROM `bcchousinghotels` WHERE `charidentifier` = ?', { charId })
     local ownedHotels = result[1] and result[1].hotels or 'none'
 
+    if not hotelTable or not hotelTable.cost or not hotelTable.hotelId then
+        if cb then cb(false, nil, 'Invalid hotel data.') end
+        return
+    end
+
     if character.money < hotelTable.cost then
-        VORPcore.NotifyRightTip(src, _U('noMoney'), 4000)
+        NotifyClient(src, _U('noMoney'), 4000, "error")
+        if cb then cb(false, nil, _U('noMoney')) end
         return
     end
 
@@ -53,21 +59,30 @@ RegisterNetEvent('bcc-housing:HotelBought', function(hotelTable)
 
     MySQL.query.await('UPDATE `bcchousinghotels` SET `hotels` = ? WHERE `charidentifier` = ?', { updatedHotels, charId })
 
-    for _, hotelId in ipairs(ownedHotelsTable) do
-        TriggerClientEvent('bcc-housing:UpdateHotelTable', src, hotelId)
-    end
+    if cb then cb(true, ownedHotelsTable, nil) end
 end)
 
-RegisterNetEvent('bcc-housing:RegisterHotelInventory', function(hotelId)
-    local src = source
+BccUtils.RPC:Register('bcc-housing:RegisterHotelInventory', function(params, cb, src)
+    local hotelId = params and params.hotelId
     local user = VORPcore.getUser(src)
-    if not user then return end
+    if not user then
+        if cb then cb(false) end
+        return
+    end
 
     local character = user.getUsedCharacter
     local charId = character.charIdentifier
 
+    if not hotelId then
+        if cb then cb(false) end
+        return
+    end
+
     local isRegistered = exports.vorp_inventory:isCustomInventoryRegistered('bcc-housinginv:' .. tostring(hotelId) .. tostring(charId))
-    if isRegistered then return end
+    if isRegistered then
+        if cb then cb(true) end
+        return
+    end
 
     for _, hotelCfg in pairs(Hotels) do
         if hotelCfg.hotelId == hotelId then
@@ -86,15 +101,24 @@ RegisterNetEvent('bcc-housing:RegisterHotelInventory', function(hotelId)
             exports.vorp_inventory:registerInventory(data)
         end
     end
+    if cb then cb(true) end
 end)
 
-RegisterNetEvent('bcc-housing:HotelInvOpen', function(hotelId)
-    local _source = source
-    local user = VORPcore.getUser(_source)
-    if not user then return end
+BccUtils.RPC:Register('bcc-housing:HotelInvOpen', function(params, cb, src)
+    local hotelId = params and params.hotelId
+    local user = VORPcore.getUser(src)
+    if not user then
+        if cb then cb(false) end
+        return
+    end
 
     local character = user.getUsedCharacter
     local charId = character.charIdentifier
 
-    exports.vorp_inventory:openInventory(_source, 'bcc-housinginv:' .. tostring(hotelId) .. tostring(charId))
+    if hotelId then
+        exports.vorp_inventory:openInventory(src, 'bcc-housinginv:' .. tostring(hotelId) .. tostring(charId))
+        if cb then cb(true) end
+    else
+        if cb then cb(false) end
+    end
 end)

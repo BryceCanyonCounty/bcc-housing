@@ -1,2 +1,22 @@
-<1.5.2>
-See GitHub for details!
+<2.0.0>
+## Major Changes
+- Fully refactored to use **Bcc-Utils RPC**  
+  - Replaced `VORPcore.Callback` with `BccUtils.RPC`
+  - Replaced all `RegisterNetEvent` / `RegisterServerEvent` with `BccUtils.RPC:Register`
+  - Replaced all `TriggerServerEvent` / `TriggerClientEvent` with:
+    - `BccUtils.RPC:Notify()` for one-way messages
+    - `BccUtils.RPC:Call()` or `BccUtils.RPC:CallAsync()` for requests expecting responses
+
+- Added **Feather-menu notifications** for a cleaner UI
+- Introduced **furniture vendor shops** — players can now purchase furniture from vendors
+- Furniture placement now requires owning the purchased **furniture item**
+- **Furniture system moved** from the house menu to a dedicated **Furniture Book**
+- Added **furniture preview** before purchase
+- Fixed issue where furniture failed to reappear after disconnects or distance streaming
+- Added smarter property checks:
+  - Disabled when `IsPauseMenuActive()`
+  - Disabled when `IsInCinematicMode()`
+  - Disabled when `IsUiappActiveByHash('MAP')`
+  - And several other blocked UI states
+- Added `setInstance` support (no longer depends on VORP's implementation)
+- Many more improvements

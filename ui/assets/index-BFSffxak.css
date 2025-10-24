@@ -7,8 +7,8 @@
     height: 6vh; /* Висота, пропорційна висоті екрану */
     max-width: 250px; /* Максимальна ширина для обмеження на великих екранах */
     max-height: 100px; /* Максимальна висота для обмеження */
-    background-image: url(./1.png);
-    /* background-image: url(./private-property-CPm5noxe.png); */
+    /*background-image: url(./1.png);*/
+    background-image: url(./private-property-CPm5noxe.png);
     background-size: cover;
     background-repeat: no-repeat;
     background-position: center;

@@ -2,19 +2,88 @@ local MoveForwardPrompt, MoveBackwardPrompt, MoveLeftPrompt, MoveRightPrompt, Mo
 local RotateYawPrompt, RotateYawLeftPrompt, RotatePitchPrompt, RotateBackwardPrompt, RotateRightPrompt, RotateLeftPrompt
 local IncreasePrecisionPrompt, DecreasePrecisionPrompt, ConfirmPrompt, CancelPrompt
 local FurnitureGroup = GetRandomIntInRange(0, 0xffffff)
+local OwnedFurnitureCache = {}
+local ActivePlacementItem = nil
+local LastPlacementObject = nil
+local FurnitureMenuOpen = false
 
-function FurnitureMenu(houseId, ownershipStatus)
-    BCCHousingMenu:Close() -- Close any previously opened menus
+local OpenFurnitureVendorCategoryMenu
+local OpenFurnitureVendorItemMenu
+local VendorPreviewObj = nil
+local vendorCam
 
-    if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+function ClearVendorPreview()
+    if not VendorPreviewObj then return end
+    if VendorPreviewObj.Remove then
+        VendorPreviewObj:Remove()
+    else
+        local ent = VendorPreviewObj
+        if type(ent) == "number" and DoesEntityExist(ent) then
+            DeleteEntity(ent)
+        end
+    end
+    VendorPreviewObj = nil
+end
+
+function CreateCamera()
+    if vendorCam and DoesCamExist(vendorCam) then
+        return
+    end
+    vendorCam = CreateCam('DEFAULT_SCRIPTED_CAMERA', true)
+    SetCamCoord(vendorCam, Config.CameraCoords.creation.x, Config.CameraCoords.creation.y,
+        Config.CameraCoords.creation.z + 1.2)
+    SetCamActive(vendorCam, true)
+    PointCamAtCoord(vendorCam, Config.FurnitureVendors[1].coords.x, Config.FurnitureVendors[1].coords.y,
+        Config.FurnitureVendors[1].coords.z)
+    RenderScriptCams(true, false, 0, false, false, 0)
+end
+
+function EndCam()
+    RenderScriptCams(false, true, 1000, true, false, 0)
+    DestroyCam(vendorCam, false)
+    vendorCam = nil
+    DestroyAllCams(true)
+    SetFocusEntity(PlayerPedId())
+end
+
+local function SpawnVendorItemAtCam(item)
+    if not item then return end
+    ClearVendorPreview()
+
+    local cam = Config.CameraCoords.itemPreview or Config.CameraCoords.creation
+    if not cam then return end
+
+    local model = item.propModel or item.model
+    if not model then return end
+
+    local obj = BccUtils.Objects:Create(model, cam.x, cam.y, cam.z, cam.h or 0.0, true, 'standard')
+    obj:PlaceOnGround(true)
+    VendorPreviewObj = obj
+end
+
+function FurnitureMenu(houseId, ownershipStatus, ownedFurniture)
+    houseId = houseId or HouseId
+    ownershipStatus = ownershipStatus or HouseOwnershipStatus
+    if ownedFurniture then
+        OwnedFurnitureCache = ownedFurniture
     end
 
-    local furnitureMainMenu = BCCHousingMenu:RegisterPage("bcc-housing-furniture-menu")
+    if not houseId then
+        FurnitureMenuOpen = false
+        Notify(_U("noHouseSelected"), 4000)
+        return
+    end
 
-    -- Header for the furniture menu
+    FurnitureMenuOpen = false
+
+    if HandlePlayerDeathAndCloseMenu() then
+        return
+    end
+
+    local furnitureMainMenu = BCCHousingMenu:RegisterPage("bcc-housing-owned-furniture-menu")
+
     furnitureMainMenu:RegisterElement('header', {
-        value = _U("creationMenuName"),
+        value = _U("ownedFurnitureHeader"),
         slot = 'header',
         style = {}
     })
@@ -24,19 +93,57 @@ function FurnitureMenu(houseId, ownershipStatus)
         style = {}
     })
 
-    furnitureMainMenu:RegisterElement('button', {
-        label = _U("buyOwnerFurn"),
+    if not OwnedFurnitureCache or #OwnedFurnitureCache == 0 then
+        furnitureMainMenu:RegisterElement('textdisplay', {
+            value = _U("noUnplacedFurniture"),
+            slot = 'content',
+            style = {}
+        })
+    else
+        table.sort(OwnedFurnitureCache, function(a, b)
+            if a.displayName == b.displayName then
+                return (a.id or "") < (b.id or "")
+            end
+            return (a.displayName or "") < (b.displayName or "")
+        end)
+
+        for _, item in ipairs(OwnedFurnitureCache) do
+            local label = item.displayName or item.model
+            if item.category and item.category ~= '' then
+                label = ("%s (%s)"):format(label, item.category)
+            end
+            furnitureMainMenu:RegisterElement('button', {
+                label = label,
+                style = {}
+            }, function()
+                FurnitureMenuOpen = false
+                ActivePlacementItem = item
+                BCCHousingMenu:Close()
+                PlaceFurnitureIntoWorldPrompt(item)
+            end)
+        end
+    end
+
+    furnitureMainMenu:RegisterElement('line', {
+        slot = "content",
         style = {}
-    }, function()
-        buyFurnitureMenu(houseId, ownershipStatus)
-    end)
+    })
 
     furnitureMainMenu:RegisterElement('button', {
         label = _U("sellOwnerFurn"),
         style = {}
     }, function()
-        -- Trigger server event to fetch furniture data for the house
-        TriggerServerEvent('bcc-housing:GetOwnerFurniture', houseId)
+        local success, furnDataOrMessage, ownershipStatus = BccUtils.RPC:CallAsync("bcc-housing:GetOwnerFurniture",
+            { houseId = houseId })
+        if success then
+            SellOwnedFurnitureMenu(houseId, furnDataOrMessage or {}, ownershipStatus)
+        else
+            if furnDataOrMessage then
+                Notify(furnDataOrMessage, "error", 4000)
+            else
+                Notify(_U("noFurn"), "info", 4000)
+            end
+        end
     end)
 
     furnitureMainMenu:RegisterElement('line', {
@@ -44,13 +151,13 @@ function FurnitureMenu(houseId, ownershipStatus)
         style = {}
     })
 
-    -- Register a back button to return to the previous menu
     furnitureMainMenu:RegisterElement('button', {
-        label = _U("backButton"),
+        label = _U("closeButton"),
         slot = 'footer',
-        style = {['position'] = 'relative', ['z-index'] = 9,}
+        style = { ['position'] = 'relative', ['z-index'] = 9 }
     }, function()
-        TriggerEvent('bcc-housing:openmenu', houseId, true, ownershipStatus)
+        FurnitureMenuOpen = false
+        BCCHousingMenu:Close()
     end)
 
     furnitureMainMenu:RegisterElement('bottomline', {
@@ -58,7 +165,7 @@ function FurnitureMenu(houseId, ownershipStatus)
         style = {}
     })
 
-    -- Open the menu with the configured main page
+    FurnitureMenuOpen = true
     BCCHousingMenu:Open({
         startupPage = furnitureMainMenu,
         sound = {
@@ -68,61 +175,242 @@ function FurnitureMenu(houseId, ownershipStatus)
     })
 end
 
-function buyFurnitureMenu(houseId, ownershipStatus)
-    BCCHousingMenu:Close() -- Close any previously opened menus
-
-    if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+function OpenFurnitureVendorItemMenu(categoryIndex, itemIndex)
+    local furnConfigTable = Furniture[categoryIndex]
+    if not furnConfigTable then
+        devPrint("Vendor preview missing category index: " .. tostring(categoryIndex))
+        return
     end
 
-    local buyFurnitureMenu = BCCHousingMenu:RegisterPage("bcc-housing-furniture-menu")
-    -- Header for the furniture menu
-    buyFurnitureMenu:RegisterElement('header', {
-        value = _U("creationMenuName"),
+    local item = furnConfigTable[itemIndex]
+    if not item then
+        Notify(_U("invalidFurnitureItem"), "error", 4000)
+        return
+    end
+    CreateCamera()
+    SpawnVendorItemAtCam(item)
+    local pageId = ("bcc-housing-furniture-vendor-item-%d-%d"):format(categoryIndex, itemIndex)
+    local itemPage = BCCHousingMenu:RegisterPage(pageId)
+
+    local headerLabel = item.displayName or item.propModel or _U("furnitureCategory")
+    itemPage:RegisterElement('header', {
+        value = headerLabel,
         slot = 'header',
         style = {}
     })
 
-    buyFurnitureMenu:RegisterElement('line', {
+    itemPage:RegisterElement('line', {
+        slot = 'header',
+        style = {}
+    })
+
+    local categoryName = furnConfigTable.name or furnConfigTable.title or ""
+    if categoryName ~= "" then
+        itemPage:RegisterElement('textdisplay', {
+            value = _U("furnitureCategory") .. ": " .. categoryName,
+            slot = 'content',
+            style = {}
+        })
+    end
+
+    if item.desc or furnConfigTable.desc then
+        itemPage:RegisterElement('textdisplay', {
+            value = item.desc or furnConfigTable.desc,
+            slot = 'content',
+            style = {}
+        })
+    end
+
+    local price = tonumber(item.costToBuy) or 0
+    itemPage:RegisterElement('textdisplay', {
+        value = ("$%s"):format(price),
+        slot = 'content',
+        style = {}
+    })
+
+    itemPage:RegisterElement('line', {
+        slot = 'content',
+        style = {}
+    })
+
+    itemPage:RegisterElement('button', {
+        label = ("%s - $%s"):format(_U("buyOwnerFurn"), price),
+        style = {}
+    }, function()
+        local success = BccUtils.RPC:CallAsync("bcc-housing:PurchaseFurnitureItem", {
+            categoryIndex = categoryIndex,
+            itemIndex = itemIndex
+        })
+
+        if not success then
+            local reason = _U("unknownError")
+            Notify(reason, "error", 4000)
+            return
+        end
+
+        Notify(_U("furnAddedToBook"), "success", 4000)
+    end)
+
+    itemPage:RegisterElement('line', {
+        slot = 'footer',
+        style = {}
+    })
+
+    itemPage:RegisterElement('button', {
+        label = _U("backButton"),
+        slot = 'footer',
+        style = {}
+    }, function()
+        ClearVendorPreview()
+        OpenFurnitureVendorCategoryMenu(categoryIndex)
+    end)
+
+    itemPage:RegisterElement('button', {
+        label = _U("closeButton"),
+        slot = 'footer',
+        style = { ['position'] = 'relative', ['z-index'] = 9 }
+    }, function()
+        ClearVendorPreview()
+        EndCam()
+    end)
+
+    itemPage:RegisterElement('bottomline', {
+        slot = 'footer',
+        style = {}
+    })
+
+    BCCHousingMenu:Open({
+        startupPage = itemPage,
+        sound = {
+            action = "SELECT",
+            soundset = "RDRO_Character_Creator_Sounds"
+        }
+    })
+end
+
+function OpenFurnitureVendorCategoryMenu(categoryIndex)
+    BCCHousingMenu:Close()
+
+    if HandlePlayerDeathAndCloseMenu() then
+        return
+    end
+
+    local furnConfigTable = Furniture[categoryIndex]
+    if not furnConfigTable then
+        devPrint("Invalid furniture category index: " .. tostring(categoryIndex))
+        return
+    end
+    CreateCamera()
+    local categoryPage = BCCHousingMenu:RegisterPage("bcc-housing-furniture-vendor-category")
+    categoryPage:RegisterElement('header', {
+        value = furnConfigTable.titile or furnConfigTable.name or _U("furnitureCategory"),
+        slot = 'header',
+        style = {}
+    })
+
+    categoryPage:RegisterElement('line', {
         slot = "header",
         style = {}
     })
 
-    -- Define the furniture items with their actions
-    -- Register elements for each furniture item
-    for index, category in pairs(Furniture) do
-        --category.desc
-        buyFurnitureMenu:RegisterElement('button', {
+    if furnConfigTable.desc then
+        categoryPage:RegisterElement('textdisplay', {
+            value = furnConfigTable.desc,
+            slot = 'content',
+            style = {}
+        })
+    end
+
+    for index, item in ipairs(furnConfigTable) do
+        local label = item.displayName .. " - $" .. tostring(item.costToBuy)
+
+        categoryPage:RegisterElement('button', {
+            label = label,
+            style = {}
+        }, function()
+            OpenFurnitureVendorItemMenu(categoryIndex, index)
+        end)
+    end
+
+    categoryPage:RegisterElement('line', {
+        slot = "footer",
+        style = {}
+    })
+
+    categoryPage:RegisterElement('button', {
+        label = _U("backButton"),
+        slot = "footer",
+        style = { ['position'] = 'relative', ['z-index'] = 9 }
+    }, function()
+        ClearVendorPreview()
+        FurnitureVendorMenu()
+    end)
+
+    categoryPage:RegisterElement('bottomline', {
+        slot = "footer",
+        style = {}
+    })
+
+    BCCHousingMenu:Open({
+        startupPage = categoryPage,
+        sound = {
+            action = "SELECT",
+            soundset = "RDRO_Character_Creator_Sounds"
+        }
+    })
+end
+
+function FurnitureVendorMenu()
+    CreateCamera()
+    FurnitureMenuOpen = false
+
+    if HandlePlayerDeathAndCloseMenu() then
+        return
+    end
+
+    local vendorMenu = BCCHousingMenu:RegisterPage("bcc-housing-furniture-vendor")
+    vendorMenu:RegisterElement('header', {
+        value = _U("furnitureVendorTitle"),
+        slot = 'header',
+        style = {}
+    })
+
+    vendorMenu:RegisterElement('line', {
+        slot = "header",
+        style = {}
+    })
+
+    for index, category in ipairs(Furniture) do
+        vendorMenu:RegisterElement('button', {
             label = category.name,
             style = {}
         }, function()
-            -- Call to open the specific furniture type menu
-            IndFurnitureTypeMenu(index, houseId, ownershipStatus)
+            OpenFurnitureVendorCategoryMenu(index)
         end)
     end
 
-    buyFurnitureMenu:RegisterElement('line', {
+    vendorMenu:RegisterElement('line', {
         slot = "footer",
         style = {}
     })
 
-    -- Register a back button to return to the previous menu
-    buyFurnitureMenu:RegisterElement('button', {
-        label = _U("backButton"),
+    vendorMenu:RegisterElement('button', {
+        label = _U("closeButton"),
         slot = "footer",
-        style = {['position'] = 'relative', ['z-index'] = 9,}
+        style = { ['position'] = 'relative', ['z-index'] = 9 }
     }, function()
-        FurnitureMenu(houseId, ownershipStatus)
+        ClearVendorPreview()
+        EndCam()
+        BCCHousingMenu:Close()
     end)
 
-    buyFurnitureMenu:RegisterElement('bottomline', {
+    vendorMenu:RegisterElement('bottomline', {
         slot = "footer",
         style = {}
     })
 
-    -- Open the menu with the configured main page
     BCCHousingMenu:Open({
-        startupPage = buyFurnitureMenu,
+        startupPage = vendorMenu,
         sound = {
             action = "SELECT",
             soundset = "RDRO_Character_Creator_Sounds"
@@ -130,70 +418,48 @@ function buyFurnitureMenu(houseId, ownershipStatus)
     })
 end
 
-function IndFurnitureTypeMenu(type, houseId, ownershipStatus)
-    BCCHousingMenu:Close() -- Close any previously opened menus
-
-    if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+local function HandleFurniturePlaced(entId)
+    local furnObj = NetworkGetEntityFromNetworkId(entId)
+    if furnObj and DoesEntityExist(furnObj) then
+        table.insert(CreatedFurniture, furnObj)
+    else
+        devPrint("Error: Furniture entity does not exist, could not add to CreatedFurniture.")
+        Notify(_U("furnNotPlaced"), "error", 4000)
+        return false
     end
 
-    local furnConfigTable = Furniture[type]
-    if not furnConfigTable then
-        devPrint("Error: Invalid furniture type '" .. type .. "'. Available types are:")
-        for key in pairs(Furniture) do
-            devPrint(" - " .. key)
-        end
-        return -- Exit the function if the type is invalid
+    if HouseId then
+        BccUtils.RPC:Notify('bcc-housing:StoreFurnForDeletion', {
+            entId = entId,
+            houseid = HouseId
+        })
     end
 
-    local furnitureTypeMenu = BCCHousingMenu:RegisterPage("bcc-housing-furniture-type-menu")
-    furnitureTypeMenu:RegisterElement('header', {
-        value = Furniture[type].titile,
-        slot = 'header',
-        style = {}
-    })
-
-    furnitureTypeMenu:RegisterElement('line', {
-        slot = "header",
-        style = {}
-    })
-
-    for k, v in ipairs(furnConfigTable) do
-        furnitureTypeMenu:RegisterElement('button', {
-            label = v.displayName .. " - $" .. tostring(v.costToBuy),
-            style = {}
-        }, function()
-            PlaceFurnitureIntoWorldPrompt(v.propModel, v.costToBuy, v.displayName, v.sellFor)
-            BCCHousingMenu:Close()
-        end)
-    end
-
-    furnitureTypeMenu:RegisterElement('line', {
-        slot = "footer",
-        style = {}
-    })
-
-    furnitureTypeMenu:RegisterElement('button', {
-        label = _U("backButton"),
-        slot = "footer",
-        style = {['position'] = 'relative', ['z-index'] = 9,}
-    }, function()
-        FurnitureMenu(houseId, ownershipStatus)
-    end)
-
-    furnitureTypeMenu:RegisterElement('bottomline', {
-        slot = "footer",
-        style = {}
-    })
-
-    BCCHousingMenu:Open({
-        startupPage = furnitureTypeMenu,
-        sound = {
-            action = "SELECT",
-            soundset = "RDRO_Character_Creator_Sounds"
-        }
-    })
+    LastPlacementObject = nil
+    ActivePlacementItem = nil
+    Notify(_U("furnPlaced"), "success", 4000)
+    return true
 end
+
+BccUtils.RPC:Register('bcc-housing:OpenFurnitureBook', function(params)
+    local ownedFurniture = params and params.ownedFurniture or {}
+    OwnedFurnitureCache = ownedFurniture
+    FurnitureMenu(HouseId, HouseOwnershipStatus, OwnedFurnitureCache)
+end)
+
+BccUtils.RPC:Register("bcc-housing:OwnedFurnitureSync", function(params)
+    OwnedFurnitureCache = params.ownedItems or {}
+    if FurnitureMenuOpen then
+        FurnitureMenu(HouseId, HouseOwnershipStatus, OwnedFurnitureCache)
+    end
+end)
+
+RegisterNetEvent('bcc-housing:OpenFurnitureVendor', function()
+    CreateCamera()
+    ClearVendorPreview()
+    FurnitureVendorMenu()
+end)
+
 
 function StartFurniturePlacementPrompts()
     -- Debug: Check if BccUtils is loaded
@@ -329,18 +595,33 @@ function StartFurniturePlacementPrompts()
     PromptRegisterEnd(CancelPrompt)
 end
 
-function PlaceFurnitureIntoWorldPrompt(model, cost, displayName, sellPrice)
+function PlaceFurnitureIntoWorldPrompt(itemData)
+    if not itemData or not itemData.model then
+        devPrint("Invalid furniture item passed to placement prompt.")
+        return
+    end
+    local model = itemData.model
+    local displayName = itemData.displayName or itemData.model
+    local sellPrice = itemData.sellprice or 0
+    local ownedId = itemData.id
+
     local playerPed = PlayerPedId()
     local placementCoords = GetEntityCoords(playerPed)
     local createdObject = CreateObject(model, placementCoords.x, placementCoords.y + 1, placementCoords.z, true, true,
         true)
+    if createdObject == 0 then
+        devPrint("Failed to create furniture object for model: " .. tostring(model))
+        Notify(_U("furnNotPlaced"), "error", 4000)
+        return
+    end
+
+    LastPlacementObject = createdObject
     SetEntityCollision(createdObject, false, true)
     TriggerEvent('bcc-housing:CheckIfInRadius', createdObject)
-
     local amountToMove = 1.0 -- default movement precision
 
     -- Notify player of controls
-    VORPcore.NotifyRightTip(_U('furnitureControls'), 5000)
+    Notify(_U('furnitureControls'), 5000)
 
     -- Main loop for handling prompt inputs
     Citizen.CreateThread(function()
@@ -403,25 +684,29 @@ function PlaceFurnitureIntoWorldPrompt(model, cost, displayName, sellPrice)
             -- Adjust precision
             if Citizen.InvokeNative(0xC92AC953F0A982AE, IncreasePrecisionPrompt) then
                 amountToMove = amountToMove + 0.1
-                VORPcore.NotifyRightTip(_U("movementIncreased") .. amountToMove, 1000)
+                Notify(_U("movementIncreased") .. amountToMove, 1000)
             elseif Citizen.InvokeNative(0xC92AC953F0A982AE, DecreasePrecisionPrompt) then
                 amountToMove = amountToMove - 0.1
-                VORPcore.NotifyRightTip(_U("movementDecreased") .. amountToMove, 1000)
+                Notify(_U("movementDecreased") .. amountToMove, 1000)
             end
 
             -- Confirm placement
             if Citizen.InvokeNative(0xC92AC953F0A982AE, ConfirmPrompt) then
                 SetEntityCollision(createdObject, true, true)
-                if ConfirmFurniturePlacement(createdObject, model, cost, displayName, sellPrice) then
-                    FreezeEntityPosition(createdObject, true)
-                    TriggerServerEvent('bcc-housing:SaveFurnitureData', {
+                if ConfirmFurniturePlacement(createdObject, {
                         model = model,
-                        coords = GetEntityCoords(createdObject),
-                        heading = GetEntityHeading(createdObject)
-                    })
+                        displayName = displayName,
+                        sellprice = sellPrice,
+                        ownedId = ownedId
+                    }) then
+                    FreezeEntityPosition(createdObject, true)
+                    ActivePlacementItem = nil
+                    LastPlacementObject = nil
                 else
                     DeleteObject(createdObject)
-                    VORPcore.NotifyRightTip(_U("toFar"), 4000)
+                    Notify(_U("toFar"), "error", 4000)
+                    ActivePlacementItem = nil
+                    LastPlacementObject = nil
                 end
                 break -- Exit loop
             end
@@ -429,7 +714,9 @@ function PlaceFurnitureIntoWorldPrompt(model, cost, displayName, sellPrice)
             -- Cancel placement
             if Citizen.InvokeNative(0xC92AC953F0A982AE, CancelPrompt) then
                 DeleteObject(createdObject)
-                VORPcore.NotifyRightTip(_U("placementCanceled"), 4000)
+                Notify(_U("placementCanceled"), 4000)
+                ActivePlacementItem = nil
+                LastPlacementObject = nil
                 break -- Exit loop
             end
             :: END ::
@@ -486,21 +773,48 @@ function MoveFurniture(obj, direction, moveAmount)
     end
 end
 
-function ConfirmFurniturePlacement(obj, model, cost, displayName, sellPrice)
-    local closeToHouse = closeToHouse(obj) -- Assuming closeToHouse is a function you have
-    if closeToHouse then
-        SetEntityCollision(obj, true, true)
-        FreezeEntityPosition(obj, true)
-        TriggerServerEvent('bcc-housing:BuyFurn', cost, NetworkGetNetworkIdFromEntity(obj), {
-            model = model,
+function ConfirmFurniturePlacement(obj, placementContext)
+    if not placementContext or not placementContext.ownedId then
+        return false
+    end
+
+    if not HouseId then
+        Notify(_U("noHouseSelected"), "error", 4000)
+        return false
+    end
+
+    local isClose = closeToHouse(obj)
+    if not isClose then
+        return false
+    end
+
+    -- finalize the object locally
+    SetEntityCollision(obj, true, true)
+    FreezeEntityPosition(obj, true)
+
+    local entId = NetworkGetNetworkIdFromEntity(obj)
+
+    -- RPC instead of TriggerServerEvent
+    local success = BccUtils.RPC:CallAsync("bcc-housing:PlaceOwnedFurniture", {
+        ownedId = placementContext.ownedId,
+        houseId = HouseId,
+        entId = entId,
+        placementData = {
+            model = placementContext.model,
             coords = GetEntityCoords(obj),
             rotation = GetEntityRotation(obj),
-            displayName = displayName,
-            sellprice = sellPrice
-        })
-        return true
+            displayName = placementContext.displayName,
+            sellprice = placementContext.sellprice
+        }
+    })
+
+    if not success then
+        Notify(_U("furnNotPlaced"), "error", 4000)
+        return false
     end
-    return false
+
+    HandleFurniturePlaced(entId)
+    return true
 end
 
 function closeToHouse(object)
@@ -524,42 +838,11 @@ function closeToHouse(object)
     end
 end
 
-RegisterNetEvent('bcc-housing:ClientFurnBought', function(furnitureCreatedTable, entId)
-    local furnObj = NetworkGetEntityFromNetworkId(entId)
-
-    if DoesEntityExist(furnObj) then
-        table.insert(CreatedFurniture, furnObj)
-    else
-        devPrint("Error: Furniture entity does not exist, could not add to CreatedFurniture.")
-        VORPcore.NotifyRightTip(_U("furnNotPlaced"), 4000)
-        return
-    end
-
-    TriggerServerEvent('bcc-housing:InsertFurnitureIntoDB', furnitureCreatedTable, HouseId)
-
-    -- Store the furniture entity for potential deletion later
-    TriggerServerEvent('bcc-housing:StoreFurnForDeletion', entId, HouseId)
-
-    VORPcore.NotifyRightTip(_U("furnPlaced"), 4000)
-end)
-
-
-RegisterNetEvent('bcc-housing:ClientFurnBoughtFail', function()
-    DeleteObject(furnObj)
-    furnObj = nil
-end)
-
--- Function to trigger server event
-function GetOwnedFurniture(houseId)
-    devPrint("Requesting furniture for house ID:", houseId) -- Debug print
-    TriggerServerEvent('bcc-housing:GetOwnerFurniture', houseId)
-end
-
 -- Helper function to handle the sale of furniture (implement as needed)
 function SellFurniture(furniture)
     devPrint("Selling furniture:", furniture.model)
-    -- You can add server event here to handle the backend sale process
-    TriggerServerEvent('bcc-housing:SellFurniture', furniture)
+    -- You can add server logic here to handle the backend sale process
+    BccUtils.RPC:CallAsync('bcc-housing:SellFurniture', { furniture = furniture })
 end
 
 function SellOwnedFurnitureMenu(houseId, furnTable, ownershipStatus)
@@ -589,20 +872,33 @@ function SellOwnedFurnitureMenu(houseId, furnTable, ownershipStatus)
             }, function()
                 -- Logic to handle selling furniture
                 local sold = false
+                local attempted = false
                 for idx, entity in ipairs(CreatedFurniture) do
                     local storedFurnCoord = GetEntityCoords(entity)
                     local dist = Vdist(storedFurnCoord.x, storedFurnCoord.y, storedFurnCoord.z, v.coords.x, v.coords.y,
                         v.coords.z)
                     if dist < 1.0 then -- Check if the distance is less than 1 meter
-                        DeleteEntity(entity)
-                        table.remove(CreatedFurniture, idx)
-                        TriggerServerEvent('bcc-housing:FurnSoldRemoveFromTable', v, houseId, furnTable, k, ownershipStatus)
-                        sold = true
+                        attempted = true
+                        local ok = BccUtils.RPC:CallAsync('bcc-housing:FurnSoldRemoveFromTable', {
+                            furnTable = v,
+                            houseId = houseId,
+                            wholeFurnTable = furnTable,
+                            wholeFurnTableKey = k,
+                            ownershipStatus = ownershipStatus
+                        })
+
+                        if ok then
+                            DeleteEntity(entity)
+                            table.remove(CreatedFurniture, idx)
+                            sold = true
+                        else
+                            Notify(_U("furnNotSold"), "error", 4000)
+                        end
                         break
                     end
                 end
-                if not sold then
-                    VORPcore.NotifyRightTip(_U("furnNotSold"), 4000) -- Notify if the furniture was not found or could not be sold
+                if not sold and not attempted then
+                    Notify(_U("furnNotSold"), "error", 4000)
                 end
             end)
         end
@@ -623,7 +919,7 @@ function SellOwnedFurnitureMenu(houseId, furnTable, ownershipStatus)
     sellFurnMenu:RegisterElement('button', {
         label = _U("backButton"),
         slot = "footer",
-        style = {['position'] = 'relative', ['z-index'] = 9,}
+        style = { ['position'] = 'relative', ['z-index'] = 9, }
     }, function()
         FurnitureMenu(houseId, ownershipStatus)
     end)
@@ -651,11 +947,24 @@ end
 
 function GetOwnedFurniture(houseId)
     devPrint("Requesting furniture for house ID: " .. tostring(houseId))
-    TriggerServerEvent('bcc-housing:GetOwnerFurniture', houseId)
+    local success, furnDataOrMessage, ownershipStatus = BccUtils.RPC:CallAsync("bcc-housing:GetOwnerFurniture",
+        { houseId = houseId })
+    if success then
+        SellOwnedFurnitureMenu(houseId, furnDataOrMessage or {}, ownershipStatus)
+    else
+        if furnDataOrMessage then
+            Notify(furnDataOrMessage, "error", 4000)
+        else
+            Notify(_U("noFurn"), "info", 4000)
+        end
+    end
 end
 
-RegisterNetEvent('bcc-housing:SellOwnedFurnMenu')
-AddEventHandler('bcc-housing:SellOwnedFurnMenu', function(houseId, furnTable, ownershipStatus)
+BccUtils.RPC:Register("bcc-housing:SellOwnedFurnMenu", function(params)
+    if not params then return end
+    local houseId = params.houseId
+    local furnTable = params.furniture
+    local ownershipStatus = params.ownershipStatus
     devPrint("Opening Sell Owned Furniture Menu for House ID: " .. tostring(houseId))
     if type(furnTable) == "table" then
         SellOwnedFurnitureMenu(houseId, furnTable, ownershipStatus)

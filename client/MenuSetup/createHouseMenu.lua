@@ -50,9 +50,9 @@ function PlayerListMenu(houseId, callback, context)
 
             -- Decide which notification to show based on the context
             if context == "setOwner" then
-                VORPcore.NotifyRightTip(_U("OwnerSet"), 4000)
+                Notify(_U("OwnerSet"), "success", 4000)
             elseif context == "giveAccess" then
-                VORPcore.NotifyRightTip(_U("givenAccess"), 4000)
+                Notify(_U("givenAccess"), "success", 4000)
             end
 
             callback(tpHouse, context) -- Pass context to the callback if needed
@@ -278,7 +278,12 @@ function HouseManagementMenu(allHouses)
         label = _U('manageAllHouses'),
         style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
-        TriggerServerEvent('bcc-housing:AdminGetAllHouses')
+        local success, response = BccUtils.RPC:CallAsync('bcc-housing:AdminGetAllHouses', {})
+        if success and response then
+            TriggerEvent('bcc-housing:AdminManagementMenu', response)
+        else
+            devPrint("Failed to retrieve admin houses: " .. tostring(response and response.error))
+        end
     end)
 
     HouseManagementList:RegisterElement('bottomline', {
@@ -347,7 +352,7 @@ function CreateHouseMenu(tp, refresh)
     }, function()
         globalHouseData.houseCoords = GetEntityCoords(PlayerPedId())
         devPrint("house coords set to:", globalHouseData.houseCoords)
-        VORPcore.NotifyRightTip(_U("houseCoordsSet"), 4000)
+        Notify(_U("houseCoordsSet"), "success", 4000)
     end)
 
     createHouseMenu:RegisterElement('button', {
@@ -495,10 +500,10 @@ function setRadius()
         slot = "footer",
     }, function()
         if globalHouseData.radius then
-            VORPcore.NotifyRightTip(_U("radiusSet"), 4000)
+            Notify(_U("radiusSet"), "success", 4000)
             CreateHouseMenu(tpHouse) -- Optionally return to the house creation menu
         else
-            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+            Notify(_U("InvalidInput"), "error", 4000)
         end
     end)
 
@@ -583,10 +588,10 @@ function setTaxAmount()
         style = {},
     }, function()
         if globalHouseData.taxAmount then
-            VORPcore.NotifyRightTip(_U("taxAmountSet"), 4000)
+            Notify(_U("taxAmountSet"), "success", 4000)
             CreateHouseMenu(tpHouse) -- Optionally navigate back to the house creation menu
         else
-            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+            Notify(_U("InvalidInput"), "error", 4000)
         end
     end)
 
@@ -670,12 +675,18 @@ function setInvLimit(houseId)
         style = {},
     }, function()
         if globalHouseData.invLimit then
-            TriggerServerEvent('bcc-housing:SetInventoryLimit', globalHouseData.invLimit, houseId)
+            local success, err = BccUtils.RPC:CallAsync('bcc-housing:SetInventoryLimit', {
+                invLimit = globalHouseData.invLimit,
+                houseId = houseId
+            })
+            if not success then
+                devPrint("Failed to set inventory limit via RPC: " .. tostring(err and err.error))
+            end
             CreateHouseMenu(tpHouse) -- Optionally navigate back to the house creation menu
-            VORPcore.NotifyRightTip(_U("invLimitSet"), 4000)
+            Notify(_U("invLimitSet"), "success", 4000)
         else
             devPrint("Error: Inventory limit not set or invalid.")
-            VORPcore.NotifyRightTip(_U("InvalidInput"), 4000)
+            Notify(_U("InvalidInput"), "error", 4000)
         end
     end)
 
@@ -720,14 +731,24 @@ function confirmCreation(globalHouseData)
         tpHouse = tpInt
     end
     -- Assuming data contains all necessary information
-    TriggerServerEvent('bcc-housing:CreationDBInsert', tpHouse, globalHouseData.owner, globalHouseData.radius,
-        globalHouseData.doors, globalHouseData.houseCoords, globalHouseData.invLimit, globalHouseData.ownerSource,
-        globalHouseData.taxAmount, globalHouseData.ownershipStatus)
+    local success, err = BccUtils.RPC:CallAsync('bcc-housing:CreationDBInsert', {
+        tpHouse = tpHouse,
+        owner = globalHouseData.owner,
+        radius = globalHouseData.radius,
+        doors = globalHouseData.doors,
+        houseCoords = globalHouseData.houseCoords,
+        invLimit = globalHouseData.invLimit,
+        ownerSource = globalHouseData.ownerSource,
+        taxAmount = globalHouseData.taxAmount,
+        ownershipStatus = globalHouseData.ownershipStatus
+    })
+    if not success then
+        devPrint("CreationDBInsert RPC failed: " .. tostring(err and err.error))
+    end
     -- Debug to confirm data contents
     devPrint("Sending data to server:", tpHouse, globalHouseData.owner, globalHouseData.radius, globalHouseData.doors, globalHouseData.houseCoords, globalHouseData.invLimit, globalHouseData.ownerSource, globalHouseData.taxAmount)
 end
 
---Used to load houses after given one or given access so you dont have to relog to gain access
-RegisterNetEvent('bcc-housing:ClientRecHouseLoad', function(recOwnerSource)
-    TriggerServerEvent('bcc-housing:CheckIfHasHouse', recOwnerSource)
+BccUtils.RPC:Register('bcc-housing:ClientRecHouseLoad', function()
+    BccUtils.RPC:CallAsync('bcc-housing:CheckIfHasHouse', {})
 end)

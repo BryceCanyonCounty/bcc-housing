@@ -1,112 +1,137 @@
 -- Event to handle the purchasing of a house
-RegisterServerEvent('bcc-housing:buyHouse')
-AddEventHandler('bcc-housing:buyHouse', function(houseCoords, moneyType)
-    local src = source                               -- Get the source of the event
-    local User = VORPcore.getUser(src)               -- Get the user object for the player
-    local Character = User.getUsedCharacter          -- Get the character object for the player
-    local houseCoordsJson = json.encode(houseCoords) -- Encode the house coordinates for database comparison
+local function coordsToPayload(vec)
+    if not vec then
+        return { x = 0.0, y = 0.0, z = 0.0 }
+    end
 
-    -- Check how many houses the player currently owns
-    local param = { ['@charidentifier'] = Character.charIdentifier }
-    local result = MySQL.query.await("SELECT * FROM bcchousing WHERE charidentifier=@charidentifier", param)
+    return {
+        x = vec.x or 0.0,
+        y = vec.y or 0.0,
+        z = vec.z or 0.0
+    }
+end
 
-    if #result >= Config.Setup.MaxHousePerChar then
-        -- Notify the player that they have reached the house limit
-        VORPcore.NotifyAvanced(src, _U('youOwnMaximum'), "generic_textures", "tick", "COLOR_WHITE", 4000)
+local function handleHousePurchase(src, houseCoords, moneyTypeParam, cb)
+    local cbFn = type(cb) == 'function' and cb or nil
+    if not houseCoords then
+        if cbFn then cbFn(false, { error = 'invalid_coords' }) end
         return
     end
 
+    local user = VORPcore.getUser(src)
+    if not user then
+        if cbFn then cbFn(false, { error = 'no_user' }) end
+        return
+    end
+
+    local character = user.getUsedCharacter
+    if not character then
+        if cbFn then cbFn(false, { error = 'no_character' }) end
+        return
+    end
+
+    local moneyType = tonumber(moneyTypeParam) or 0
+    local houseCoordsJson = json.encode(houseCoords)
+
+    local ownedHouses = MySQL.query.await('SELECT * FROM bcchousing WHERE charidentifier=@charidentifier', { ['@charidentifier'] = character.charIdentifier })
+    if #ownedHouses >= Config.Setup.MaxHousePerChar then
+        NotifyClient(src, _U('youOwnMaximum'), 4000, 'error')
+        if cbFn then cbFn(false, { error = 'max_houses' }) end
+        return
+    end
+
+    local selectedHouse
     for _, house in pairs(Houses) do
-        if house.uniqueName and #(house.houseCoords - houseCoords) < 0.1 then -- Check if the coordinates match and house has uniqueName
-            local moneyAmount
-            if moneyType == 0 then
-                moneyAmount = house.price
-            elseif moneyType == 1 then
-                moneyAmount = house.rentalDeposit
-            end
-            if (moneyType == 0 and Character.money >= moneyAmount) or
-                (moneyType == 1 and Character.gold >= moneyAmount) then
-                -- Check if the house already exists in the database by checking the unique name
-                MySQL.query('SELECT * FROM bcchousing WHERE uniqueName = ?', { house.uniqueName }, function(result)
-                    if not result[1] then
-                        -- Clear the blips for the house that is being purchased
-                        TriggerClientEvent('bcc-housing:clearBlips', src, house.houseId)
-
-                        local houseAction
-                        if moneyType == 0 then
-                            houseAction = 'purchased'
-                        else
-                            houseAction = 'rented'
-                        end
-
-                        -- House not found, proceed with the purchase
-                        local parameters = {
-                            ['@charidentifier'] = Character.charIdentifier,
-                            ['@house_coords'] = houseCoordsJson,
-                            ['@house_radius_limit'] = house.houseRadiusLimit,
-                            ['@doors'] = '[]', -- Placeholder for doors, to be updated after insertion
-                            ['@invlimit'] = house.invLimit,
-                            ['@tax_amount'] = moneyType == 0 and house.taxAmount or house.rentCharge,
-                            ['@tpInt'] = house.tpInt,
-                            ['@tpInstance'] = house.tpInstance,
-                            ['@uniqueName'] = house.uniqueName,
-                            ['@ownershipStatus'] = houseAction,
-                        }
-
-                        -- Insert the new house into the database
-                        MySQL.Async.execute(
-                            "INSERT INTO `bcchousing` (`charidentifier`, `house_coords`, `house_radius_limit`, `doors`, `invlimit`, `tax_amount`, `tpInt`, `tpInstance`, `uniqueName`, `ownershipStatus`) VALUES (@charidentifier, @house_coords, @house_radius_limit, @doors, @invlimit, @tax_amount, @tpInt, @tpInstance, @uniqueName, @ownershipStatus)",
-                            parameters, function(rowsChanged)
-                                -- After house purchase, handle door insertion
-                                if rowsChanged > 0 then
-                                    -- After house insert, get the inserted house's unique ID to update its doors
-                                    MySQL.Async.fetchScalar("SELECT houseid FROM bcchousing WHERE house_coords = ?",
-                                        { houseCoordsJson }, function(houseId)
-                                        insertHouseDoors(house.doors, Character.charIdentifier, houseId, house.uniqueName)
-                                    end)
-                                else
-                                    devPrint("Error: Failed to insert house into bcchousing.")
-                                end
-                            end
-                        )
-
-                        -- Deduct the money from the player
-                        Character.removeCurrency(moneyType, moneyAmount)
-
-                        -- Notify the player that the house was purchased
-                        TriggerClientEvent('bcc-housing:housePurchased', src, houseCoords)
-                        VORPcore.NotifyAvanced(src, _U("housePurchaseSuccess", house.name, moneyAmount), "inventory_items", "money_billstack", "COLOR_WHITE", 4000)
-
-                        -- Send a message to Discord
-                        local currency = " **Unknown currency**"
-                        if moneyType == 0 then
-                            currency = " **Dolars**"
-                        elseif moneyType == 1 then
-                            currency = " **Gold bars**"
-                        end
-                        Discord:sendMessage("House purchased by charIdentifier: " .. tostring(Character.charIdentifier) .. "\nHouse: " .. house.name .. " was **" .. houseAction .. "** for $" .. tostring(moneyAmount) .. currency .. "\nCharacter Name: " .. Character.firstname .. " " .. Character.lastname)
-
-                        -- Trigger the client-side to reload the house data
-                        TriggerClientEvent('bcc-housing:ClientRecHouseLoad', src)
-                    else
-                        -- Notify the player if the house has already been purchased
-                        VORPcore.NotifyAvanced(src, _U("housePurchaseFailed"), "generic_textures", "tick", "COLOR_WHITE", 4000)
-                    end
-                end)
-            else
-                -- Notify the player if they do not have enough money
-                if moneyType == 0 then
-                    VORPcore.NotifyAvanced(src, _U('notEnoughMoney'), "scoretimer_textures", "scoretimer_generic_cross", "COLOR_WHITE", 4000)
-                else
-                    VORPcore.NotifyAvanced(src, _U('notEnoughGold'), "scoretimer_textures", "scoretimer_generic_cross", "COLOR_WHITE", 4000)
-                end
-            end
+        if house.uniqueName and #(house.houseCoords - houseCoords) < 0.1 then
+            selectedHouse = house
             break
         end
     end
+
+    if not selectedHouse then
+        NotifyClient(src, _U('houseNotFound'), 4000, 'error')
+        if cbFn then cbFn(false, { error = 'house_not_found' }) end
+        return
+    end
+
+    local moneyAmount = moneyType == 0 and selectedHouse.price or selectedHouse.rentalDeposit
+    local hasFunds = (moneyType == 0 and character.money >= moneyAmount) or (moneyType == 1 and character.gold >= moneyAmount)
+    if not hasFunds then
+        if moneyType == 0 then
+            NotifyClient(src, _U('notEnoughMoney'), 4000, 'error')
+        else
+            NotifyClient(src, _U('notEnoughGold'), 4000, 'error')
+        end
+        if cbFn then cbFn(false, { error = 'insufficient_funds' }) end
+        return
+    end
+
+    MySQL.query('SELECT * FROM bcchousing WHERE uniqueName = ?', { selectedHouse.uniqueName }, function(result)
+        if result and result[1] then
+            NotifyClient(src, _U('housePurchaseFailed'), 4000, 'error')
+            if cbFn then cbFn(false, { error = 'already_owned' }) end
+            return
+        end
+
+        BccUtils.RPC:Notify('bcc-housing:clearBlips', { houseId = selectedHouse.houseId }, src)
+
+        local ownershipStatus = moneyType == 0 and 'purchased' or 'rented'
+        local parameters = {
+            ['@charidentifier'] = character.charIdentifier,
+            ['@house_coords'] = houseCoordsJson,
+            ['@house_radius_limit'] = selectedHouse.houseRadiusLimit,
+            ['@doors'] = '[]',
+            ['@invlimit'] = selectedHouse.invLimit,
+            ['@tax_amount'] = moneyType == 0 and selectedHouse.taxAmount or selectedHouse.rentCharge,
+            ['@tpInt'] = selectedHouse.tpInt,
+            ['@tpInstance'] = selectedHouse.tpInstance,
+            ['@uniqueName'] = selectedHouse.uniqueName,
+            ['@ownershipStatus'] = ownershipStatus,
+        }
+
+        MySQL.Async.execute(
+            'INSERT INTO `bcchousing` (`charidentifier`, `house_coords`, `house_radius_limit`, `doors`, `invlimit`, `tax_amount`, `tpInt`, `tpInstance`, `uniqueName`, `ownershipStatus`) VALUES (@charidentifier, @house_coords, @house_radius_limit, @doors, @invlimit, @tax_amount, @tpInt, @tpInstance, @uniqueName, @ownershipStatus)',
+            parameters,
+            function(rowsChanged)
+                if rowsChanged > 0 then
+                    MySQL.Async.fetchScalar('SELECT houseid FROM bcchousing WHERE house_coords = ?', { houseCoordsJson }, function(houseId)
+                        insertHouseDoors(selectedHouse.doors, character.charIdentifier, houseId, selectedHouse.uniqueName)
+                    end)
+                else
+                    devPrint('handleHousePurchase: failed to insert house for uniqueName ' .. tostring(selectedHouse.uniqueName))
+                end
+            end
+        )
+
+        character.removeCurrency(moneyType, moneyAmount)
+
+        local coordsPayload = coordsToPayload(selectedHouse.houseCoords)
+        BccUtils.RPC:Notify('bcc-housing:housePurchased', { houseCoords = coordsPayload }, src)
+
+        NotifyClient(src, _U('housePurchaseSuccess', selectedHouse.name, moneyAmount), 4000, 'success')
+
+        local currencyLabel = ' **Unknown currency**'
+        if moneyType == 0 then
+            currencyLabel = ' **Dolars**'
+        elseif moneyType == 1 then
+            currencyLabel = ' **Gold bars**'
+        end
+
+        Discord:sendMessage('House purchased by charIdentifier: ' .. tostring(character.charIdentifier) ..
+            '\nHouse: ' .. selectedHouse.name .. ' was **' .. ownershipStatus .. '** for $' .. tostring(moneyAmount) .. currencyLabel ..
+            '\nCharacter Name: ' .. tostring(character.firstname) .. ' ' .. tostring(character.lastname))
+
+        BccUtils.RPC:Notify('bcc-housing:ClientRecHouseLoad', {}, src)
+
+        if cbFn then cbFn(true, { uniqueName = selectedHouse.uniqueName, ownershipStatus = ownershipStatus }) end
+    end)
+end
+
+BccUtils.RPC:Register('bcc-housing:buyHouse', function(params, cb, src)
+    handleHousePurchase(src, params and params.houseCoords, params and params.moneyType, cb)
 end)
 
--- Function to insert doors into the doorlocks table and update the bcchousing table
+
 function insertHouseDoors(doors, charidentifier, houseId, uniqueName)
     local doorIds = {} -- Store door ids to update the house later
 
@@ -131,7 +156,6 @@ function insertHouseDoors(doors, charidentifier, houseId, uniqueName)
             local doorData = MySQL.query.await('SELECT * FROM `doorlocks` WHERE `doorinfo` = ?', { doorinfo })
             if not doorData then
                 devPrint("Database query failed while checking if the door exists.")
-                -- VORPcore.NotifyRightTip(_source, _U("dbError"), 4000)
                 return
             end
             if #doorData == 0 then
@@ -148,7 +172,6 @@ function insertHouseDoors(doors, charidentifier, houseId, uniqueName)
                 devPrint("Door inserted with ID: ", doorId)
                 table.insert(doorIds, doorId)
 
-                -- VORPcore.NotifyRightTip(_source, _U("doorCreated"), 4000)
             else
                 devPrint("Door already exists in DB")
                 local affectedRows = MySQL.update.await(
@@ -168,7 +191,6 @@ function insertHouseDoors(doors, charidentifier, houseId, uniqueName)
                     devPrint("Door inserted with ID: ", doorId)
                     table.insert(doorIds, doorId)
                 end
-                -- VORPcore.NotifyRightTip(_source, _U("doorExists"), 4000)
             end
         end
 
@@ -191,25 +213,18 @@ function insertHouseDoors(doors, charidentifier, houseId, uniqueName)
     end
 end
 
--- Event to retrieve all purchased houses
-RegisterNetEvent('bcc-housing:getPurchasedHouses')
-AddEventHandler('bcc-housing:getPurchasedHouses', function()
-    local src = source         -- Get the source of the event
-    local purchasedHouses = {} -- Initialize a table to hold purchased houses
-
-    -- Query the database for all purchased houses by uniqueName
-    MySQL.query('SELECT uniqueName FROM bcchousing', {}, function(results)
-        if #results > 0 then
-            for _, house in ipairs(results) do
-                for _, configHouse in pairs(Houses) do
-                    if house.uniqueName == configHouse.uniqueName then
-                        table.insert(purchasedHouses, configHouse.houseCoords) -- Insert the house coordinates from config
-                    end
+BccUtils.RPC:Register('bcc-housing:getPurchasedHouses', function(_, cb, src)
+    local purchasedHouses = {}
+    local results = MySQL.query.await('SELECT uniqueName FROM bcchousing', {})
+    if results then
+        for _, row in ipairs(results) do
+            for _, cfg in pairs(Houses) do
+                if row.uniqueName == cfg.uniqueName then
+                    table.insert(purchasedHouses, cfg.houseCoords)
+                    break
                 end
             end
         end
-
-        -- Send the list of purchased houses to the client
-        TriggerClientEvent('bcc-housing:sendPurchasedHouses', src, purchasedHouses)
-    end)
+    end
+    if cb then cb(true, purchasedHouses) end
 end)

@@ -5,25 +5,51 @@ FeatherMenu = exports["feather-menu"].initiate()
 BccUtils = exports["bcc-utils"].initiate()
 MiniGame = exports["bcc-minigames"].initiate()
 
+HousingInstance = {}
+
+function HousingInstance.Set(bucketId)
+    bucketId = tonumber(bucketId) or 0
+    local success, response = BccUtils.RPC:CallAsync('bcc-housing:SetInstance', { bucketId = bucketId })
+    if not success then
+        devPrint("Failed to set instance: " .. tostring(response and response.error))
+    end
+    return success, response
+end
+
+function HousingInstance.Clear()
+    local success, response = BccUtils.RPC:CallAsync('bcc-housing:LeaveInstance', {})
+    if not success then
+        devPrint("Failed to clear instance: " .. tostring(response and response.error))
+    end
+    return success, response
+end
+
+function HousingInstance.Compute(offset)
+    offset = tonumber(offset) or 0
+    return GetPlayerServerId(PlayerId()) + offset
+end
+
+function HousingInstance.Auto(offset)
+    local bucketId = HousingInstance.Compute(offset)
+    HousingInstance.Set(bucketId)
+    return bucketId
+end
+
 BCCHousingMenu = FeatherMenu:RegisterMenu("bcc:housing:mainmenu",
     {
         top = "5%",
         left = "5%",
-        ["720width"] = "500px",
-        ["1080width"] = "600px",
-        ["2kwidth"] = "700px",
-        ["4kwidth"] = "900px",
+        ['720width'] = '400px',
+        ['1080width'] = '500px',
+        ['2kwidth'] = '600px',
+        ['4kwidth'] = '800px',
         style = {
             --['font-size'] = '18px',
         },
         contentslot = {
             style = {
-                -- ['height'] = '350px',
-                ['max-height'] = '500px', -- дозволяє обмежити висоту вмісту, додаючи можливість прокрутки вмісту, якщо він перевищує певну висоту.
-                ['min-height'] = '350px', -- дозволяє обмежити висоту вмісту, додаючи можливість прокрутки вмісту, якщо він перевищує певну висоту.
-                -- ["height"] = "450px",
-                -- ["min-height"] = "250px"
-                ['position'] = 'relative', ['z-index'] = 9,
+                ['height'] = '450px',
+                ['min-height'] = '300px'
             }
         },
         draggable = true
@@ -34,9 +60,75 @@ BCCHousingMenu = FeatherMenu:RegisterMenu("bcc:housing:mainmenu",
         end,
         closed = function()
             DisplayRadar(true)
+            ClearVendorPreview()
+            EndCam()
         end
     }
 )
+
+local ManageHousePrompt = nil
+local ManageHousePromptActive = false
+
+function RemoveManagePrompt()
+    if ManageHousePrompt then
+        ManageHousePrompt:DeletePrompt()
+        ManageHousePrompt = nil
+    end
+    ManageHousePromptActive = false
+end
+
+function Notify(message, typeOrDuration, maybeDuration, overrides)
+    overrides = overrides or {}
+    local opts = Config.NotifyOptions or {}
+
+    local notifyType = opts.type or "info"
+    local notifyDuration = opts.autoClose or 4000
+
+    if type(typeOrDuration) == "string" then
+        notifyType = typeOrDuration
+        notifyDuration = tonumber(maybeDuration) or notifyDuration
+    elseif type(typeOrDuration) == "number" then
+        notifyDuration = typeOrDuration
+    end
+
+    local notifyPosition = overrides.position or opts.position or "bottom-center"
+    local notifyTransition = overrides.transition or opts.transition or "slide"
+    local notifyIcon = overrides.icon
+    if notifyIcon == nil then notifyIcon = opts.icon end
+    local hideProgressBar = overrides.hideProgressBar
+    if hideProgressBar == nil then hideProgressBar = opts.hideProgressBar end
+    local rtl = overrides.rtl
+    if rtl == nil then rtl = opts.rtl end
+
+    if Config.Notify == "feather-menu" then
+        FeatherMenu:Notify({
+            message = message,
+            type = notifyType,
+            autoClose = notifyDuration,
+            position = notifyPosition,
+            transition = notifyTransition,
+            icon = notifyIcon,
+            hideProgressBar = hideProgressBar,
+            rtl = rtl or false,
+            style = overrides.style or opts.style or {},
+            toastStyle = overrides.toastStyle or opts.toastStyle or {},
+            progressStyle = overrides.progressStyle or opts.progressStyle or {}
+        })
+    elseif Config.Notify == "vorp-core" then
+        VORPcore.NotifyRightTip(message, notifyDuration)
+    else
+        print("^1[Notify] Invalid Config.Notify: " .. tostring(Config.Notify))
+    end
+end
+
+BccUtils.RPC:Register("bcc-housing:NotifyClient", function(data)
+    if not data or not data.message then return end
+
+    local notifyType = data.type
+    local duration = tonumber(data.duration)
+
+    Notify(data.message, notifyType, duration)
+end)
 
 function LoadModel(model, modelName)
     if not IsModelValid(model) then
@@ -60,16 +152,11 @@ end
 
 -------- Get Players Function --------
 function GetPlayers()
-    TriggerServerEvent("bcc-housing:GetPlayers")
-    local playersData = {}
-    RegisterNetEvent("bcc-housing:SendPlayers", function(result)
-        playersData = result
-    end)
-
-    while next(playersData) == nil do
-        Wait(10)
+    local success, playersData = BccUtils.RPC:CallAsync("bcc-housing:GetPlayers", {})
+    if success and type(playersData) == "table" then
+        return playersData
     end
-    return playersData
+    return {}
 end
 
 function GetPlayersWithAccess(houseId, callback)
@@ -87,47 +174,47 @@ function GetPlayersWithAccess(houseId, callback)
             devPrint("No players with access received.")
             callback({})
         end
+
     end)
 end
 
+
 function showManageOpt(x, y, z, houseId)
+    RemoveManagePrompt()
+
     local PromptGroup = BccUtils.Prompts:SetupPromptGroup()
-    local ManageHousePrompt = PromptGroup:RegisterPrompt(_U("openOwnerManage"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+    ManageHousePrompt = PromptGroup:RegisterPrompt(_U("openOwnerManage"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+    ManageHousePromptActive = true
 
     devPrint("Setting up manage options for House ID: " .. tostring(houseId) .. " at coordinates: " .. tostring(x) .. ", " .. tostring(y) .. ", " .. tostring(z))
 
-    -- Variable to track if the house exists
     local houseExists = false
+    local success, data = BccUtils.RPC:CallAsync('bcc-housing:CheckIfHouseExists', { houseId = houseId })
+    if success and data then
+        houseExists = data.exists
+    end
 
-    -- Check if the house exists on the server
-    TriggerServerEvent('bcc-housing:CheckIfHouseExists', houseId)
-
-    -- Listen for the server's response to determine if the house exists
-    RegisterNetEvent('bcc-housing:HouseExistenceChecked')
-    AddEventHandler('bcc-housing:HouseExistenceChecked', function(exists, checkedHouseId)
-        if checkedHouseId == houseId then
-            houseExists = exists
-            if not exists then
-                devPrint("House ID " .. tostring(houseId) .. " no longer exists. Deleting prompt.")
-                ManageHousePrompt:DeletePrompt()
-                --BreakHandleLoop = true -- Break the loop if the house no longer exists
-            end
-        end
-    end)
+    if not houseExists then
+        devPrint("House ID " .. tostring(houseId) .. " no longer exists. Deleting prompt.")
+        RemoveManagePrompt()
+        return
+    end
 
     Citizen.CreateThread(function()
         while true do
+            if not ManageHousePromptActive or not ManageHousePrompt then
+                break
+            end
+
             local playerPed = PlayerPedId()
 
             if IsEntityDead(playerPed) then goto END end
 
-            -- Break the loop if handle loop is broken
             if BreakHandleLoop then
                 devPrint("Breaking handle loop for House ID: " .. tostring(houseId))
                 break
             end
 
-            -- Only proceed if the house exists
             if houseExists then
                 local plc = GetEntityCoords(playerPed)
                 local dist = GetDistanceBetweenCoords(plc.x, plc.y, plc.z, x, y, z, true)
@@ -135,24 +222,36 @@ function showManageOpt(x, y, z, houseId)
                 if dist < Config.DefaultMenuManageRadius then
                     PromptGroup:ShowGroup(_U("house"))
 
-                    if ManageHousePrompt:HasCompleted() then
+                    if ManageHousePromptActive and ManageHousePrompt and ManageHousePrompt:HasCompleted() then
                         devPrint("Prompt completed. Opening housing management menu for House ID: " .. tostring(houseId))
-                        TriggerServerEvent('bcc-housing:getHouseOwner', houseId)
+                        local successOwner, ownerData = BccUtils.RPC:CallAsync('bcc-housing:getHouseOwner', { houseId = houseId })
+                        if successOwner and ownerData then
+                            OpenHousingMainMenu(houseId, ownerData.isOwner, ownerData.ownershipStatus)
+                        else
+                            local err = ownerData and ownerData.error
+                            if err then
+                                Notify(err, 'error', 4000)
+                            end
+                        end
                     end
                 elseif dist > 200 then
-                    Wait(2000) -- If far from house, reduce the frequency of checks
+                    Wait(2000)
                 end
             else
-                Wait(1000) -- Wait before checking again if the house exists
+                Wait(1000)
             end
             ::END::
-            Citizen.Wait(5) -- Delay loop execution to prevent excessive CPU usage
+            Citizen.Wait(5)
         end
+
+        if ManageHousePromptActive and ManageHousePrompt then
+            ManageHousePrompt:DeletePrompt()
+        end
+        ManageHousePrompt = nil
+        ManageHousePromptActive = false
     end)
 end
-
---- Cleanup/ deletion on leave ----
-AddEventHandler("onResourceStop", function(resource)
+AddEventHandler("onClientResourceStop", function(resource)
     if resource == GetCurrentResourceName() then
         -- Delete any created furniture
         if #CreatedFurniture > 0 then
@@ -192,16 +291,17 @@ AddEventHandler("onResourceStop", function(resource)
         end
 
         -- Notify the server to clean up any server-side resources
-        TriggerServerEvent('bcc-housing:ServerSideRssStop')
+        RemoveManagePrompt()
         BCCHousingMenu:Close()
+        BccUtils.RPC:CallAsync('bcc-housing:ServerSideRssStop', {})
     end
 end)
 
 -- Receive House Owner Information
-RegisterNetEvent('bcc-housing:receiveHouseOwner')
-AddEventHandler('bcc-housing:receiveHouseOwner', function(houseId, isOwner, ownershipStatus)
-    devPrint("Received house owner information for House ID: " .. tostring(houseId) .. ", Is Owner: " .. tostring(isOwner) .. " and House is " .. ownershipStatus)
-    TriggerEvent('bcc-housing:openmenu', houseId, isOwner, ownershipStatus)
+BccUtils.RPC:Register('bcc-housing:receiveHouseOwner', function(params)
+    if not params then return end
+    devPrint("Received house owner information via RPC for House ID: " .. tostring(params.houseId))
+    OpenHousingMainMenu(params.houseId, params.isOwner, params.ownershipStatus)
 end)
 
 function HandlePlayerDeathAndCloseMenu()
