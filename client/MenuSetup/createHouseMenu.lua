@@ -20,7 +20,7 @@ function PlayerListMenu(houseId, callback, context)
     BCCHousingMenu:Close()
     
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
     
     local players = GetPlayers()
@@ -93,7 +93,7 @@ function doorCreationMenu()
     end
     
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
 
     local doorCreationMenuPage = BCCHousingMenu:RegisterPage('door_creation_page')
@@ -170,7 +170,7 @@ function IntChoice()
     BCCHousingMenu:Close() -- Ensure no other menus are open
     
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
     
     -- Initialize the interior choice menu page
@@ -240,7 +240,7 @@ function HouseManagementMenu(allHouses)
     end
 
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
 
     -- Initialize the teleport options menu page
@@ -276,13 +276,13 @@ function HouseManagementMenu(allHouses)
 
     HouseManagementList:RegisterElement('button', {
         label = _U('manageAllHouses'),
-        style = {['position'] = 'relative', ['z-index'] = 9,}
+        style = { ['position'] = 'relative', ['z-index'] = 9 }
     }, function()
-        local success, response = BccUtils.RPC:CallAsync('bcc-housing:AdminGetAllHouses', {})
-        if success and response then
-            TriggerEvent('bcc-housing:AdminManagementMenu', response)
+        local success, houses = BccUtils.RPC:CallAsync('bcc-housing:AdminGetAllHouses', {})
+        if success and houses then
+            AdminManagementMenu(houses) -- directly open the admin management menu
         else
-            devPrint("Failed to retrieve admin houses: " .. tostring(response and response.error))
+            devPrint("Failed to retrieve admin houses: " .. tostring(houses and houses.error))
         end
     end)
 
@@ -314,7 +314,7 @@ function CreateHouseMenu(tp, refresh)
     BCCHousingMenu:Close()
 
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
 
     -- Register the main page for housing creation
@@ -452,7 +452,7 @@ function setRadius()
     end
     
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
     
     -- Initialize the teleport options menu page
@@ -540,7 +540,7 @@ function setTaxAmount()
     end
 
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
 
     -- Initialize the tax amount settings menu page
@@ -628,7 +628,7 @@ function setInvLimit(houseId)
     end
     
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
     
     local inventoryLimitPage = BCCHousingMenu:RegisterPage('inventory_limit_page')

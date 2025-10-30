@@ -13,11 +13,11 @@ end)
 
 function AdminManagementMenu(allHouses)
     if BCCHousingMenu then
-        BCCHousingMenu:Close() -- Ensure no other menus are open
+        BCCHousingMenu:Close() 
     end
 
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
 
     local adminMenuPage = BCCHousingMenu:RegisterPage('admin_management_menu_page')
@@ -76,7 +76,7 @@ function AdminManagementMenuHouseChose(houseInfo)
     end
 
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
 
     local houseOptionsPage = BCCHousingMenu:RegisterPage('house_options_page')
@@ -177,7 +177,7 @@ function deleteHouse(houseInfo)
     end
 
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
 
     if BCCHousingMenu then
@@ -250,7 +250,7 @@ function changeHouseRadius(houseInfo)
     end
 
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
 
     local changeRadiusPage = BCCHousingMenu:RegisterPage("set_radius_page")
@@ -336,7 +336,7 @@ function changeHouseTaxes(houseInfo)
     end
 
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
 
     local changeHouseTaxesPage = BCCHousingMenu:RegisterPage("set_tax_amount_page")
@@ -423,7 +423,7 @@ function changeHouseInventory(houseInfo)
     end
 
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
 
     local changeHouseInventoryPage = BCCHousingMenu:RegisterPage('inventory_limit_page')

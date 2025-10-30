@@ -65,7 +65,18 @@ CreateThread(function()
                 end
 
                 if distance < house.menuRadius then
-                    PromptGroup:ShowGroup(_U("buyPricePrompt", house.price, house.rentalDeposit))
+                    local rentalCurrency = house.currencyType
+                    if rentalCurrency == nil then
+                        rentalCurrency = Config.Setup.DefaultRentalCurrency
+                    end
+                    rentalCurrency = tonumber(rentalCurrency) or 1
+                    if rentalCurrency ~= 0 then
+                        rentalCurrency = 1
+                    end
+                    local promptCurrency = rentalCurrency == 0 and _U('promptCurrencyMoney') or _U('promptCurrencyGold')
+                    local promptPrice = tostring(house.price or 0)
+                    local promptRent = tostring(house.rentalDeposit or 0)
+                    PromptGroup:ShowGroup(_U("buyPricePrompt", promptPrice, promptRent, promptCurrency))
                     if BuyHousePrompt:HasCompleted() then
                         OpenBuyHouseMenu(house)
                     end
@@ -109,7 +120,6 @@ BccUtils.RPC:Register('bcc-housing:ReinitializeChecksAfterSale', function()
     end
 end)
 
-
 function OpenBuyHouseMenu(house)
     if not house then
         devPrint("OpenBuyHouseMenu: missing 'house' param"); return
@@ -118,7 +128,7 @@ function OpenBuyHouseMenu(house)
     devPrint("Opening buy house menu for house with coordinates: " .. tostring(house.houseCoords))
 
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
 
     local price        = tonumber(house.price or 0) or 0
@@ -132,6 +142,25 @@ function OpenBuyHouseMenu(house)
     local houseName    = house.name or "House"
 
     local buyHouseMenu = BCCHousingMenu:RegisterPage("bcc-housing:BuyHousePage")
+    local rentalCurrency = house.currencyType
+    if rentalCurrency == nil then
+        rentalCurrency = Config.Setup.DefaultRentalCurrency
+    end
+    rentalCurrency = tonumber(rentalCurrency) or 1
+    if rentalCurrency ~= 0 then
+        rentalCurrency = 1
+    end
+    local currencyWord = rentalCurrency == 0 and _U('currencyMoney') or _U('currencyGold')
+    local highlightedCurrencyWord
+    if rentalCurrency == 0 then
+        highlightedCurrencyWord = '<span style="color:#28A745; font-weight: bold;">' .. currencyWord .. '</span>'
+    else
+        highlightedCurrencyWord = '<span style="color: gold; font-weight: bold;">' .. currencyWord .. '</span>'
+    end
+    local currencyAmountColor = rentalCurrency == 0 and '#28A745' or '#DAA520'
+    local depositAmountText = rentalCurrency == 0 and ('$' .. tostring(rentalDep)) or (tostring(rentalDep) .. ' ' .. currencyWord)
+    local rentChargeAmountText = rentalCurrency == 0 and ('$' .. tostring(rentCharge)) or (tostring(rentCharge) .. ' ' .. currencyWord)
+    local rentButtonAmount = depositAmountText
 
     buyHouseMenu:RegisterElement('header', {
         value = _U("confirmHousePurchase"),
@@ -164,9 +193,9 @@ function OpenBuyHouseMenu(house)
         _U('listBuyPrice') .. '$<strong style="color:#28A745;">' .. tostring(price) .. '</strong></p>' ..
         sellLine ..
         '<p style="font-size:18px; margin-bottom: 10px;">' ..
-        _U('rentalDeposit') .. '<strong>' .. tostring(rentalDep) .. '</strong></p>' ..
+        _U('rentalDeposit', highlightedCurrencyWord) .. '<strong style="color:' .. currencyAmountColor .. ';">' .. depositAmountText .. '</strong></p>' ..
         '<p style="font-size:18px; margin-bottom: 10px;">' ..
-        _U('rentCharge') .. '<strong>' .. tostring(rentCharge) .. '</strong></p>' ..
+        _U('rentCharge', highlightedCurrencyWord) .. '<strong style="color:' .. currencyAmountColor .. ';">' .. rentChargeAmountText .. '</strong></p>' ..
         '<p style="font-size:18px; margin-bottom: 10px;">' ..
         _U('listRoomateLim') .. '<strong>' .. tostring(playerMax) .. '</strong></p>' ..
         '<p style="font-size:18px; margin-bottom: 10px;">' ..
@@ -200,17 +229,17 @@ function OpenBuyHouseMenu(house)
     end)
 
     buyHouseMenu:RegisterElement('button', {
-        label = _U('buyGoldHouseFor', rentalDep),
+        label = _U('rentHouseFor', rentButtonAmount),
         style = {},
         slot = "footer"
     }, function()
         BCCHousingMenu:Close()
         local success, err = BccUtils.RPC:CallAsync('bcc-housing:buyHouse', {
             houseCoords = house.houseCoords,
-            moneyType = 1 -- Gold
+            moneyType = 1 -- Rental
         })
         if not success then
-            devPrint("House purchase RPC failed: " .. tostring(err and err.error))
+            devPrint("House rental RPC failed: " .. tostring(err and err.error))
         end
     end)
 

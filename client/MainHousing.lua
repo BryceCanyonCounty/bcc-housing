@@ -1,8 +1,14 @@
-HouseCoords, HouseRadius, HouseId, Owner, TpHouse, TpHouseInstance, HouseOwnershipStatus = nil, nil, nil, nil, nil, nil, nil
-HouseBlips, CreatedFurniture = {}, {}
+HouseCoords, HouseRadius, HouseId, Owner, TpHouse, TpHouseInstance, HouseOwnershipStatus, HouseTaxesOverdue = nil, nil, nil, nil, nil, nil, nil, nil
+HouseBlips, HotelBlips, CreatedFurniture = {}, {}, {}
 local AdminAllowed = false
 local OwnedHotels = {}
 local HotelHandlerStarted = false
+
+local DefaultHotelInterior = {
+    enter = vector3(-325.29, 765.23, 121.64),
+    inventory = vector3(-325.41, 766.9, 121.63),
+    heading = 180.0
+}
 
 local function checkIfAdmin()
     local isAdmin = BccUtils.RPC:CallAsync('bcc-housing:CheckIfAdmin')
@@ -32,10 +38,10 @@ end
 function ManageHotelBlips()
     for _, hotelCfg in pairs(Hotels) do
         if hotelCfg.blip and hotelCfg.blip.show and not hotelCfg.Blip then
-            hotelCfg.Blip = Citizen.InvokeNative(0x554D9D53F696D002, 1664425300, hotelCfg.location) -- BlipAddForCoords
-            SetBlipSprite(hotelCfg.Blip, hotelCfg.blip.sprite, true)
-            Citizen.InvokeNative(0x9CB1A1623062F402, hotelCfg.Blip, hotelCfg.blip.name) -- SetBlipName
-            Citizen.InvokeNative(0x662D364ABF16DE2F, hotelCfg.Blip, joaat(Config.BlipColors[hotelCfg.blip.color])) -- BlipAddModifier
+            hotelCfg.Blip = BccUtils.Blips:SetBlip(hotelCfg.blip.name, hotelCfg.blip.sprite, hotelCfg.blip.scale, hotelCfg.location.x, hotelCfg.location.y, hotelCfg.location.z)
+            local blipModifier = BccUtils.Blips:AddBlipModifier(hotelCfg.Blip, Config.BlipColors[hotelCfg.blip.color])
+            blipModifier:ApplyModifier()
+            table.insert(HotelBlips, hotelCfg.Blip)
         end
     end
 end
@@ -59,7 +65,7 @@ end)
 
 CreateThread(function() -- Devmode area
     if Config.DevMode then
-        RegisterCommand(Config.DevModeCommand, function()
+        --RegisterCommand(Config.DevModeCommand, function()
             BccUtils.RPC:Notify('bcc-housing:getPlayersInfo', {})
             checkIfAdmin()
             local success, hotels = BccUtils.RPC:CallAsync('bcc-housing:HotelDbRegistry', {})
@@ -74,7 +80,7 @@ CreateThread(function() -- Devmode area
                 HotelHandlerStarted = true
                 MainHotelHandler()
             end
-        end, false)
+        --end, false)
     end
 end)
 
@@ -85,6 +91,9 @@ local function handleOwnsHouseClient(houseTable, owner)
     HouseId = houseTable.houseid
     Owner = owner
     HouseOwnershipStatus = houseTable.ownershipStatus
+    local taxesStatus = houseTable.taxes_collected
+    local taxesOverdue = taxesStatus and tostring(taxesStatus) == 'overdue'
+    HouseTaxesOverdue = taxesOverdue
 
     if houseTable.tpInt ~= 0 then
         TpHouse = houseTable.tpInt
@@ -118,7 +127,11 @@ local function handleOwnsHouseClient(houseTable, owner)
         table.insert(HouseBlips, blip)
     end
 
-    showManageOpt(HouseCoords.x, HouseCoords.y, HouseCoords.z, HouseId)
+    if taxesOverdue then
+        Notify(_U("taxesOverdue"), 'error', 5000)
+    else
+        showManageOpt(HouseCoords.x, HouseCoords.y, HouseCoords.z, HouseId)
+    end
 end
 
 BccUtils.RPC:Register('bcc-housing:OwnsHouseClientHandler', function(params)
@@ -146,6 +159,7 @@ function MainHotelHandler()
     local leavePrompt = leaveGroup:RegisterPrompt(_U("promptLeaveHotel"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
 
     local inHotel, hotelInside, instanceNumber, coordsWhenEntered = false, nil, 0, nil
+    local interiorEnterCoords, interiorInventoryCoords, interiorHeading = nil, nil, nil
 
     while true do
         local sleep = 1000
@@ -171,7 +185,14 @@ function MainHotelHandler()
                                     inHotel = true
                                     hotelInside = hotel
                                     coordsWhenEntered = playerCoords
-                                    SetEntityCoords(playerPed, -325.29, 765.23, 121.64, false, false, false, false)
+                                    local interiorCfg = hotel.interior or {}
+                                    interiorEnterCoords = interiorCfg.enter or DefaultHotelInterior.enter
+                                    interiorInventoryCoords = interiorCfg.inventory or DefaultHotelInterior.inventory
+                                    interiorHeading = interiorCfg.heading or DefaultHotelInterior.heading
+                                    SetEntityCoords(playerPed, interiorEnterCoords.x, interiorEnterCoords.y, interiorEnterCoords.z, false, false, false, false)
+                                    if interiorHeading then
+                                        SetEntityHeading(playerPed, interiorHeading)
+                                    end
                                     local serverId = GetPlayerServerId(player)
                                     instanceNumber = math.random(1, 100000 + serverId)
                                     local bucketId = serverId + instanceNumber
@@ -199,8 +220,8 @@ function MainHotelHandler()
 
         elseif inHotel and hotelInside then
             sleep = 0
-            local coords = vector3(-325.41, 766.9, 121.63)
-            local distance = #(playerCoords - coords)
+            local inventoryCoords = interiorInventoryCoords or DefaultHotelInterior.inventory
+            local distance = #(playerCoords - inventoryCoords)
             if distance < 1 then
                 inventoryGroup:ShowGroup(hotelInside.name)
                 if inventoryPrompt:HasCompleted() then
@@ -214,6 +235,9 @@ function MainHotelHandler()
                         devPrint("Leaving hotel: " .. tostring(hotelInside.hotelId))
                         SetEntityCoords(PlayerPedId(), coordsWhenEntered.x, coordsWhenEntered.y, coordsWhenEntered.z, false, false, false, false)
                         inHotel = false
+                        hotelInside = nil
+                        coordsWhenEntered = nil
+                        interiorEnterCoords, interiorInventoryCoords, interiorHeading = nil, nil, nil
                         HousingInstance.Clear()
                     end
                 end

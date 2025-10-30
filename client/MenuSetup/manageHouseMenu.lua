@@ -80,7 +80,7 @@ function PlayerListMenuForGiveAccess(houseId, callback, context)
         }, function()
             callback(houseId, v.staticid, v.serverId, function(success, message)
                 Notify(message, 4000)
-                housingAccessMenu:RouteTo()
+                HousingAccessMenu:RouteTo()
             end)
         end)
     end
@@ -95,7 +95,7 @@ function PlayerListMenuForGiveAccess(houseId, callback, context)
         slot = "footer",
         style = {['position'] = 'relative', ['z-index'] = 9,}
     }, function()
-        housingAccessMenu:RouteTo()
+        HousingAccessMenu:RouteTo()
     end)
 
     playerListGiveMenuPage:RegisterElement('bottomline', {
@@ -116,9 +116,9 @@ function PlayerListMenuForRemoveAccess(houseId, callback, context)
     devPrint("Opening player list menu for removing access to House ID: " .. tostring(houseId))
     BCCHousingMenu:Close()
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
-    -- Asynchronous call to get players with access
+
     GetPlayersWithAccess(houseId, function(rplayers)
         devPrint("Number of players with access: " .. #rplayers) -- This will print the count of players fetched
 
@@ -149,7 +149,7 @@ function PlayerListMenuForRemoveAccess(houseId, callback, context)
                 style = {}
             }, function()
                 AfterRemoveAccess(houseId, v.charidentifier)
-                housingAccessMenu:RouteTo()
+                HousingAccessMenu:RouteTo()
             end)
         end
 
@@ -163,7 +163,7 @@ function PlayerListMenuForRemoveAccess(houseId, callback, context)
             slot = "footer",
             style = {['position'] = 'relative', ['z-index'] = 9,}
         }, function()
-            housingAccessMenu:RouteTo()
+            HousingAccessMenu:RouteTo()
         end)
 
         playerListRemoveMenuPage:RegisterElement('bottomline', {
@@ -185,7 +185,7 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
     devPrint("Opening housing main menu for House ID: " .. tostring(houseId) .. ", Is Owner: " .. tostring(isOwner))
 
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
 
     local housingMainMenu = BCCHousingMenu:RegisterPage("bcc-housing:MainPage")
@@ -242,17 +242,17 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
             label = _U('giveAccesstoHouse'),
             style = {}
         }, function()
-            local housingAccessMenu = BCCHousingMenu:RegisterPage("bcc-housing:AccessPage")
+            local HousingAccessMenu = BCCHousingMenu:RegisterPage("bcc-housing:AccessPage")
 
-            housingAccessMenu:RegisterElement('header', {
+            HousingAccessMenu:RegisterElement('header', {
                 value = _U('giveAccesstoHouse'),
                 slot = 'header',
                 style = {}
             })
-            housingAccessMenu:RegisterElement('line', { style = {} })
+            HousingAccessMenu:RegisterElement('line', { style = {} })
 
             -- Give Access
-            housingAccessMenu:RegisterElement('button', {
+            HousingAccessMenu:RegisterElement('button', {
                 label = _U("giveAccess"),
                 style = {}
             }, function()
@@ -275,7 +275,7 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
             end)
 
             -- Remove Access
-            housingAccessMenu:RegisterElement('button', {
+            HousingAccessMenu:RegisterElement('button', {
                 label = _U("removeAccess"),
                 style = {}
             }, function()
@@ -297,17 +297,17 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
                 Notify(_U('noAccessToHouse'), 'error', 4000)
             end)
 
-            housingAccessMenu:RegisterElement('line', { slot = "footer", style = {} })
-            housingAccessMenu:RegisterElement('button', {
+            HousingAccessMenu:RegisterElement('line', { slot = "footer", style = {} })
+            HousingAccessMenu:RegisterElement('button', {
                 label = _U("backButton"),
                 slot = "footer",
                 style = { ['position'] = 'relative', ['z-index'] = 9 }
             }, function()
                 housingMainMenu:RouteTo()
             end)
-            housingAccessMenu:RegisterElement('bottomline', { style = {}, slot = "footer" })
+            HousingAccessMenu:RegisterElement('bottomline', { style = {}, slot = "footer" })
 
-            BCCHousingMenu:Open({ startupPage = housingAccessMenu })
+            BCCHousingMenu:Open({ startupPage = HousingAccessMenu })
         end)
 
         -- Door management

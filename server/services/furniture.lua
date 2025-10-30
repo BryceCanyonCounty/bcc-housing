@@ -46,7 +46,8 @@ local function deleteTrackedFurniture(source, houseid)
                 DeleteEntity(entity)
             end
         end
-        devPrint(("Deleted %d spawned furniture entities for player %s at house %s"):format(#storedFurn[source][houseid], tostring(source), tostring(houseid)))
+        devPrint(("Deleted %d spawned furniture entities for player %s at house %s"):format(#storedFurn[source][houseid],
+            tostring(source), tostring(houseid)))
     end
 
     local param = {
@@ -93,7 +94,8 @@ BccUtils.RPC:Register("bcc-housing:FurniturePlacedCheck", function(params, cb, s
 
     local decodeOk, decodedFurniture = pcall(json.decode, furnitureData)
     if not decodeOk then
-        devPrint("Failed to decode furniture data for house ID " .. tostring(houseid) .. ": " .. tostring(decodedFurniture))
+        devPrint("Failed to decode furniture data for house ID " ..
+        tostring(houseid) .. ": " .. tostring(decodedFurniture))
         return cb(false)
     end
 
@@ -110,7 +112,8 @@ BccUtils.RPC:Register("bcc-housing:FurniturePlacedCheck", function(params, cb, s
     spawnedFurnitureByPlayer[src] = spawnedFurnitureByPlayer[src] or {}
     spawnedFurnitureByPlayer[src][houseid] = true
 
-    devPrint("Sending " .. tostring(#decodedFurniture) .. " furniture entries to player " .. tostring(src) .. " for house " .. tostring(houseid))
+    devPrint("Sending " ..
+    tostring(#decodedFurniture) .. " furniture entries to player " .. tostring(src) .. " for house " .. tostring(houseid))
 
     -- Push the payload to the specific client via RPC Notify
     BccUtils.RPC:Notify("bcc-housing:SpawnFurnitureEvent", { furniture = decodedFurniture }, src)
@@ -130,7 +133,8 @@ BccUtils.RPC:Register("bcc-housing:StoreFurnForDeletion", function(params, cb, s
     storedFurn[src][houseid] = storedFurn[src][houseid] or {}
 
     table.insert(storedFurn[src][houseid], entId)
-    devPrint(("Tracking furniture entity %s for player %s at house %s"):format(tostring(entId), tostring(src), tostring(houseid)))
+    devPrint(("Tracking furniture entity %s for player %s at house %s"):format(tostring(entId), tostring(src),
+        tostring(houseid)))
     if cb then cb(true) end
 end)
 
@@ -245,7 +249,10 @@ BccUtils.RPC:Register('bcc-housing:FurnSoldRemoveFromTable', function(params, cb
                 if affectedRows > 0 then
                     NotifyClient(src, _U("furnSold"), 4000, "success")
                     character.addCurrency(0, tonumber(furnTable.sellprice))
-                    Discord:sendMessage(_U("furnWebHookSold") .. character.charIdentifier .. _U("furnWebHookSoldModel") .. tostring(furnTable.model) .. _U("furnWebHookSoldPrice") .. tostring(furnTable.sellprice))
+                    Discord:sendMessage(_U("furnWebHookSold") ..
+                    character.charIdentifier ..
+                    _U("furnWebHookSoldModel") ..
+                    tostring(furnTable.model) .. _U("furnWebHookSoldPrice") .. tostring(furnTable.sellprice))
                 else
                     NotifyClient(src, _U("furnNotSold"), 4000, "error")
                 end
@@ -273,9 +280,10 @@ end
 
 local function loadOwnedFurniture(charIdentifier)
     if not charIdentifier then return {} end
-    local result = MySQL.query.await("SELECT items FROM bcchousing_ownedfurniture WHERE charidentifier=@charidentifier", {
-        ['charidentifier'] = charIdentifier
-    })
+    local result = MySQL.query.await("SELECT items FROM bcchousing_ownedfurniture WHERE charidentifier=@charidentifier",
+        {
+            ['charidentifier'] = charIdentifier
+        })
 
     if result and result[1] and result[1].items and result[1].items ~= '' then
         local ok, decoded = pcall(json.decode, result[1].items)
@@ -294,9 +302,11 @@ local function saveOwnedFurniture(charIdentifier, items)
         ['charidentifier'] = charIdentifier,
         ['items'] = encoded
     }
-    local updated = MySQL.update.await("UPDATE bcchousing_ownedfurniture SET items=@items WHERE charidentifier=@charidentifier", params)
+    local updated = MySQL.update.await(
+    "UPDATE bcchousing_ownedfurniture SET items=@items WHERE charidentifier=@charidentifier", params)
     if not updated or updated == 0 then
-        MySQL.insert.await("INSERT INTO bcchousing_ownedfurniture (charidentifier, items) VALUES (@charidentifier, @items)", params)
+        MySQL.insert.await(
+        "INSERT INTO bcchousing_ownedfurniture (charidentifier, items) VALUES (@charidentifier, @items)", params)
     end
 end
 
@@ -305,11 +315,11 @@ local function generateFurnitureId()
 end
 
 CreateThread(function()
-    if not Config.FurnitureMenuItem or Config.FurnitureMenuItem == '' then
+    if not Furniture.MenuItem or Furniture.MenuItem == '' then
         return
     end
     exports.vorp_inventory:registerUsableItem(
-        Config.FurnitureMenuItem,
+        Furniture.MenuItem,
         function(data)
             local src = data.source
             local character = getCharacter(src)
@@ -348,7 +358,8 @@ BccUtils.RPC:Register("bcc-housing:PurchaseFurnitureItem", function(params, cb, 
     local furnCategory = Furniture[categoryIndex]
     local furnItem = furnCategory and furnCategory[itemIndex]
     if not furnItem then
-        devPrint("bcc-housing: invalid furniture (" .. tostring(categoryIndex) .. ", " .. tostring(itemIndex) .. ") from " .. tostring(src))
+        devPrint("bcc-housing: invalid furniture (" ..
+        tostring(categoryIndex) .. ", " .. tostring(itemIndex) .. ") from " .. tostring(src))
         return cb(false)
     end
 
@@ -359,16 +370,15 @@ BccUtils.RPC:Register("bcc-housing:PurchaseFurnitureItem", function(params, cb, 
     end
 
     if character.money < cost then
-        devPrint("bcc-housing: " .. tostring(src) .. " tried to buy " .. tostring(furnItem.displayName) .. " but lacks money (needs " .. tostring(cost) .. ")")
+        devPrint("bcc-housing: " ..
+        tostring(src) ..
+        " tried to buy " .. tostring(furnItem.displayName) .. " but lacks money (needs " .. tostring(cost) .. ")")
         return cb(false)
     end
 
-    -- Charge player
     character.removeCurrency(0, cost)
-
-    -- Save purchased furniture
     local ownedItems = loadOwnedFurniture(character.charIdentifier)
-local modelName = furnItem.propModel or furnItem.model
+    local modelName = furnItem.propModel or furnItem.model
     if not modelName then
         devPrint("bcc-housing: furniture item missing model definition for " .. tostring(furnItem.displayName))
         return cb(false)
@@ -386,7 +396,7 @@ local modelName = furnItem.propModel or furnItem.model
     table.insert(ownedItems, entry)
     saveOwnedFurniture(character.charIdentifier, ownedItems)
 
-    BccUtils.RPC:Notify("bcc-housing:OwnedFurnitureSync", { ownedItems = ownedItems }, src) 
+    BccUtils.RPC:Notify("bcc-housing:OwnedFurnitureSync", { ownedItems = ownedItems }, src)
     -- Discord logging
     Discord:sendMessage(
         _U("furnWebHookBought")
@@ -406,7 +416,7 @@ BccUtils.RPC:Register("bcc-housing:PlaceOwnedFurniture", function(params, cb, sr
     local entId         = params and params.entId
     local placementData = params and params.placementData
 
-    local character = getCharacter(src)
+    local character     = getCharacter(src)
     if not character then
         devPrint("bcc-housing: invalid character for src " .. tostring(src))
         return cb(false)
@@ -433,7 +443,9 @@ BccUtils.RPC:Register("bcc-housing:PlaceOwnedFurniture", function(params, cb, sr
     end
 
     if placementData.model ~= ownedEntry.model then
-        devPrint("bcc-housing: model mismatch for src " .. tostring(src) .. " (owned " .. tostring(ownedEntry.model) .. ", provided " .. tostring(placementData.model) .. ")")
+        devPrint("bcc-housing: model mismatch for src " ..
+        tostring(src) ..
+        " (owned " .. tostring(ownedEntry.model) .. ", provided " .. tostring(placementData.model) .. ")")
         return cb(false)
     end
 

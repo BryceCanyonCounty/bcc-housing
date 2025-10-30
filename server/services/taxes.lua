@@ -9,9 +9,9 @@ CreateThread(function() --Tax handling
             if #result > 0 then
                 for k, v in pairs(result) do
                     local param = { ['houseid'] = v.houseid, ['taxamount'] = tonumber(v.tax_amount) }
-                    if v.taxes_collected == 'false' then
+                    if v.taxes_collected == 'false' or v.taxes_collected == 'overdue' then
                         if tonumber(v.ledger) < tonumber(v.tax_amount) then
-                            exports.oxmysql:execute("DELETE FROM bcchousing WHERE houseid=@houseid", param)
+                            exports.oxmysql:execute("UPDATE bcchousing SET taxes_collected='overdue' WHERE houseid=@houseid", param)
                             Discord:sendMessage(_U("houseIdWebhook") .. tostring(v.houseid), _U("taxPaidFailedWebhook"))
                         else
                             exports.oxmysql:execute(
@@ -25,8 +25,10 @@ CreateThread(function() --Tax handling
         elseif tonumber(date) == tonumber(Config.TaxResetDay) then
             if #result > 0 then
                 for k, v in pairs(result) do
-                    local param = { ['houseid'] = v.houseid }
-                    exports.oxmysql:execute("UPDATE bcchousing SET taxes_collected='false' WHERE houseid=@houseid", param)
+                    if v.taxes_collected == 'true' then
+                        local param = { ['houseid'] = v.houseid }
+                        exports.oxmysql:execute("UPDATE bcchousing SET taxes_collected='false' WHERE houseid=@houseid", param)
+                    end
                 end
             end
         end

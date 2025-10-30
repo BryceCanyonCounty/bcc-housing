@@ -14,7 +14,7 @@ function sellHouseConfirmation(houseId, ownershipStatus)
     end
 
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
 
     local sellHouseConfirmation = BCCHousingMenu:RegisterPage("sell_house_page_confirmation")
@@ -100,7 +100,7 @@ function sellHouseToPlayer(houseId, ownershipStatus)
     end
 
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
     
     local sellHouseToPlayer = BCCHousingMenu:RegisterPage("sell_house_toPlayer_page")
@@ -169,7 +169,7 @@ end
 function OpenSellHouseToPlayerMenu(houseId, withInventory, ownershipStatus)
 
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
 
     local nearbyPlayers = GetNearbyPlayers()
@@ -232,7 +232,7 @@ end
 
 function OpenConfirmSellHouseMenu(houseId, targetPlayerId, targetPlayerName, withInventory, ownershipStatus, salePrice)
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
 
     if salePrice < 0 then

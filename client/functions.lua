@@ -180,6 +180,11 @@ end
 
 
 function showManageOpt(x, y, z, houseId)
+    if HouseTaxesOverdue then
+        devPrint("Taxes overdue for House ID: " .. tostring(houseId) .. ". Skipping manage prompt.")
+        return
+    end
+
     RemoveManagePrompt()
 
     local PromptGroup = BccUtils.Prompts:SetupPromptGroup()
@@ -267,10 +272,9 @@ AddEventHandler("onClientResourceStop", function(resource)
                     BccUtils.Blips:RemoveBlip(v.rawblip)
                 end
             end
-            HouseBlips = {} -- Clear the table to prevent any stale references
+            HouseBlips = {}
         end
 
-        -- Remove blips and npcs for all npc agents
         for _, shopCfg in pairs(Agents) do
             if shopCfg.Blip then
                 RemoveBlip(shopCfg.Blip)
@@ -282,15 +286,18 @@ AddEventHandler("onClientResourceStop", function(resource)
             end
         end
 
-        -- Remove blips from all hotels
-        for _, hotelCfg in pairs(Hotels) do
-            if hotelCfg.Blip then
-                RemoveBlip(hotelCfg.Blip)
-                hotelCfg.Blip = nil
+        if HotelBlips and next(HotelBlips) then
+            for k, v in pairs(HotelBlips) do
+                if v and v.rawblip then
+                    BccUtils.Blips:RemoveBlip(v.rawblip)
+                end
             end
+            HotelBlips = {}
         end
-
-        -- Notify the server to clean up any server-side resources
+        for _, hotelCfg in pairs(Hotels) do
+            hotelCfg.Blip = nil
+        end
+        
         RemoveManagePrompt()
         BCCHousingMenu:Close()
         BccUtils.RPC:CallAsync('bcc-housing:ServerSideRssStop', {})

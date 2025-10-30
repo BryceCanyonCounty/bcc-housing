@@ -138,10 +138,24 @@ local function refreshPlayerHouses(targetSource)
             local decodedCoords = json.decode(v.house_coords)
             BccUtils.RPC:Notify('bcc-housing:PrivatePropertyCheckHandler', { coords = decodedCoords, radius = v.house_radius_limit }, targetSource)
 
+            local inventorySuffix = v.ownershipStatus == 'rented' and '_bcc-houseinv_rent' or '_bcc-houseinv'
+            local inventoryId = 'Player_' .. tostring(v.houseid) .. inventorySuffix
+
+            local baseLimit = tonumber(v.invlimit) or 200
+            local inventoryLimit = baseLimit
+            if v.ownershipStatus == 'rented' then
+                local multiplier = tonumber(Config.Setup.RentedInventoryLimitMultiplier) or 1
+                local computedLimit = math.floor(baseLimit * multiplier)
+                if computedLimit <= 0 then
+                    computedLimit = baseLimit
+                end
+                inventoryLimit = math.min(baseLimit, computedLimit)
+            end
+
             local data = {
-                id = 'Player_' .. tostring(v.houseid) .. '_bcc-houseinv',
+                id = inventoryId,
                 name = _U("houseInv"),
-                limit = tonumber(v.invlimit),
+                limit = inventoryLimit,
                 acceptWeapons = true,
                 shared = true,
                 ignoreItemStackLimit = true,
@@ -234,7 +248,8 @@ BccUtils.RPC:Register('bcc-house:OpenHouseInv', function(params, cb, src)
     local houseData = result[1]
 
     local function openInventory()
-        exports.vorp_inventory:openInventory(src, 'Player_' .. tostring(houseId) .. '_bcc-houseinv')
+        local inventorySuffix = houseData.ownershipStatus == 'rented' and '_bcc-houseinv_rent' or '_bcc-houseinv'
+        exports.vorp_inventory:openInventory(src, 'Player_' .. tostring(houseId) .. inventorySuffix)
         if cb then cb(true) end
     end
 
@@ -490,7 +505,7 @@ local function handleLedgerHandling(src, amountParam, houseIdParam, isAdding, cb
         return
     end
 
-    local queryResult = MySQL.query.await('SELECT ledger, tax_amount, ownershipStatus FROM bcchousing WHERE houseid = ?', { houseIdNumber })
+    local queryResult = MySQL.query.await('SELECT ledger, tax_amount, ownershipStatus, uniqueName FROM bcchousing WHERE houseid = ?', { houseIdNumber })
     if not queryResult or #queryResult == 0 then
         NotifyClient(src, _U('noHouseFound'), 5000, 'error')
         if cbFn then cbFn(false, { error = 'house_not_found' }) end
@@ -501,16 +516,41 @@ local function handleLedgerHandling(src, amountParam, houseIdParam, isAdding, cb
     local ledger = tonumber(row.ledger) or 0
     local taxAmount = tonumber(row.tax_amount) or 0
     local ownershipStatus = row.ownershipStatus
-    local currency
+    local currency = 0
+    local rentalCurrency = Config.Setup.DefaultRentalCurrency
+    rentalCurrency = tonumber(rentalCurrency) or 1
+    if rentalCurrency ~= 0 then
+        rentalCurrency = 1
+    end
+    local uniqueName = row.uniqueName
 
-    if ownershipStatus == 'purchased' then
-        currency = 0
-    elseif ownershipStatus == 'rented' then
-        currency = 1
-    else
+    if ownershipStatus ~= 'purchased' and ownershipStatus ~= 'rented' then
         devPrint('handleLedgerHandling: Unknown ownershipStatus ' .. tostring(ownershipStatus))
         if cbFn then cbFn(false, { error = 'unknown_status' }) end
         return
+    end
+
+    if ownershipStatus == 'rented' then
+        if uniqueName then
+            for _, house in pairs(Houses) do
+                if house.uniqueName == uniqueName then
+                    local houseCurrency = house.currencyType
+                    if houseCurrency == nil then
+                        houseCurrency = Config.Setup.DefaultRentalCurrency
+                    end
+                    houseCurrency = tonumber(houseCurrency) or 1
+                    if houseCurrency ~= 0 then
+                        houseCurrency = 1
+                    end
+                    rentalCurrency = houseCurrency
+                    break
+                end
+            end
+        end
+        if rentalCurrency ~= 0 then
+            rentalCurrency = 1
+        end
+        currency = rentalCurrency
     end
 
     if isAdding then
@@ -541,7 +581,7 @@ local function handleLedgerHandling(src, amountParam, houseIdParam, isAdding, cb
         character.removeCurrency(currency, insertionAmount)
         local affectedRows = MySQL.update.await('UPDATE bcchousing SET ledger = ledger + ? WHERE houseid = ?', { insertionAmount, houseIdNumber })
         if affectedRows and affectedRows > 0 then
-            if ownershipStatus == 'purchased' then
+            if currency == 0 then
                 NotifyClient(src, _U('ledgerAmountInserted') .. ' $' .. insertionAmount, 5000, 'success')
             else
                 NotifyClient(src, _U('ledgerGoldAmountInserted') .. insertionAmount, 5000, 'success')
@@ -563,7 +603,7 @@ local function handleLedgerHandling(src, amountParam, houseIdParam, isAdding, cb
         character.addCurrency(currency, amountNumber)
         local affectedRows = MySQL.update.await('UPDATE bcchousing SET ledger = ledger - ? WHERE houseid = ?', { amountNumber, houseIdNumber })
         if affectedRows and affectedRows > 0 then
-            if ownershipStatus == 'purchased' then
+            if currency == 0 then
                 NotifyClient(src, _U('ledgerAmountRemoved') .. ' $' .. amountNumber, 5000, 'success')
             else
                 NotifyClient(src, _U('ledgerGoldAmountRemoved') .. amountNumber, 5000, 'success')
