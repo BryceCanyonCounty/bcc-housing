@@ -32,7 +32,7 @@ BccUtils.RPC:Register('bcc-housing:HotelBought', function(params, cb, src)
     local user = VORPcore.getUser(src)
     if not user then if cb then cb(false, _U('noFurn')) end return end
 
-    local character = user.getUsedCharacter()
+    local character = user.getUsedCharacter
     if not character or not character.charIdentifier then
         if cb then cb(false, nil, 'No character loaded.') end
         return

@@ -38,3 +38,6 @@ BccUtils.RPC:Register('bcc-housing:CheckJob', function(params, cb, src)
 
     cb(hasJob)
 end)
+
+-- Check for version updates
+BccUtils.Versioner.checkFile(GetCurrentResourceName(), "https://github.com/BryceCanyonCounty/bcc-housing")
