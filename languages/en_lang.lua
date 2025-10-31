@@ -142,7 +142,8 @@ Locales["en_lang"] = {
     maxAmountStored = "Maximum amount of money is already stored",
     houseIdWebhook = 'House Id: ',
     taxPaidWebhook = 'Tax paid!',
-    taxPaidFailedWebhook = 'Not enough money for tax house has been deleted!',
+    taxPaidFailedWebhook = 'Not enough money for tax, house marked as unpaid!',
+    taxesOverdue = 'House taxes are overdue. Access is suspended until paid.',
 
     ---- WebHooks ----
     furnWebHookSold = 'Furniture Sold By character Id: ',
@@ -212,10 +213,14 @@ Locales["en_lang"] = {
     invUpdatedFailed = 'Failed to update inventory limit.',
     taxUpdatedSuccess = 'Tax amount updated successfully.',
     taxUpdatedFailed = 'Failed to update tax amount.',
-    buyPricePrompt = 'Price : $ %d~n~Rent : %d ~o~GOLD~s~', -- RENEW
-    rentalDeposit = 'Rental deposit in <span style="color: gold; font-weight: bold;">gold</span>: ', -- NEW
-    rentCharge = 'Rent charge in <span style="color: gold; font-weight: bold;">gold</span>: ', -- NEW
-    buyGoldHouseFor = 'Rent House for %d gold', -- NEW
+    buyPricePrompt = 'Price : $ %s~n~Rent : %s %s', -- RENEW
+    rentalDeposit = 'Rental deposit in %s: ', -- NEW
+    rentCharge = 'Rent charge in %s: ', -- NEW
+    rentHouseFor = 'Rent House for %s', -- NEW
+    currencyMoney = 'cash', -- NEW
+    currencyGold = 'gold', -- NEW
+    promptCurrencyMoney = '$', -- NEW
+    promptCurrencyGold = '~o~GOLD~s~', -- NEW
     rentedHouseCannotBeSold = "Rented house cannot be sold", -- NEW
     cancelHouseRent = "Cancel the rental early", -- NEW
     confirmHousePurchase = 'Confirm House Purchase',
@@ -246,6 +251,7 @@ Locales["en_lang"] = {
     confirmSellText = "Are you sure you want to sell the house to %s for $%d?",
     youOwnMaximum = 'You already own the maximum number of houses allowed.',
     housePurchaseSuccess = "You have successfully purchased %s for $%d",
+    houseRentSuccess = "You have successfully rented %s for %s",
     housePurchaseFailed = "This house has already been purchased by another player.",
     notEnoughMoney = 'You do not have enough money to buy this house.',
     notEnoughGold = "You do not have enough gold to buy this house.", -- NEW

@@ -1,4 +1,50 @@
 Furniture = {
+    MenuItem = 'furniture_book', -- Inventory item that opens the owned furniture list
+    Vendors = {
+        {
+            name = 'Furniture Catalog',
+            coords = vector3(-1821.2, -429.0, 160.0),
+            radius = 2.0,
+            key = 'G',
+            blip = {
+                name = 'Furniture Vendor',
+                sprite = 'blip_ambient_quartermaster',
+                color = 'GREEN',
+                scale = 0.2
+            },
+            npc = {
+                model = 'u_m_m_strwelcomecenter_01',
+                heading = 45.0,
+                scenario = 'WORLD_HUMAN_WRITE_NOTEBOOK'
+            },
+            camera = {
+                itemPreview = { x = -1826.5, y = -429.53, z = 159.94, h = 265.93 },
+                creation    = { x = -1830.36, y = -429.49, z = 159.80, h = 265.93, zoom = 100.0 },
+            }
+        },
+        {
+            name = 'Furniture Catalog',
+            coords = vector3(-875.13, -1286.07, 43.1),
+            radius = 2.0,
+            key = 'G',
+            blip = {
+                name = 'Furniture Vendor',
+                sprite = 'blip_ambient_quartermaster',
+                color = 'GREEN',
+                scale = 0.2
+            },
+            npc = {
+                model = 'u_m_m_strwelcomecenter_01',
+                heading = 211.98,
+                scenario = 'WORLD_HUMAN_WRITE_NOTEBOOK'
+            },
+            camera = {
+                -- put good angles for this spot
+                itemPreview = { x = -870.31, y = -1301.18, z = 43.12, h = 197.74},
+                creation    = { x = -868.75, y = -1305.94, z = 43.02, h = 28.61, zoom = 60.0 },
+            }
+        }
+    },
     {
         name = 'Chairs',
         title = 'Chairs', -- Menu title

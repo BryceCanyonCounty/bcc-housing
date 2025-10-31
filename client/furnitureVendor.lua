@@ -1,115 +1,201 @@
-local vendorPrompts = {}
 local CreatedVendorBlips = {}
 local CreatedVendorNpcs  = {}
+ActiveFurnitureVendor    = nil
+
+local furnitureVendors = (Furniture and Furniture.Vendors) or Config.FurnitureVendors or {}
+
+local function removeExistingVendorPed(coords, model)
+    if not coords then return end
+    local modelHash = nil
+    if model then
+        modelHash = type(model) == "string" and joaat(model) or model
+    end
+    local pedList = GetGamePool('CPed')
+    for i = 1, #pedList do
+        local ped = pedList[i]
+        if not IsPedAPlayer(ped) then
+            local pedCoords = GetEntityCoords(ped)
+            if #(pedCoords - coords) < 1.0 then
+                if not modelHash or GetEntityModel(ped) == modelHash then
+                    SetEntityAsMissionEntity(ped, true, true)
+                    DeletePed(ped)
+                end
+            end
+        end
+    end
+end
+
+local function cleanupFurnitureVendors()
+    if ClearVendorPreview then
+        ClearVendorPreview()
+    end
+    if EndCam then
+        EndCam()
+    end
+    for _, blip in pairs(CreatedVendorBlips) do
+        if blip then
+            if type(blip) == "table" and blip.Remove then
+                blip:Remove()
+            elseif blip.rawblip then
+                RemoveBlip(blip.rawblip)
+            else
+                RemoveBlip(blip)
+            end
+        end
+    end
+    for _, pedWrapper in pairs(CreatedVendorNpcs) do
+        if pedWrapper then
+            if type(pedWrapper) == "table" and pedWrapper.Remove then
+                pedWrapper:Remove()
+            elseif type(pedWrapper) == "table" and pedWrapper.GetPed then
+                local ped = pedWrapper:GetPed()
+                if ped and DoesEntityExist(ped) then
+                    DeletePed(ped)
+                end
+            elseif DoesEntityExist(pedWrapper) then
+                DeletePed(pedWrapper)
+            end
+        end
+    end
+    CreatedVendorBlips = {}
+    CreatedVendorNpcs  = {}
+    ActiveFurnitureVendor = nil
+    if BCCHousingMenu and BCCHousingMenu.Close then
+        BCCHousingMenu:Close()
+    end
+end
+
+CleanupFurnitureVendors = cleanupFurnitureVendors
 
 CreateThread(function()
-    if Config.FurnitureVendors and #Config.FurnitureVendors > 0 then
-        for _, vendor in ipairs(Config.FurnitureVendors) do
-            if vendor.coords then
-                local coords = vendor.coords
-                if type(coords) == "table" then
-                    coords = vector3(coords.x, coords.y, coords.z)
+    cleanupFurnitureVendors()
+    devPrint("Furniture vendors thread started")
+
+    if not furnitureVendors or #furnitureVendors == 0 then
+        devPrint("No furniture vendors configured.")
+        return
+    end
+
+    local vendorPromptGroup = BccUtils.Prompts:SetupPromptGroup()
+    local vendorPrompt = vendorPromptGroup:RegisterPrompt(_U('furnitureVendorPrompt'), BccUtils.Keys[Config.keys.buy],
+        1, 1, true, 'click', nil)
+
+    for _, vendor in ipairs(furnitureVendors) do
+        local coordsList = {}
+        if vendor.coords then
+            if vendor.coords.x then
+                coordsList[1] = vector3(vendor.coords.x, vendor.coords.y, vendor.coords.z)
+            elseif type(vendor.coords[1]) == "table" and vendor.coords[1].x then
+                for i, c in ipairs(vendor.coords) do
+                    coordsList[i] = vector3(c.x, c.y, c.z)
                 end
+            elseif type(vendor.coords) == "vector3" then
+                coordsList[1] = vendor.coords
+            end
+        end
+        if #coordsList == 0 and vendor.coords == nil then
+            devPrint("Furniture vendor missing coordinates")
+        end
 
-                -- Prompt group & key
-                local promptGroup = BccUtils.Prompts:SetupPromptGroup()
-                local keyName     = vendor.key or Config.keys.buy or "G"
-                local keyControl  = BccUtils.Keys[keyName] or BccUtils.Keys["G"]
-                local prompt      = promptGroup:RegisterPrompt(_U("furnitureVendorPrompt"), keyControl, 1, 1, true, "hold", { timedeventhash = "MEDIUM_TIMED_EVENT" })
+        local headingList = {}
+        if type(vendor.NpcHeading) == "table" then
+            headingList = vendor.NpcHeading
+        else
+            local defaultHeading = (vendor.npc and vendor.npc.heading) or 0.0
+            for i = 1, #coordsList do
+                headingList[i] = defaultHeading
+            end
+        end
 
-                -- Create blip (inline)
-                local blipWrapper = nil
-                if vendor.blip then
-                    local blipCfg = vendor.blip
-                    blipWrapper = BccUtils.Blips:SetBlip( blipCfg.name, blipCfg.sprite, blipCfg.scale, coords.x, coords.y, coords.z )
-                    if blipWrapper and blipCfg.color and Config.BlipColors[blipCfg.color] then
-                        local modifier = BccUtils.Blips:AddBlipModifier(blipWrapper, Config.BlipColors[blipCfg.color])
-                        modifier:ApplyModifier()
-                    end
-                    if blipWrapper then
-                        CreatedVendorBlips[#CreatedVendorBlips + 1] = blipWrapper
-                    end
-                end
-
-                -- Create NPC (inline)
-                local npcWrapper = nil
-                if vendor.npc then
-                    local npcCfg   = vendor.npc
-                    local model    = npcCfg.model
-                    local zOffset  = npcCfg.zOffset or -1.0
-                    local heading  = npcCfg.heading or 0.0
-
-                    npcWrapper = BccUtils.Ped:Create(
-                        model, coords.x, coords.y, coords.z + zOffset, heading,
-                        "world", false, nil, nil, true, nil
-                    )
-
-                    if npcWrapper then
-                        local ped = npcWrapper:GetPed()
-                        npcWrapper:Freeze(true)
-                        npcWrapper:Invincible(true)
-                        npcWrapper:CanBeDamaged(false)
-                        npcWrapper:SetHeading(heading)
-                        npcWrapper:SetBlockingOfNonTemporaryEvents(true)
-
-                        if npcCfg.scenario then
-                            TaskStartScenarioInPlaceHash(ped, GetHashKey(npcCfg.scenario), 0, true, 0, 0, false)
+        for i, coord in ipairs(coordsList) do
+            if vendor.blip and (vendor.blip.show == nil or vendor.blip.show) then
+                local label = vendor.blip.label or vendor.blip.name or vendor.name or _U('furnitureVendorTitle')
+                local blipWrapper = BccUtils.Blips:SetBlip(label, vendor.blip.sprite, vendor.blip.scale or 0.2,
+                    coord.x, coord.y, coord.z)
+                if blipWrapper then
+                    if vendor.blip.color and Config.BlipColors and Config.BlipColors[vendor.blip.color] then
+                        local modifier = BccUtils.Blips:AddBlipModifier(blipWrapper, Config.BlipColors[vendor.blip.color])
+                        if modifier and modifier.ApplyModifier then
+                            modifier:ApplyModifier()
                         end
-
-                        CreatedVendorNpcs[#CreatedVendorNpcs + 1] = npcWrapper
                     end
+                    CreatedVendorBlips[#CreatedVendorBlips + 1] = blipWrapper
                 end
+            end
+        end
 
-                vendorPrompts[#vendorPrompts + 1] = {
-                    config = vendor,
-                    coords = coords,
-                    group  = promptGroup,
-                    prompt = prompt,
-                    blip   = blipWrapper,
-                    npc    = npcWrapper
-                }
+        for i, coord in ipairs(coordsList) do
+            if vendor.npc and (vendor.npc.show == nil or vendor.npc.show) then
+                removeExistingVendorPed(coord, vendor.npc.model)
+                local pedWrapper = BccUtils.Ped:Create(
+                    vendor.npc.model,
+                    coord.x, coord.y, coord.z + (vendor.npc.zOffset or -1.0),
+                    headingList[i] or (vendor.npc.heading or 0.0),
+                    'world', false, nil, nil, true, nil
+                )
+                if pedWrapper then
+                    pedWrapper:Freeze(true)
+                    pedWrapper:SetHeading(headingList[i] or 0.0)
+                    pedWrapper:Invincible(true)
+                    pedWrapper:CanBeDamaged(false)
+                    pedWrapper:SetBlockingOfNonTemporaryEvents(true)
+                    if vendor.npc.scenario then
+                        TaskStartScenarioInPlaceHash(pedWrapper:GetPed(), GetHashKey(vendor.npc.scenario), 0, true, 0, 0, false)
+                    end
+                    CreatedVendorNpcs[#CreatedVendorNpcs + 1] = pedWrapper
+                end
             end
         end
     end
 
-    if #vendorPrompts == 0 then return end
-
-    -- Main loop
     while true do
-        local sleep = 1000
-        local playerCoords = GetEntityCoords(PlayerPedId())
+        ::CONTINUE::
+        local playerPed = PlayerPedId()
+        if IsEntityDead(playerPed) then
+            Wait(1000)
+            goto CONTINUE
+        end
 
-        for _, vendorData in ipairs(vendorPrompts) do
-            local vendorCfg = vendorData.config
-            local coords    = vendorData.coords or vendorCfg.coords
-            local distance  = #(playerCoords - coords)
+        local playerCoords = GetEntityCoords(playerPed)
+        for _, vendor in ipairs(furnitureVendors) do
+            local coordsArray = {}
+            if vendor.coords then
+                if vendor.coords.x then
+                    coordsArray = { vector3(vendor.coords.x, vendor.coords.y, vendor.coords.z) }
+                elseif type(vendor.coords[1]) == "table" and vendor.coords[1].x then
+                    for i, c in ipairs(vendor.coords) do
+                        coordsArray[i] = vector3(c.x, c.y, c.z)
+                    end
+                elseif type(vendor.coords) == "vector3" then
+                    coordsArray = { vendor.coords }
+                end
+            end
 
-            if distance <= (vendorCfg.radius or 2.0) then
-                sleep = 0
-                vendorData.group:ShowGroup(vendorCfg.name or _U("furnitureVendorTitle"))
-                if vendorData.prompt:HasCompleted() then
-                    local previewCfg    = vendorCfg.preview or {}
-                    local previewHeading = previewCfg.heading
-                        or vendorCfg.previewHeading
-                        or (vendorCfg.npc and vendorCfg.npc.heading)
-                        or 0.0
-                    FurnitureVendorMenu()
+            for _, coord in ipairs(coordsArray) do
+                local distance = #(playerCoords - coord)
+                if distance <= (vendor.radius or 2.0) then
+                    ActiveFurnitureVendor = vendor
+                    vendorPromptGroup:ShowGroup(vendor.name or _U('furnitureVendorTitle'))
+                    if vendorPrompt:HasCompleted() then
+                        devPrint("Furniture vendor prompt completed")
+                        FurnitureVendorMenu()
+                    end
                 end
             end
         end
 
-        Wait(sleep)
+        Wait(5)
     end
 end)
 
 AddEventHandler("onResourceStop", function(resource)
     if resource == GetCurrentResourceName() then
-        for _, v in pairs(CreatedVendorBlips) do
-            v:Remove()
-        end
-        for _, v in pairs(CreatedVendorNpcs) do
-            v:Remove()
-        end
-        BCCHousingMenu:Close()
+        cleanupFurnitureVendors()
+    end
+end)
+
+AddEventHandler("onClientResourceStop", function(resource)
+    if resource == GetCurrentResourceName() then
+        cleanupFurnitureVendors()
     end
 end)

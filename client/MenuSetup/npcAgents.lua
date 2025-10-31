@@ -128,13 +128,13 @@ function OpenCollectMoneyMenu()
     devPrint("Opening collect money menu")
 
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
 
     local soldHouses = BccUtils.RPC:CallAsync('bcc-housing:RequestSoldHouses')
     if soldHouses == false then return end
 
-    local collectMoneyMenu = self:RegisterPage("bcc-housing:CollectMoneyPage")
+    local collectMoneyMenu = BCCHousingMenu:RegisterPage("bcc-housing:CollectMoneyPage")
 
     collectMoneyMenu:RegisterElement('header', {
         value = _U("houseSaleMoney"),
@@ -180,7 +180,7 @@ function OpenCollectMoneyMenu()
         if not success then
             devPrint("Failed to collect house sale money: " .. tostring(response and response.error))
         end
-        self:Close()
+        BCCHousingMenu:Close()
     end)
 
     collectMoneyMenu:RegisterElement('button', {
@@ -188,7 +188,7 @@ function OpenCollectMoneyMenu()
         style = {},
         slot = "footer"
     }, function()
-        self:Close()
+        BCCHousingMenu:Close()
     end)
 
     collectMoneyMenu:RegisterElement('bottomline', {
@@ -196,5 +196,5 @@ function OpenCollectMoneyMenu()
         slot = "footer"
     })
 
-    self:Open({ startupPage = collectMoneyMenu })
+    BCCHousingMenu:Open({ startupPage = collectMoneyMenu })
 end

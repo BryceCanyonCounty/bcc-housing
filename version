@@ -1,3 +1,18 @@
+<2.1.0>
+## New Features
+- Houses with unpaid taxes are now **marked as overdue** (no deletion, access locked).
+- Renters have **separate inventories** (no longer share owner's).
+- Added **unique interiors per hotel** (no longer only Valentine).
+- Rentals can now choose **currency type** (money or gold).
+
+## Improvements
+- Moved furniture vendor settings to **furniture config**.
+- Locale now **caches translations**.
+- Added **version check** system.
+
+## Fixes
+- Fixed **blip issues**.
+- Fixed **furniture vendor issues**.
 <2.0.0>
 ## Major Changes
 - Fully refactored to use **Bcc-Utils RPC**  

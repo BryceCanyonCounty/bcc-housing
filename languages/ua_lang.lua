@@ -122,7 +122,8 @@ Locales["ua_lang"] = {
     maxAmountStored = "Максимальна сума грошей вже збережена",
     houseIdWebhook = "ID будинку: ",
     taxPaidWebhook = "Податок сплачено!",
-    taxPaidFailedWebhook = "Недостатньо грошей для сплати податку, будинок було конфісковано на користь штату!",
+    taxPaidFailedWebhook = "Недостатньо грошей для сплати податку, будинок позначено як неоплачений!",
+    taxesOverdue = "Податок за будинок не сплачено. Доступ призупинено до оплати.",
 
     ---- WebHooks ----
     furnWebHookSold = "Меблі продано персонажем з ID: ",
@@ -194,10 +195,14 @@ Locales["ua_lang"] = {
     invUpdatedFailed = "Не вдалося оновити ліміт інвентарю.",
     taxUpdatedSuccess = "Розмір податку успішно оновлено.",
     taxUpdatedFailed = "Не вдалося оновити розмір податку.",
-    buyPricePrompt = 'Ціна : $ %d~n~Рента : %d ~o~Золота~s~', -- RENEW
-    rentalDeposit = 'Орендна застава в <span style="color: gold; font-weight: bold;">золоті</span>: ', -- NEW
-    rentCharge = 'Орендна плата в <span style="color: gold; font-weight: bold;">золоті</span>: ', -- NEW
-    buyGoldHouseFor = 'Орендувати будинок за %d золота', -- NEW
+    buyPricePrompt = 'Ціна : $ %s~n~Оренда : %s %s', -- RENEW
+    rentalDeposit = 'Орендна застава в %s: ', -- NEW
+    rentCharge = 'Орендна плата в %s: ', -- NEW
+    rentHouseFor = 'Орендувати будинок за %s', -- NEW
+    currencyMoney = 'гроші', -- NEW
+    currencyGold = 'золото', -- NEW
+    promptCurrencyMoney = '$', -- NEW
+    promptCurrencyGold = '~o~GOLD~s~', -- NEW
     rentedHouseCannotBeSold = "Орендований будинок не можна продати", -- NEW
     cancelHouseRent = "Скасуйте оренду раніше", -- NEW
     confirmHousePurchase = "Підтвердити покупку будинку",
@@ -229,6 +234,7 @@ Locales["ua_lang"] = {
     confirmSellText = "Ви впевнені, що хочете продати будинок ГРАВЦЮ %s за $%d?",
     youOwnMaximum = "Ви вже володієте максимальною кількістю дозволених будинків.",
     housePurchaseSuccess = "Ви успішно купили %s за $%d",
+    houseRentSuccess = "Ви успішно орендували %s за %s",
     housePurchaseFailed = "Цей будинок вже куплений іншим гравцем.",
     notEnoughMoney = "У вас недостатньо грошей для покупки цього будинку.",
     notEnoughGold = "У вас недостатньо ~o~золота~s~ для покупки цього будинку.", -- NEW

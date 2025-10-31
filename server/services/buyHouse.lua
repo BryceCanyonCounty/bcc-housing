@@ -31,6 +31,8 @@ local function handleHousePurchase(src, houseCoords, moneyTypeParam, cb)
     end
 
     local moneyType = tonumber(moneyTypeParam) or 0
+    local isRental = moneyType == 1
+
     local houseCoordsJson = json.encode(houseCoords)
 
     local ownedHouses = MySQL.query.await('SELECT * FROM bcchousing WHERE charidentifier=@charidentifier', { ['@charidentifier'] = character.charIdentifier })
@@ -54,10 +56,26 @@ local function handleHousePurchase(src, houseCoords, moneyTypeParam, cb)
         return
     end
 
-    local moneyAmount = moneyType == 0 and selectedHouse.price or selectedHouse.rentalDeposit
-    local hasFunds = (moneyType == 0 and character.money >= moneyAmount) or (moneyType == 1 and character.gold >= moneyAmount)
+    local rentalCurrency = selectedHouse.currencyType
+    if rentalCurrency == nil then
+        rentalCurrency = Config.Setup.DefaultRentalCurrency
+    end
+    rentalCurrency = tonumber(rentalCurrency) or 1
+    if rentalCurrency ~= 0 then
+        rentalCurrency = 1
+    end
+
+    local currencyType = isRental and rentalCurrency or 0
+
+    local moneyAmount = isRental and selectedHouse.rentalDeposit or selectedHouse.price
+    local hasFunds
+    if currencyType == 0 then
+        hasFunds = character.money >= moneyAmount
+    else
+        hasFunds = character.gold >= moneyAmount
+    end
     if not hasFunds then
-        if moneyType == 0 then
+        if currencyType == 0 then
             NotifyClient(src, _U('notEnoughMoney'), 4000, 'error')
         else
             NotifyClient(src, _U('notEnoughGold'), 4000, 'error')
@@ -75,14 +93,14 @@ local function handleHousePurchase(src, houseCoords, moneyTypeParam, cb)
 
         BccUtils.RPC:Notify('bcc-housing:clearBlips', { houseId = selectedHouse.houseId }, src)
 
-        local ownershipStatus = moneyType == 0 and 'purchased' or 'rented'
+        local ownershipStatus = isRental and 'rented' or 'purchased'
         local parameters = {
             ['@charidentifier'] = character.charIdentifier,
             ['@house_coords'] = houseCoordsJson,
             ['@house_radius_limit'] = selectedHouse.houseRadiusLimit,
             ['@doors'] = '[]',
             ['@invlimit'] = selectedHouse.invLimit,
-            ['@tax_amount'] = moneyType == 0 and selectedHouse.taxAmount or selectedHouse.rentCharge,
+            ['@tax_amount'] = ownershipStatus == 'purchased' and selectedHouse.taxAmount or selectedHouse.rentCharge,
             ['@tpInt'] = selectedHouse.tpInt,
             ['@tpInstance'] = selectedHouse.tpInstance,
             ['@uniqueName'] = selectedHouse.uniqueName,
@@ -103,22 +121,22 @@ local function handleHousePurchase(src, houseCoords, moneyTypeParam, cb)
             end
         )
 
-        character.removeCurrency(moneyType, moneyAmount)
+        character.removeCurrency(currencyType, moneyAmount)
 
         local coordsPayload = coordsToPayload(selectedHouse.houseCoords)
         BccUtils.RPC:Notify('bcc-housing:housePurchased', { houseCoords = coordsPayload }, src)
 
-        NotifyClient(src, _U('housePurchaseSuccess', selectedHouse.name, moneyAmount), 4000, 'success')
+        local amountSuffix = currencyType == 0 and ('$' .. tostring(moneyAmount)) or (tostring(moneyAmount) .. ' ' .. _U('currencyGold'))
+        local displayAmount = amountSuffix
 
-        local currencyLabel = ' **Unknown currency**'
-        if moneyType == 0 then
-            currencyLabel = ' **Dolars**'
-        elseif moneyType == 1 then
-            currencyLabel = ' **Gold bars**'
+        if ownershipStatus == 'purchased' then
+            NotifyClient(src, _U('housePurchaseSuccess', selectedHouse.name, moneyAmount), 4000, 'success')
+        else
+            NotifyClient(src, _U('houseRentSuccess', selectedHouse.name, displayAmount), 4000, 'success')
         end
 
         Discord:sendMessage('House purchased by charIdentifier: ' .. tostring(character.charIdentifier) ..
-            '\nHouse: ' .. selectedHouse.name .. ' was **' .. ownershipStatus .. '** for $' .. tostring(moneyAmount) .. currencyLabel ..
+            '\nHouse: ' .. selectedHouse.name .. ' was **' .. ownershipStatus .. '** for ' .. displayAmount ..
             '\nCharacter Name: ' .. tostring(character.firstname) .. ' ' .. tostring(character.lastname))
 
         BccUtils.RPC:Notify('bcc-housing:ClientRecHouseLoad', {}, src)

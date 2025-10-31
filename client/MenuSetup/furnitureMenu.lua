@@ -7,7 +7,6 @@ local ActivePlacementItem = nil
 local LastPlacementObject = nil
 local FurnitureMenuOpen = false
 
-local OpenFurnitureVendorCategoryMenu
 local OpenFurnitureVendorItemMenu
 local VendorPreviewObj = nil
 local vendorCam
@@ -29,12 +28,42 @@ function CreateCamera()
     if vendorCam and DoesCamExist(vendorCam) then
         return
     end
+    local vendorCfg = ActiveFurnitureVendor
+    if not vendorCfg and Furniture and Furniture.Vendors and Furniture.Vendors[1] then
+        vendorCfg = Furniture.Vendors[1]
+    end
+    if not vendorCfg and Config.FurnitureVendors and Config.FurnitureVendors[1] then
+        vendorCfg = Config.FurnitureVendors[1]
+    end
+
+    local cameraCfg = (vendorCfg and vendorCfg.camera) or {}
+    local creation = cameraCfg.creation or (Config.CameraCoords and Config.CameraCoords.creation)
+    if not creation then return end
+
     vendorCam = CreateCam('DEFAULT_SCRIPTED_CAMERA', true)
-    SetCamCoord(vendorCam, Config.CameraCoords.creation.x, Config.CameraCoords.creation.y,
-        Config.CameraCoords.creation.z + 1.2)
+    SetCamCoord(vendorCam, creation.x, creation.y, creation.z + (creation.zOffset or 0.0))
+    if creation.zoom then
+        SetCamFov(vendorCam, creation.zoom)
+    end
     SetCamActive(vendorCam, true)
-    PointCamAtCoord(vendorCam, Config.FurnitureVendors[1].coords.x, Config.FurnitureVendors[1].coords.y,
-        Config.FurnitureVendors[1].coords.z)
+
+    local lookAt = cameraCfg.lookAt
+    if not lookAt and vendorCfg and vendorCfg.coords then
+        if vendorCfg.coords.x then
+            lookAt = vector3(vendorCfg.coords.x, vendorCfg.coords.y, vendorCfg.coords.z)
+        elseif type(vendorCfg.coords[1]) == "table" and vendorCfg.coords[1].x then
+            local first = vendorCfg.coords[1]
+            lookAt = vector3(first.x, first.y, first.z)
+        elseif type(vendorCfg.coords) == "vector3" then
+            lookAt = vendorCfg.coords
+        end
+    end
+    if not lookAt and Config.CameraCoords and Config.CameraCoords.creation then
+        lookAt = vector3(Config.CameraCoords.creation.x, Config.CameraCoords.creation.y, Config.CameraCoords.creation.z)
+    end
+    if lookAt then
+        PointCamAtCoord(vendorCam, lookAt.x, lookAt.y, lookAt.z)
+    end
     RenderScriptCams(true, false, 0, false, false, 0)
 end
 
@@ -44,13 +73,26 @@ function EndCam()
     vendorCam = nil
     DestroyAllCams(true)
     SetFocusEntity(PlayerPedId())
+    ActiveFurnitureVendor = nil
 end
 
 local function SpawnVendorItemAtCam(item)
     if not item then return end
     ClearVendorPreview()
 
-    local cam = Config.CameraCoords.itemPreview or Config.CameraCoords.creation
+    local vendorCfg = ActiveFurnitureVendor
+    if not vendorCfg and Furniture and Furniture.Vendors and Furniture.Vendors[1] then
+        vendorCfg = Furniture.Vendors[1]
+    end
+    if not vendorCfg and Config.FurnitureVendors and Config.FurnitureVendors[1] then
+        vendorCfg = Config.FurnitureVendors[1]
+    end
+
+    local cameraCfg = (vendorCfg and vendorCfg.camera) or {}
+    local cam = cameraCfg.itemPreview or cameraCfg.creation or (Config.CameraCoords and Config.CameraCoords.itemPreview)
+    if not cam then
+        cam = Config.CameraCoords and Config.CameraCoords.creation
+    end
     if not cam then return end
 
     local model = item.propModel or item.model
@@ -110,7 +152,7 @@ function FurnitureMenu(houseId, ownershipStatus, ownedFurniture)
         for _, item in ipairs(OwnedFurnitureCache) do
             local label = item.displayName or item.model
             if item.category and item.category ~= '' then
-                label = ("%s (%s)"):format(label, item.category)
+                label = label .. " (" .. item.category .. ")"
             end
             furnitureMainMenu:RegisterElement('button', {
                 label = label,
@@ -182,6 +224,8 @@ function OpenFurnitureVendorItemMenu(categoryIndex, itemIndex)
         return
     end
 
+    itemIndex = math.floor(tonumber(itemIndex) or 1)
+    if itemIndex < 1 then itemIndex = 1 end
     local item = furnConfigTable[itemIndex]
     if not item then
         Notify(_U("invalidFurnitureItem"), "error", 4000)
@@ -189,12 +233,15 @@ function OpenFurnitureVendorItemMenu(categoryIndex, itemIndex)
     end
     CreateCamera()
     SpawnVendorItemAtCam(item)
-    local pageId = ("bcc-housing-furniture-vendor-item-%d-%d"):format(categoryIndex, itemIndex)
-    local itemPage = BCCHousingMenu:RegisterPage(pageId)
-
-    local headerLabel = item.displayName or item.propModel or _U("furnitureCategory")
+    local itemPage = BCCHousingMenu:RegisterPage("bcc-housing-furniture-vendor-item-" .. categoryIndex .. "-" .. itemIndex)
     itemPage:RegisterElement('header', {
-        value = headerLabel,
+        value = furnConfigTable.title,
+        slot = 'header',
+        style = {}
+    })
+
+    itemPage:RegisterElement('subheader', {
+        value = 'Selecteaza articol',
         slot = 'header',
         style = {}
     })
@@ -204,37 +251,52 @@ function OpenFurnitureVendorItemMenu(categoryIndex, itemIndex)
         style = {}
     })
 
-    local categoryName = furnConfigTable.name or furnConfigTable.title or ""
-    if categoryName ~= "" then
-        itemPage:RegisterElement('textdisplay', {
-            value = _U("furnitureCategory") .. ": " .. categoryName,
+    local arrowOptions = {}
+    for idx, arrowItem in ipairs(furnConfigTable) do
+        arrowOptions[#arrowOptions + 1] = {
+            display = arrowItem.displayName,
+            itemIndex = idx
+        }
+    end
+
+    if #arrowOptions > 1 then
+        itemPage:RegisterElement('arrows', {
+            label = 'Furniture',
+            start = itemIndex,
+            options = arrowOptions,
+            persist = true
+        }, function(data)
+            if not data then return end
+            local value = data.value
+            local newIndex = value and (value.itemIndex or value)
+            if type(newIndex) == 'string' then
+                newIndex = tonumber(newIndex)
+            end
+            if not newIndex or newIndex == itemIndex then return end
+            OpenFurnitureVendorItemMenu(categoryIndex, newIndex)
+        end)
+
+        itemPage:RegisterElement('line', {
             slot = 'content',
             style = {}
         })
-    end
 
-    if item.desc or furnConfigTable.desc then
-        itemPage:RegisterElement('textdisplay', {
-            value = item.desc or furnConfigTable.desc,
-            slot = 'content',
-            style = {}
-        })
     end
-
     local price = tonumber(item.costToBuy) or 0
     itemPage:RegisterElement('textdisplay', {
-        value = ("$%s"):format(price),
+        value = "Price : " .. price .. " $",
         slot = 'content',
         style = {}
     })
 
     itemPage:RegisterElement('line', {
-        slot = 'content',
+        slot = 'footer',
         style = {}
     })
 
     itemPage:RegisterElement('button', {
-        label = ("%s - $%s"):format(_U("buyOwnerFurn"), price),
+        label = _U("buyOwnerFurn"),
+        slot = 'footer',
         style = {}
     }, function()
         local success = BccUtils.RPC:CallAsync("bcc-housing:PurchaseFurnitureItem", {
@@ -250,19 +312,13 @@ function OpenFurnitureVendorItemMenu(categoryIndex, itemIndex)
 
         Notify(_U("furnAddedToBook"), "success", 4000)
     end)
-
-    itemPage:RegisterElement('line', {
-        slot = 'footer',
-        style = {}
-    })
-
     itemPage:RegisterElement('button', {
         label = _U("backButton"),
         slot = 'footer',
         style = {}
     }, function()
         ClearVendorPreview()
-        OpenFurnitureVendorCategoryMenu(categoryIndex)
+        FurnitureVendorMenu()
     end)
 
     itemPage:RegisterElement('button', {
@@ -272,12 +328,21 @@ function OpenFurnitureVendorItemMenu(categoryIndex, itemIndex)
     }, function()
         ClearVendorPreview()
         EndCam()
+        BCCHousingMenu:Close()
     end)
 
     itemPage:RegisterElement('bottomline', {
         slot = 'footer',
         style = {}
     })
+
+    if item.desc or furnConfigTable.desc then
+        itemPage:RegisterElement('textdisplay', {
+            value = item.desc or furnConfigTable.desc,
+            slot = 'footer',
+            style = {}
+        })
+    end
 
     BCCHousingMenu:Open({
         startupPage = itemPage,
@@ -289,79 +354,24 @@ function OpenFurnitureVendorItemMenu(categoryIndex, itemIndex)
 end
 
 function OpenFurnitureVendorCategoryMenu(categoryIndex)
-    BCCHousingMenu:Close()
-
-    if HandlePlayerDeathAndCloseMenu() then
-        return
-    end
-
     local furnConfigTable = Furniture[categoryIndex]
     if not furnConfigTable then
         devPrint("Invalid furniture category index: " .. tostring(categoryIndex))
         return
     end
-    CreateCamera()
-    local categoryPage = BCCHousingMenu:RegisterPage("bcc-housing-furniture-vendor-category")
-    categoryPage:RegisterElement('header', {
-        value = furnConfigTable.titile or furnConfigTable.name or _U("furnitureCategory"),
-        slot = 'header',
-        style = {}
-    })
-
-    categoryPage:RegisterElement('line', {
-        slot = "header",
-        style = {}
-    })
-
-    if furnConfigTable.desc then
-        categoryPage:RegisterElement('textdisplay', {
-            value = furnConfigTable.desc,
-            slot = 'content',
-            style = {}
-        })
-    end
-
-    for index, item in ipairs(furnConfigTable) do
-        local label = item.displayName .. " - $" .. tostring(item.costToBuy)
-
-        categoryPage:RegisterElement('button', {
-            label = label,
-            style = {}
-        }, function()
-            OpenFurnitureVendorItemMenu(categoryIndex, index)
-        end)
-    end
-
-    categoryPage:RegisterElement('line', {
-        slot = "footer",
-        style = {}
-    })
-
-    categoryPage:RegisterElement('button', {
-        label = _U("backButton"),
-        slot = "footer",
-        style = { ['position'] = 'relative', ['z-index'] = 9 }
-    }, function()
-        ClearVendorPreview()
-        FurnitureVendorMenu()
-    end)
-
-    categoryPage:RegisterElement('bottomline', {
-        slot = "footer",
-        style = {}
-    })
-
-    BCCHousingMenu:Open({
-        startupPage = categoryPage,
-        sound = {
-            action = "SELECT",
-            soundset = "RDRO_Character_Creator_Sounds"
-        }
-    })
+    OpenFurnitureVendorItemMenu(categoryIndex, 1)
 end
 
 function FurnitureVendorMenu()
+    if not ActiveFurnitureVendor then
+        if Furniture and Furniture.Vendors and Furniture.Vendors[1] then
+            ActiveFurnitureVendor = Furniture.Vendors[1]
+        elseif Config.FurnitureVendors and Config.FurnitureVendors[1] then
+            ActiveFurnitureVendor = Config.FurnitureVendors[1]
+        end
+    end
     CreateCamera()
+    ClearVendorPreview()
     FurnitureMenuOpen = false
 
     if HandlePlayerDeathAndCloseMenu() then
@@ -382,7 +392,7 @@ function FurnitureVendorMenu()
 
     for index, category in ipairs(Furniture) do
         vendorMenu:RegisterElement('button', {
-            label = category.name,
+            label = category.title,
             style = {}
         }, function()
             OpenFurnitureVendorCategoryMenu(index)
@@ -455,6 +465,11 @@ BccUtils.RPC:Register("bcc-housing:OwnedFurnitureSync", function(params)
 end)
 
 RegisterNetEvent('bcc-housing:OpenFurnitureVendor', function()
+    if Furniture and Furniture.Vendors and Furniture.Vendors[1] then
+        ActiveFurnitureVendor = Furniture.Vendors[1]
+    elseif Config.FurnitureVendors and Config.FurnitureVendors[1] then
+        ActiveFurnitureVendor = Config.FurnitureVendors[1]
+    end
     CreateCamera()
     ClearVendorPreview()
     FurnitureVendorMenu()
@@ -850,7 +865,7 @@ function SellOwnedFurnitureMenu(houseId, furnTable, ownershipStatus)
     BCCHousingMenu:Close() -- Close any previously opened menus
 
     if HandlePlayerDeathAndCloseMenu() then
-        return -- Skip opening the menu if the player is dead
+        return
     end
 
     -- Initialize the sell furniture menu page
