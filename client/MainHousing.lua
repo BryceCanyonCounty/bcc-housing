@@ -1,4 +1,6 @@
 HouseCoords, HouseRadius, HouseId, Owner, TpHouse, TpHouseInstance, HouseOwnershipStatus, HouseTaxesOverdue = nil, nil, nil, nil, nil, nil, nil, nil
+ActiveHouseId = nil
+OwnedHouseContexts = OwnedHouseContexts or {}
 HouseBlips, HotelBlips, CreatedFurniture = {}, {}, {}
 local AdminAllowed = false
 local OwnedHotels = {}
@@ -9,6 +11,24 @@ local DefaultHotelInterior = {
     inventory = vector3(-325.41, 766.9, 121.63),
     heading = 180.0
 }
+
+function SetActiveHouseContext(houseData)
+    if not houseData then return end
+    HouseCoords = houseData.coords or HouseCoords
+    HouseRadius = houseData.radius or HouseRadius
+    HouseId = houseData.houseId or HouseId
+    ActiveHouseId = HouseId
+    Owner = houseData.owner or Owner
+    HouseOwnershipStatus = houseData.ownershipStatus or HouseOwnershipStatus
+    HouseTaxesOverdue = houseData.taxesOverdue or HouseTaxesOverdue
+    TpHouse = houseData.tpInt or houseData.tpHouse or TpHouse
+    TpHouseInstance = houseData.tpInstance or TpHouseInstance
+end
+
+function GetHouseContext(houseId)
+    if not houseId or not OwnedHouseContexts then return nil end
+    return OwnedHouseContexts[houseId]
+end
 
 local function checkIfAdmin()
     local isAdmin = BccUtils.RPC:CallAsync('bcc-housing:CheckIfAdmin')
@@ -25,6 +45,51 @@ RegisterCommand(Config.AdminManagementMenuCommand, function()
         HouseManagementMenu()
     end
 end, false)
+
+if Config.OpenHousingMenuCommand and Config.OpenHousingMenuCommand ~= '' then
+    RegisterCommand(Config.OpenHousingMenuCommand, function()
+        if not HouseId then
+            Notify(_U("noHouseFound"), 'error', 4000)
+            return
+        end
+
+        if not HouseCoords then
+            Notify(_U("noHouseFound"), 'error', 4000)
+            return
+        end
+
+        local playerPed = PlayerPedId()
+        local playerCoords = GetEntityCoords(playerPed)
+        local allowedRadius = tonumber(HouseRadius) or tonumber(Config.DefaultMenuManageRadius) or 2.0
+        local dist = GetDistanceBetweenCoords(playerCoords.x, playerCoords.y, playerCoords.z,
+            HouseCoords.x, HouseCoords.y, HouseCoords.z, true)
+
+        if dist > allowedRadius then
+            Notify(_U("needToBeNearHouse"), 'error', 4000)
+            return
+        end
+
+        local successOwner, ownerData = BccUtils.RPC:CallAsync('bcc-housing:getHouseOwner', { houseId = HouseId })
+        if successOwner and ownerData then
+            OpenHousingMainMenu(HouseId, ownerData.isOwner, ownerData.ownershipStatus)
+            return
+        end
+
+        local err = ownerData and ownerData.error or _U("noHouseOrNotOwner")
+        Notify(err, 'error', 4000)
+    end, false)
+end
+
+AddEventHandler('onClientResourceStart', function(resourceName)
+    if resourceName ~= GetCurrentResourceName() then
+        return
+    end
+
+    CreateThread(function()
+        Wait(1000) -- wait for other scripts/player state to finish initializing after restart
+        BccUtils.RPC:CallAsync('bcc-housing:CheckIfHasHouse', {})
+    end)
+end)
 
 if Config.DevMode then
     function devPrint(message)
@@ -86,21 +151,34 @@ end)
 
 local function handleOwnsHouseClient(houseTable, owner)
     local coords = json.decode(houseTable.house_coords)
-    HouseCoords = vector3(coords.x, coords.y, coords.z)
-    HouseRadius = houseTable.house_radius_limit
-    HouseId = houseTable.houseid
-    Owner = owner
-    HouseOwnershipStatus = houseTable.ownershipStatus
-    local taxesStatus = houseTable.taxes_collected
-    local taxesOverdue = taxesStatus and tostring(taxesStatus) == 'overdue'
-    HouseTaxesOverdue = taxesOverdue
+    local vectorCoords = vector3(coords.x, coords.y, coords.z)
+    local radius = houseTable.house_radius_limit
+    local houseId = houseTable.houseid
+    local ownershipStatus = houseTable.ownershipStatus
+    local tpInt = houseTable.tpInt ~= 0 and houseTable.tpInt or nil
+    local tpInstance = houseTable.tpInstance
 
-    if houseTable.tpInt ~= 0 then
-        TpHouse = houseTable.tpInt
-        TpHouseInstance = houseTable.tpInstance
+    local houseContext = {
+        coords = vectorCoords,
+        radius = radius,
+        houseId = houseId,
+        owner = owner,
+        ownershipStatus = ownershipStatus,
+        taxesOverdue = taxesOverdue,
+        tpInt = tpInt,
+        tpInstance = tpInstance
+    }
+
+    OwnedHouseContexts[houseId] = houseContext
+
+    if not HouseId or HouseId == houseId or ActiveHouseId == houseId then
+        SetActiveHouseContext(houseContext)
     end
 
-    devPrint("House information set for House ID: " .. tostring(HouseId))
+    local taxesStatus = houseTable.taxes_collected
+    local taxesOverdue = taxesStatus and tostring(taxesStatus) == 'overdue'
+
+    devPrint("House information set for House ID: " .. tostring(houseId))
 
     StartFurnCheckHandler()
 
@@ -110,7 +188,7 @@ local function handleOwnsHouseClient(houseTable, owner)
         if houseCfg.uniqueName == uniqueName then
             houseCfgFound = true
             if houseCfg.blip.owned.active then
-                local blip = BccUtils.Blips:SetBlip(houseCfg.blip.owned.name, houseCfg.blip.owned.sprite, 0.2, HouseCoords.x, HouseCoords.y, HouseCoords.z)
+                local blip = BccUtils.Blips:SetBlip(houseCfg.blip.owned.name, houseCfg.blip.owned.sprite, 0.2, vectorCoords.x, vectorCoords.y, vectorCoords.z)
                 local blipModifier = BccUtils.Blips:AddBlipModifier(blip, Config.BlipColors[houseCfg.blip.owned.color])
                 blipModifier:ApplyModifier()
                 table.insert(HouseBlips, blip)
@@ -121,7 +199,7 @@ local function handleOwnsHouseClient(houseTable, owner)
 
     if not houseCfgFound and Config.HouseBlip.active then
         local houseBlip = Config.HouseBlip
-        local blip = BccUtils.Blips:SetBlip(houseBlip.name, houseBlip.sprite, 0.2, HouseCoords.x, HouseCoords.y, HouseCoords.z)
+        local blip = BccUtils.Blips:SetBlip(houseBlip.name, houseBlip.sprite, 0.2, vectorCoords.x, vectorCoords.y, vectorCoords.z)
         local blipModifier = BccUtils.Blips:AddBlipModifier(blip, Config.BlipColors[houseBlip.color])
         blipModifier:ApplyModifier()
         table.insert(HouseBlips, blip)
@@ -130,7 +208,7 @@ local function handleOwnsHouseClient(houseTable, owner)
     if taxesOverdue then
         Notify(_U("taxesOverdue"), 'error', 5000)
     else
-        showManageOpt(HouseCoords.x, HouseCoords.y, HouseCoords.z, HouseId)
+        showManageOpt(vectorCoords.x, vectorCoords.y, vectorCoords.z, houseId, houseContext)
     end
 end
 
@@ -147,16 +225,16 @@ function MainHotelHandler()
     devPrint("Initializing main hotel handler")
 
     local buyGroup = BccUtils.Prompts:SetupPromptGroup()
-    local buyPrompt = buyGroup:RegisterPrompt(_U("promptBuy"), BccUtils.Keys[Config.keys.buy], 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+    local buyPrompt = buyGroup:RegisterPrompt(_U("promptBuy"), BccUtils.Keys[Config.keys.buy], 1, 1, true, 'click', nil)
 
     local enterGroup = BccUtils.Prompts:SetupPromptGroup()
-    local enterPrompt = enterGroup:RegisterPrompt(_U("promptEnterHotel"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+    local enterPrompt = enterGroup:RegisterPrompt(_U("promptEnterHotel"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'click', nil)
 
     local inventoryGroup = BccUtils.Prompts:SetupPromptGroup()
-    local inventoryPrompt = inventoryGroup:RegisterPrompt(_U("hotelInvName"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+    local inventoryPrompt = inventoryGroup:RegisterPrompt(_U("hotelInvName"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'click', nil)
 
     local leaveGroup = BccUtils.Prompts:SetupPromptGroup()
-    local leavePrompt = leaveGroup:RegisterPrompt(_U("promptLeaveHotel"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
+    local leavePrompt = leaveGroup:RegisterPrompt(_U("promptLeaveHotel"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'click', nil)
 
     local inHotel, hotelInside, instanceNumber, coordsWhenEntered = false, nil, 0, nil
     local interiorEnterCoords, interiorInventoryCoords, interiorHeading = nil, nil, nil

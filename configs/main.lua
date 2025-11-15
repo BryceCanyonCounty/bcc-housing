@@ -33,8 +33,9 @@ Config = {
     },
     -----------------------------------------------------
 
-    -- Admin Commands
+    -- Commands
     AdminManagementMenuCommand = 'HousingManager', --the name of the command for admins to manage all houses
+    OpenHousingMenuCommand = 'HouseMenu',          --command players can use to open their housing menu
     -----------------------------------------------------
 
     --Maximum allowed houses per character

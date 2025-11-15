@@ -19,44 +19,25 @@ local function InsertFurnitureIntoDB(furnTable, houseId)
     end
 end
 
-local storedFurn = {}
 local spawnedFurnitureByPlayer = {}
 
-local function resetHouseTrackingForPlayer(source, houseid)
-    if storedFurn[source] then
-        storedFurn[source][houseid] = nil
-        if not next(storedFurn[source]) then
-            storedFurn[source] = nil
-        end
-    end
-
-    if spawnedFurnitureByPlayer[source] then
+local function markHouseSpawnState(source, houseid, state)
+    spawnedFurnitureByPlayer[source] = spawnedFurnitureByPlayer[source] or {}
+    if state then
+        spawnedFurnitureByPlayer[source][houseid] = true
+        MySQL.update("UPDATE bcchousing SET player_source_spawnedfurn=@src WHERE houseid=@houseid", {
+            ['src'] = tostring(source),
+            ['houseid'] = houseid
+        })
+    else
         spawnedFurnitureByPlayer[source][houseid] = nil
         if not next(spawnedFurnitureByPlayer[source]) then
             spawnedFurnitureByPlayer[source] = nil
         end
+        MySQL.update("UPDATE bcchousing SET player_source_spawnedfurn='none' WHERE houseid=@houseid", {
+            ['houseid'] = houseid
+        })
     end
-end
-
-local function deleteTrackedFurniture(source, houseid)
-    if storedFurn[source] and storedFurn[source][houseid] then
-        for _, netId in ipairs(storedFurn[source][houseid]) do
-            local entity = NetworkGetEntityFromNetworkId(netId)
-            if entity ~= 0 and DoesEntityExist(entity) then
-                DeleteEntity(entity)
-            end
-        end
-        devPrint(("Deleted %d spawned furniture entities for player %s at house %s"):format(#storedFurn[source][houseid],
-            tostring(source), tostring(houseid)))
-    end
-
-    local param = {
-        ['resetvar'] = 'none',
-        ['houseid'] = houseid
-    }
-    MySQL.update("UPDATE bcchousing SET player_source_spawnedfurn=@resetvar WHERE houseid=@houseid", param)
-
-    resetHouseTrackingForPlayer(source, houseid)
 end
 
 BccUtils.RPC:Register("bcc-housing:FurniturePlacedCheck", function(params, cb, src)
@@ -72,7 +53,8 @@ BccUtils.RPC:Register("bcc-housing:FurniturePlacedCheck", function(params, cb, s
     -- deletion branch
     if deletion then
         if spawnedFurnitureByPlayer[src] and spawnedFurnitureByPlayer[src][houseid] then
-            deleteTrackedFurniture(src, houseid)
+            markHouseSpawnState(src, houseid, false)
+            BccUtils.RPC:Notify("bcc-housing:ClearFurnitureEvent", { houseid = houseid }, src)
         end
         return cb(true)
     end
@@ -103,60 +85,35 @@ BccUtils.RPC:Register("bcc-housing:FurniturePlacedCheck", function(params, cb, s
         return cb(false)
     end
 
-    storedFurn[src] = storedFurn[src] or {}
     if spawnedFurnitureByPlayer[src] and spawnedFurnitureByPlayer[src][houseid] then
         return cb(true) -- already spawned for this player/house
     end
 
-    storedFurn[src][houseid] = {}
-    spawnedFurnitureByPlayer[src] = spawnedFurnitureByPlayer[src] or {}
-    spawnedFurnitureByPlayer[src][houseid] = true
+    markHouseSpawnState(src, houseid, true)
 
     devPrint("Sending " ..
     tostring(#decodedFurniture) .. " furniture entries to player " .. tostring(src) .. " for house " .. tostring(houseid))
 
     -- Push the payload to the specific client via RPC Notify
-    BccUtils.RPC:Notify("bcc-housing:SpawnFurnitureEvent", { furniture = decodedFurniture }, src)
+    BccUtils.RPC:Notify("bcc-housing:SpawnFurnitureEvent", {
+        furniture = decodedFurniture,
+        houseid = houseid
+    }, src)
 
     cb(true)
 end)
 
-BccUtils.RPC:Register("bcc-housing:StoreFurnForDeletion", function(params, cb, src)
-    local entId = params and params.entId
-    local houseid = params and params.houseid
-    if not houseid or not entId then
-        if cb then cb(false) end
-        return
-    end
-
-    storedFurn[src] = storedFurn[src] or {}
-    storedFurn[src][houseid] = storedFurn[src][houseid] or {}
-
-    table.insert(storedFurn[src][houseid], entId)
-    devPrint(("Tracking furniture entity %s for player %s at house %s"):format(tostring(entId), tostring(src),
-        tostring(houseid)))
-    if cb then cb(true) end
-end)
-
 function DelSpawnedFurn(source, houseid)
-    if not storedFurn[source] then return end
+    if not spawnedFurnitureByPlayer[source] then return end
 
     if houseid then
-        devPrint(("Requested cleanup for player %s house %s"):format(tostring(source), tostring(houseid)))
-        deleteTrackedFurniture(source, houseid)
+        markHouseSpawnState(source, houseid, false)
         return
     end
 
-    local trackedHouses = {}
-    for trackedHouseId in pairs(storedFurn[source]) do
-        trackedHouses[#trackedHouses + 1] = trackedHouseId
+    for trackedHouseId in pairs(spawnedFurnitureByPlayer[source]) do
+        markHouseSpawnState(source, trackedHouseId, false)
     end
-
-    for _, trackedHouseId in ipairs(trackedHouses) do
-        deleteTrackedFurniture(source, trackedHouseId)
-    end
-
-    devPrint(("Completed cleanup for player %s across %d houses"):format(tostring(source), #trackedHouses))
 end
 
 BccUtils.RPC:Register("bcc-housing:GetOwnerFurniture", function(params, cb, src)
@@ -333,6 +290,32 @@ CreateThread(function()
     )
 end)
 
+BccUtils.RPC:Register("bcc-housing:GiveFurnitureBook", function(_, cb, src)
+    if not Furniture.MenuItem or Furniture.MenuItem == '' then
+        devPrint("bcc-housing: Furniture.MenuItem not configured, cannot give book.")
+        return cb(false, _U("furnitureBookUnavailable"))
+    end
+
+    local character = getCharacter(src)
+    if not character then
+        devPrint("bcc-housing: invalid character while giving furniture book for src " .. tostring(src))
+        return cb(false, _U("unknownError"))
+    end
+
+    local hasItem = exports.vorp_inventory:getItem(src, Furniture.MenuItem)
+    if hasItem then
+        return cb(false, _U("alreadyHasFurnitureBook"))
+    end
+
+    local added = exports.vorp_inventory:addItem(src, Furniture.MenuItem, 1)
+    if not added then
+        devPrint("bcc-housing: vorp_inventory refused to add furniture book for src " .. tostring(src))
+        return cb(false, _U("furnitureBookFailed"))
+    end
+
+    cb(true, _U("furnitureBookReceived"))
+end)
+
 BccUtils.RPC:Register("bcc-housing:RequestOwnedFurniture", function(params, cb, src)
     local character = getCharacter(src)
     if not character then
@@ -413,7 +396,6 @@ end)
 BccUtils.RPC:Register("bcc-housing:PlaceOwnedFurniture", function(params, cb, src)
     local ownedId       = params and params.ownedId
     local houseId       = params and params.houseId
-    local entId         = params and params.entId
     local placementData = params and params.placementData
 
     local character     = getCharacter(src)

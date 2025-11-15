@@ -1,5 +1,85 @@
 local pendingInventoryLimits = {}
 
+local function getHouseInventoryId(houseId, ownershipStatus)
+    local suffix = ownershipStatus == 'rented' and '_bcc-houseinv_rent' or '_bcc-houseinv'
+    return 'Player_' .. tostring(houseId) .. suffix
+end
+
+local function getStageBonus(stage)
+    local bonus = 0
+    if ConfigHousingInventory and ConfigHousingInventory.stages then
+        for _, cfg in ipairs(ConfigHousingInventory.stages) do
+            if stage >= (cfg.stage or 0) then
+                bonus = bonus + (cfg.slotIncrease or 0)
+            end
+        end
+    end
+    return bonus
+end
+
+local function getNextInventoryStage(currentStage)
+    if not ConfigHousingInventory or not ConfigHousingInventory.stages then return nil end
+
+    for _, cfg in ipairs(ConfigHousingInventory.stages) do
+        if (cfg.stage or 0) > currentStage then
+            return cfg
+        end
+    end
+
+    return nil
+end
+
+local function calculateBaseInventoryLimit(invLimit, ownershipStatus)
+    local baseLimit = tonumber(invLimit) or 200
+    if ownershipStatus == 'rented' then
+        local multiplier = tonumber(Config.Setup.RentedInventoryLimitMultiplier) or 1
+        local computedLimit = math.floor(baseLimit * multiplier)
+        if computedLimit <= 0 then
+            computedLimit = baseLimit
+        end
+        baseLimit = math.min(baseLimit, computedLimit)
+    end
+    return baseLimit
+end
+
+local function calculateFinalInventoryLimit(invLimit, ownershipStatus, stage)
+    local currentStage = tonumber(stage) or 0
+    local baseLimit = calculateBaseInventoryLimit(invLimit, ownershipStatus)
+    local bonus = getStageBonus(currentStage)
+    return baseLimit + bonus, baseLimit, bonus
+end
+
+local function ensureHouseInventoryRegistered(houseId, houseData, forcedLimit)
+    if not houseData then return end
+
+    local finalLimit = forcedLimit
+    if not finalLimit then
+        finalLimit = select(1, calculateFinalInventoryLimit(houseData.invlimit, houseData.ownershipStatus, houseData.inventory_current_stage))
+    end
+
+    local inventoryId = getHouseInventoryId(houseId, houseData.ownershipStatus)
+    if not exports.vorp_inventory:isCustomInventoryRegistered(inventoryId) then
+        exports.vorp_inventory:registerInventory({
+            id = inventoryId,
+            name = _U("houseInv"),
+            limit = finalLimit,
+            acceptWeapons = true,
+            shared = true,
+            ignoreItemStackLimit = true,
+            whitelistItems = false,
+            UsePermissions = false,
+            UseBlackList = false,
+            whitelistWeapons = false
+        })
+    end
+
+    pcall(function()
+        exports.vorp_inventory:updateCustomInventorySlots(inventoryId, finalLimit)
+    end)
+
+    return inventoryId, finalLimit
+end
+
 -- Event to insert a house into the database when it is created
 local function handleCreationDBInsert(src, tpHouse, owner, radius, doors, houseCoords, invLimit, ownerSource, taxAmount, ownershipStatus, cb)
     local cbFn = type(cb) == 'function' and cb or nil
@@ -136,42 +216,26 @@ local function refreshPlayerHouses(targetSource)
     if result and #result > 0 then
         for _, v in ipairs(result) do
             local decodedCoords = json.decode(v.house_coords)
-            BccUtils.RPC:Notify('bcc-housing:PrivatePropertyCheckHandler', { coords = decodedCoords, radius = v.house_radius_limit }, targetSource)
+            BccUtils.RPC:Notify('bcc-housing:PrivatePropertyCheckHandler', {
+                coords = decodedCoords,
+                radius = v.house_radius_limit,
+                houseid = v.houseid
+            }, targetSource)
 
-            local inventorySuffix = v.ownershipStatus == 'rented' and '_bcc-houseinv_rent' or '_bcc-houseinv'
-            local inventoryId = 'Player_' .. tostring(v.houseid) .. inventorySuffix
-
-            local baseLimit = tonumber(v.invlimit) or 200
-            local inventoryLimit = baseLimit
-            if v.ownershipStatus == 'rented' then
-                local multiplier = tonumber(Config.Setup.RentedInventoryLimitMultiplier) or 1
-                local computedLimit = math.floor(baseLimit * multiplier)
-                if computedLimit <= 0 then
-                    computedLimit = baseLimit
-                end
-                inventoryLimit = math.min(baseLimit, computedLimit)
-            end
-
-            local data = {
-                id = inventoryId,
-                name = _U("houseInv"),
-                limit = inventoryLimit,
-                acceptWeapons = true,
-                shared = true,
-                ignoreItemStackLimit = true,
-                whitelistItems = false,
-                UsePermissions = false,
-                UseBlackList = false,
-                whitelistWeapons = false
-            }
-            exports.vorp_inventory:registerInventory(data)
+            local currentStage = tonumber(v.inventory_current_stage) or 0
+            local finalLimit = select(1, calculateFinalInventoryLimit(v.invlimit, v.ownershipStatus, currentStage))
+            ensureHouseInventoryRegistered(v.houseid, v, finalLimit)
 
             local ownerIdString = tostring(v.charidentifier)
             local ownerIdNumber = tonumber(v.charidentifier)
 
             if (charIdentifierNumber and ownerIdNumber and charIdentifierNumber == ownerIdNumber) or ownerIdString == charIdentifierString then
                 table.insert(accessibleHouses, v.houseid)
+                
+                -- ✅ Notify player they own this house and show the ID
                 BccUtils.RPC:Notify('bcc-housing:OwnsHouseClientHandler', { house = v, isOwner = true }, targetSource)
+                BccUtils.RPC:Notify('bcc-housing:ShowMessage', { message = "You own house ID: " .. tostring(v.houseid) }, targetSource)
+                devPrint("Player " .. charIdentifierString .. " owns house ID: " .. tostring(v.houseid))
             else
                 local allowedIdsTable = (v.allowed_ids ~= nil and v.allowed_ids ~= 'none') and json.decode(v.allowed_ids) or nil
                 if allowedIdsTable then
@@ -247,9 +311,11 @@ BccUtils.RPC:Register('bcc-house:OpenHouseInv', function(params, cb, src)
 
     local houseData = result[1]
 
+    local finalLimit = select(1, calculateFinalInventoryLimit(houseData.invlimit, houseData.ownershipStatus, houseData.inventory_current_stage))
+    local inventoryId = ensureHouseInventoryRegistered(houseId, houseData, finalLimit)
+
     local function openInventory()
-        local inventorySuffix = houseData.ownershipStatus == 'rented' and '_bcc-houseinv_rent' or '_bcc-houseinv'
-        exports.vorp_inventory:openInventory(src, 'Player_' .. tostring(houseId) .. inventorySuffix)
+        exports.vorp_inventory:openInventory(src, inventoryId)
         if cb then cb(true) end
     end
 
@@ -271,6 +337,102 @@ BccUtils.RPC:Register('bcc-house:OpenHouseInv', function(params, cb, src)
     devPrint("Player does not have access to house inventory: " .. tostring(houseId))
     NotifyClient(src, _U('noAccessToHouse'), 4000, 'error')
     if cb then cb(false, { error = _U('noAccessToHouse') }) end
+end)
+
+BccUtils.RPC:Register('bcc-housing:GetInventoryStages', function(params, cb, src)
+    local houseId = params and params.houseId
+    if not houseId then
+        if cb then cb(false, { error = _U('noHouseFound') }) end
+        return
+    end
+
+    local result = MySQL.query.await("SELECT invlimit, ownershipStatus, charidentifier, inventory_current_stage FROM bcchousing WHERE houseid = ?", { houseId })
+    if not result or #result == 0 then
+        if cb then cb(false, { error = _U('noHouseFound') }) end
+        return
+    end
+
+    local user = VORPcore.getUser(src)
+    local character = user and user.getUsedCharacter
+    local charIdentifier = character and character.charIdentifier
+
+    local row = result[1]
+    local currentStage = tonumber(row.inventory_current_stage) or 0
+    local finalLimit, baseLimit, bonus = calculateFinalInventoryLimit(row.invlimit, row.ownershipStatus, currentStage)
+    local nextStage = getNextInventoryStage(currentStage)
+
+    if cb then
+        cb(true, {
+            inventory_current_stage = currentStage,
+            nextStage = nextStage or false,
+            finalLimit = finalLimit,
+            baseLimit = baseLimit,
+            bonus = bonus,
+            isOwner = charIdentifier and tostring(row.charidentifier) == tostring(charIdentifier) or false
+        })
+    end
+end)
+
+BccUtils.RPC:Register('bcc-housing:UpgradeInventory', function(params, cb, src)
+    local houseId = params and params.houseId
+    if not houseId then
+        if cb then cb(false, { error = _U('noHouseFound') }) end
+        return
+    end
+
+    local user = VORPcore.getUser(src)
+    if not user then
+        if cb then cb(false, { error = 'no_user' }) end
+        return
+    end
+
+    local character = user.getUsedCharacter
+    if not character then
+        if cb then cb(false, { error = 'no_character' }) end
+        return
+    end
+
+    local result = MySQL.query.await("SELECT invlimit, ownershipStatus, charidentifier, inventory_current_stage FROM bcchousing WHERE houseid = ?", { houseId })
+    if not result or #result == 0 then
+        if cb then cb(false, { error = _U('noHouseFound') }) end
+        return
+    end
+
+    local row = result[1]
+    if tostring(row.charidentifier) ~= tostring(character.charIdentifier) then
+        if cb then cb(false, { error = 'not_owner' }) end
+        return
+    end
+
+    local currentStage = tonumber(row.inventory_current_stage) or 0
+    local nextStage = getNextInventoryStage(currentStage)
+    if not nextStage or tonumber(nextStage.stage) ~= tonumber(params and params.nextStage or 0) then
+        if cb then cb(false, { error = 'invalid_stage' }) end
+        return
+    end
+
+    local stageCost = tonumber(nextStage.cost) or 0
+    if character.money < stageCost then
+        if cb then cb(false, { error = 'notEnoughCash' }) end
+        return
+    end
+
+    character.removeCurrency(0, stageCost)
+    MySQL.update.await("UPDATE bcchousing SET inventory_current_stage = ? WHERE houseid = ?", { nextStage.stage, houseId })
+
+    local finalLimit = select(1, calculateFinalInventoryLimit(row.invlimit, row.ownershipStatus, nextStage.stage))
+    ensureHouseInventoryRegistered(houseId, {
+        invlimit = row.invlimit,
+        ownershipStatus = row.ownershipStatus,
+        inventory_current_stage = nextStage.stage
+    }, finalLimit)
+
+    if cb then
+        cb(true, {
+            newStage = nextStage.stage,
+            finalLimit = finalLimit
+        })
+    end
 end)
 
 -- Function to update door access for a specific door ID
@@ -684,8 +846,17 @@ BccUtils.RPC:Register('bcc-housing:getHouseId', function(params, cb, src)
     end
 
     local houseData = result[1]
-    local isOwner = tostring(houseData.charidentifier) == tostring(charIdentifier)
+    local ownerCharId = tostring(houseData.charidentifier)
+    local isOwner = ownerCharId == tostring(charIdentifier)
     local hasAccess = isOwner
+
+    if context == 'access' or context == 'removeAccess' then
+        devPrint(("[ACCESS CMD] charidentifier %s targeting house %s | owner charidentifier %s | isOwner: %s"):format(
+            tostring(charIdentifier), tostring(houseId), ownerCharId, tostring(isOwner)))
+    else
+        devPrint(("[HOUSE CMD] context %s | charidentifier %s | house %s | owner charidentifier %s | isOwner: %s"):format(
+            tostring(context), tostring(charIdentifier), tostring(houseId), ownerCharId, tostring(isOwner)))
+    end
 
     if not hasAccess then
         local allowedIds = json.decode(houseData.allowed_ids) or {}
@@ -757,6 +928,79 @@ BccUtils.RPC:Register('bcc-housing:getHouseOwner', function(params, cb, src)
             ownershipStatus = houseData.ownershipStatus
         })
     end
+end)
+
+BccUtils.RPC:Register('bcc-housing:GetHouseContext', function(params, cb, src)
+    local houseId = params and params.houseId
+    if not houseId then
+        if cb then cb(false, { error = _U('noHouseFound') }) end
+        return
+    end
+
+    local user = VORPcore.getUser(src)
+    if not user then
+        if cb then cb(false, { error = _U('noHouseFound') }) end
+        return
+    end
+
+    local character = user.getUsedCharacter
+    if not character then
+        if cb then cb(false, { error = _U('noHouseFound') }) end
+        return
+    end
+
+    local charIdentifier = tostring(character.charIdentifier)
+    local result = MySQL.query.await(
+        "SELECT house_coords, house_radius_limit, tpInt, tpInstance, ownershipStatus, charidentifier, allowed_ids FROM bcchousing WHERE houseid = ?",
+        { houseId })
+
+    if not result or #result == 0 then
+        if cb then cb(false, { error = _U('noHouseFound') }) end
+        return
+    end
+
+    local row = result[1]
+    local ownerIdentifier = tostring(row.charidentifier or '')
+    local hasAccess = ownerIdentifier == charIdentifier
+
+    if not hasAccess then
+        local allowedIds = {}
+        if row.allowed_ids and row.allowed_ids ~= '' then
+            local decoded = json.decode(row.allowed_ids)
+            if type(decoded) == "table" then
+                allowedIds = decoded
+            end
+        end
+
+        for _, allowed in ipairs(allowedIds) do
+            if tostring(allowed) == charIdentifier then
+                hasAccess = true
+                break
+            end
+        end
+    end
+
+    if not hasAccess then
+        if cb then cb(false, { error = _U('noAccessToHouse') }) end
+        return
+    end
+
+    local coords = row.house_coords and json.decode(row.house_coords) or nil
+    if not coords or not coords.x then
+        if cb then cb(false, { error = _U('noHouseFound') }) end
+        return
+    end
+
+    local context = {
+        coords = coords,
+        radius = tonumber(row.house_radius_limit),
+        houseId = tonumber(houseId),
+        ownershipStatus = row.ownershipStatus,
+        tpInt = row.tpInt ~= 0 and row.tpInt or nil,
+        tpInstance = row.tpInstance
+    }
+
+    if cb then cb(true, context) end
 end)
 
 BccUtils.RPC:Register('bcc-housing:CheckIfHouseExists', function(params, cb, src)

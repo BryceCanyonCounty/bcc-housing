@@ -66,15 +66,24 @@ BCCHousingMenu = FeatherMenu:RegisterMenu("bcc:housing:mainmenu",
     }
 )
 
-local ManageHousePrompt = nil
-local ManageHousePromptActive = false
+local ManageHousePrompts = {}
 
-function RemoveManagePrompt()
-    if ManageHousePrompt then
-        ManageHousePrompt:DeletePrompt()
-        ManageHousePrompt = nil
+function RemoveManagePrompt(houseId)
+    if houseId then
+        local promptData = ManageHousePrompts[houseId]
+        if promptData and promptData.prompt then
+            promptData.prompt:DeletePrompt()
+        end
+        ManageHousePrompts[houseId] = nil
+        return
     end
-    ManageHousePromptActive = false
+
+    for id, promptData in pairs(ManageHousePrompts) do
+        if promptData.prompt then
+            promptData.prompt:DeletePrompt()
+        end
+        ManageHousePrompts[id] = nil
+    end
 end
 
 function Notify(message, typeOrDuration, maybeDuration, overrides)
@@ -179,17 +188,30 @@ function GetPlayersWithAccess(houseId, callback)
 end
 
 
-function showManageOpt(x, y, z, houseId)
-    if HouseTaxesOverdue then
+function showManageOpt(x, y, z, houseId, houseContext)
+    local contextTaxes = houseContext and houseContext.taxesOverdue
+    if contextTaxes == nil then
+        contextTaxes = HouseTaxesOverdue
+    end
+
+    if contextTaxes then
         devPrint("Taxes overdue for House ID: " .. tostring(houseId) .. ". Skipping manage prompt.")
         return
     end
 
-    RemoveManagePrompt()
+    RemoveManagePrompt(houseId)
 
-    local PromptGroup = BccUtils.Prompts:SetupPromptGroup()
-    ManageHousePrompt = PromptGroup:RegisterPrompt(_U("openOwnerManage"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'hold', { timedeventhash = "MEDIUM_TIMED_EVENT" })
-    ManageHousePromptActive = true
+    local promptGroup = BccUtils.Prompts:SetupPromptGroup()
+    local promptHandle = promptGroup:RegisterPrompt(_U("openOwnerManage"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'click', nil)
+    local radiusValue = (houseContext and houseContext.radius) or HouseRadius or Config.DefaultMenuManageRadius or 2.0
+    ManageHousePrompts[houseId] = {
+        prompt = promptHandle,
+        group = promptGroup,
+        coords = vector3(x, y, z),
+        active = true,
+        radius = radiusValue,
+        context = houseContext
+    }
 
     devPrint("Setting up manage options for House ID: " .. tostring(houseId) .. " at coordinates: " .. tostring(x) .. ", " .. tostring(y) .. ", " .. tostring(z))
 
@@ -201,18 +223,18 @@ function showManageOpt(x, y, z, houseId)
 
     if not houseExists then
         devPrint("House ID " .. tostring(houseId) .. " no longer exists. Deleting prompt.")
-        RemoveManagePrompt()
+        RemoveManagePrompt(houseId)
         return
     end
 
     Citizen.CreateThread(function()
         while true do
-            if not ManageHousePromptActive or not ManageHousePrompt then
+            local promptData = ManageHousePrompts[houseId]
+            if not promptData or not promptData.active or not promptData.prompt then
                 break
             end
 
             local playerPed = PlayerPedId()
-
             if IsEntityDead(playerPed) then goto END end
 
             if BreakHandleLoop then
@@ -225,10 +247,15 @@ function showManageOpt(x, y, z, houseId)
                 local dist = GetDistanceBetweenCoords(plc.x, plc.y, plc.z, x, y, z, true)
 
                 if dist < Config.DefaultMenuManageRadius then
-                    PromptGroup:ShowGroup(_U("house"))
+                    promptData.group:ShowGroup(_U("house"))
 
-                    if ManageHousePromptActive and ManageHousePrompt and ManageHousePrompt:HasCompleted() then
+                    if promptData.prompt:HasCompleted() then
                         devPrint("Prompt completed. Opening housing management menu for House ID: " .. tostring(houseId))
+                        local ctx = promptData.context or GetHouseContext and GetHouseContext(houseId)
+                        if ctx then
+                            SetActiveHouseContext(ctx)
+                        end
+
                         local successOwner, ownerData = BccUtils.RPC:CallAsync('bcc-housing:getHouseOwner', { houseId = houseId })
                         if successOwner and ownerData then
                             OpenHousingMainMenu(houseId, ownerData.isOwner, ownerData.ownershipStatus)
@@ -249,20 +276,20 @@ function showManageOpt(x, y, z, houseId)
             Citizen.Wait(5)
         end
 
-        if ManageHousePromptActive and ManageHousePrompt then
-            ManageHousePrompt:DeletePrompt()
-        end
-        ManageHousePrompt = nil
-        ManageHousePromptActive = false
+        RemoveManagePrompt(houseId)
     end)
 end
+
 AddEventHandler("onClientResourceStop", function(resource)
     if resource == GetCurrentResourceName() then
         -- Delete any created furniture
-        if #CreatedFurniture > 0 then
-            for k, v in pairs(CreatedFurniture) do
-                DeleteObject(v)
+        if CreatedFurniture and #CreatedFurniture > 0 then
+            for _, entity in ipairs(CreatedFurniture) do
+                if DoesEntityExist(entity) then
+                    DeleteEntity(entity)
+                end
             end
+            CreatedFurniture = {}
         end
 
         -- Remove any blips that were created

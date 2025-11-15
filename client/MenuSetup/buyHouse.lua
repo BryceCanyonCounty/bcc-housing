@@ -21,8 +21,7 @@ CreateThread(function()
     local BuyHousePrompt = PromptGroup:RegisterPrompt(
         _U("moreInfo"),
         BccUtils.Keys[Config.keys.buy],
-        1, 1, true, 'hold',
-        { timedeventhash = "MEDIUM_TIMED_EVENT" }
+        1, 1, true, 'click', nil
     )
 
     while true do

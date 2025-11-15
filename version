@@ -1,3 +1,14 @@
+<2.2.0>
+## Furniture Enhancements, Prompt Fixes & Performance Updates
+-  Added house-context system to ensure prompts display correctly for all players.
+-  Removed network IDs from static objects, improving performance and lifting the 80–120 object spawn limitation.
+-  Numerous furniture improvements for smoother placement and interaction.
+-  Introduced a command to open the house menu when standing within the house radius.
+-  Updated prompts to use click-actions (configurable in the next release).
+-  Added an option to acquire the furniture book directly from a vendor.
+-  Implemented inventory stages same as **bcc-ranch** and **bcc-society**.
+-  Added a `hasArgs` helper to `locale.lua` to ensure `string.format` is only called when arguments are provided.
+
 <2.1.0>
 ## New Features
 - Houses with unpaid taxes are now **marked as overdue** (no deletion, access locked).

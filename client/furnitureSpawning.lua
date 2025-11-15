@@ -1,4 +1,21 @@
-local furnStreamState = nil
+local furnStreamState = {}
+local furnitureCheckHandlerStarted = false
+OwnedHouseContexts = OwnedHouseContexts or {}
+
+local function ClearSpawnedFurniture()
+    if CreatedFurniture and #CreatedFurniture > 0 then
+        for _, entity in ipairs(CreatedFurniture) do
+            if DoesEntityExist(entity) then
+                DeleteEntity(entity)
+            end
+        end
+    end
+    CreatedFurniture = {}
+end
+
+BccUtils.RPC:Register("bcc-housing:ClearFurnitureEvent", function()
+    ClearSpawnedFurniture()
+end)
 
 BccUtils.RPC:Register("bcc-housing:SpawnFurnitureEvent", function(params)
     if not params or not params.furniture then
@@ -6,17 +23,10 @@ BccUtils.RPC:Register("bcc-housing:SpawnFurnitureEvent", function(params)
         return
     end
 
+    local eventHouseId = tonumber(params.houseid) or HouseId
     local furnTable = params.furniture
-    if CreatedFurniture and #CreatedFurniture > 0 then
-        for _, entity in ipairs(CreatedFurniture) do
-            if DoesEntityExist(entity) then
-                DeleteEntity(entity)
-            end
-        end
-        devPrint("Cleared previously spawned furniture entities before respawn.")
-    end
-
-    CreatedFurniture = {}
+    ClearSpawnedFurniture()
+    devPrint("Cleared previously spawned furniture entities before respawn.")
     local spawnedCount = 0
 
     for _, furn in pairs(furnTable) do
@@ -43,17 +53,6 @@ BccUtils.RPC:Register("bcc-housing:SpawnFurnitureEvent", function(params)
                     SetEntityAsMissionEntity(createdObject, true, true)
                     table.insert(CreatedFurniture, createdObject)
                     spawnedCount = spawnedCount + 1
-
-                    Wait(0)
-                    local entId = NetworkGetNetworkIdFromEntity(createdObject)
-                    if entId and entId ~= 0 then
-                        BccUtils.RPC:Notify('bcc-housing:StoreFurnForDeletion', {
-                            entId = entId,
-                            houseid = HouseId
-                        })
-                    else
-                        devPrint("Failed to obtain network ID for furniture model: " .. tostring(furn.model))
-                    end
                 else
                     devPrint("Failed to create furniture object for model: " .. tostring(furn.model))
                 end
@@ -67,6 +66,8 @@ BccUtils.RPC:Register("bcc-housing:SpawnFurnitureEvent", function(params)
 end)
 
 function StartFurnCheckHandler()
+    if furnitureCheckHandlerStarted then return end
+    furnitureCheckHandlerStarted = true
     devPrint("Starting furniture check handler")
 
     CreateThread(function()
@@ -78,42 +79,60 @@ function StartFurnCheckHandler()
                 goto continue
             end
 
-            if not HouseCoords then
+            if not OwnedHouseContexts or not next(OwnedHouseContexts) then
                 goto continue
             end
 
             local playerCoords = GetEntityCoords(ped)
-            local distance = #(playerCoords - HouseCoords)
+            local nearestHouse, nearestDist = nil, nil
 
-            -- Within range: spawn furniture
-            if distance < HouseRadius + 20.0 then
-                if furnStreamState ~= "spawned" then
-                    furnStreamState = "spawned"
-                    devPrint("Player within furniture radius, requesting spawn for house ID " .. tostring(HouseId))
+            for id, data in pairs(OwnedHouseContexts) do
+                local coords = data.coords
+                if coords then
+                    local dist = #(playerCoords - coords)
+                    local radius = data.radius or (Config and Config.DefaultMenuManageRadius) or 2.0
+
+                    if not nearestDist or dist < nearestDist then
+                        nearestHouse = data
+                        nearestDist = dist
+                    end
+
+                    if dist < radius + 100.0 then
+                        if furnStreamState[id] ~= "spawned" then
+                            furnStreamState[id] = "spawned"
+                            devPrint("Player within furniture radius, requesting spawn for house ID " .. tostring(id))
+
+                            local ok = BccUtils.RPC:CallAsync("bcc-housing:FurniturePlacedCheck", {
+                                houseid = id,
+                                deletion = false,
+                                close = true
+                            })
+                            if not ok then devPrint("Failed to request furniture spawn for " .. tostring(id)) end
+                            Wait(500)
+                        end
+                    elseif dist > radius + 200.0 then
+                        if furnStreamState[id] ~= "cleared" then
+                            furnStreamState[id] = "cleared"
+                            devPrint("Player left furniture radius, clearing props for house ID " .. tostring(id))
+                            ClearSpawnedFurniture()
+                            local ok = BccUtils.RPC:CallAsync("bcc-housing:FurniturePlacedCheck", {
+                                houseid = id,
+                                deletion = true
+                            })
+                            if not ok then devPrint("Failed to request furniture deletion for " .. tostring(id)) end
+                            Wait(500)
+                        end
+                    end
                 end
+            end
 
-                local ok = BccUtils.RPC:CallAsync("bcc-housing:FurniturePlacedCheck", {
-                    houseid = HouseId,
-                    deletion = false,
-                    close = true
-                })
-
-                if not ok then devPrint("Failed to request furniture spawn for " .. tostring(HouseId)) end
-                Wait(1500)
-
-            elseif distance > HouseRadius + 100.0 then
-                if furnStreamState ~= "cleared" then
-                    furnStreamState = "cleared"
-                    devPrint("Player left furniture radius, requesting deletion for house ID " .. tostring(HouseId))
+            if nearestHouse and nearestDist then
+                local activationRadius = (nearestHouse.radius or 2.0) + 5.0
+                if nearestDist <= activationRadius then
+                    if SetActiveHouseContext then
+                        SetActiveHouseContext(nearestHouse)
+                    end
                 end
-
-                local ok = BccUtils.RPC:CallAsync("bcc-housing:FurniturePlacedCheck", {
-                    houseid = HouseId,
-                    deletion = true
-                })
-
-                if not ok then devPrint("Failed to request furniture deletion for " .. tostring(HouseId)) end
-                Wait(2000)
             end
 
             ::continue::
