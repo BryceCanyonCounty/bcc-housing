@@ -104,6 +104,9 @@ function NotifyClient(src, message, durationOrType, maybeDuration)
 end
 
 BccUtils.RPC:Register('bcc-housing:ServerSideRssStop', function(_, cb, src)
+    if src then
+        DelSpawnedFurn(src)
+    end
     MySQL.update("UPDATE bcchousing SET player_source_spawnedfurn='none'")
     if cb then cb(true) end
 end)

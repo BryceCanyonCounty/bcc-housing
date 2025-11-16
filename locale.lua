@@ -2,10 +2,17 @@ Locales = {}
 
 local translationCache = {} -- Cache for translations
 
+local function hasArgs(...)
+    return select('#', ...) > 0
+end
+
 function _(str, ...) -- Translate string
-    -- Check cache first
-    if translationCache[str] then
-        return string.format(translationCache[str], ...)
+    local cache = translationCache[str]
+    if cache then
+        if hasArgs(...) then
+            return string.format(cache, ...)
+        end
+        return cache
     end
 
     local lang = Config.defaultlang
@@ -14,13 +21,13 @@ function _(str, ...) -- Translate string
     if Locales[lang] ~= nil then
         if Locales[lang][str] ~= nil then
             translationCache[str] = Locales[lang][str] -- Cache the translation for faster future access
-            if ... then
+            if hasArgs(...) then
                 return string.format(Locales[lang][str], ...)
             else
                 return Locales[lang][str]
             end
         elseif Locales[defaultLang] ~= nil and Locales[defaultLang][str] ~= nil then
-            if ... then
+            if hasArgs(...) then
                 return string.format(Locales[defaultLang][str], ...)
             else
                 return Locales[defaultLang][str]

@@ -83,23 +83,30 @@ CreateThread(function()
     for _, vendor in ipairs(furnitureVendors) do
         local coordsList = {}
         if vendor.coords then
-            if vendor.coords.x then
+            if vendor.coords.x ~= nil then
                 coordsList[1] = vector3(vendor.coords.x, vendor.coords.y, vendor.coords.z)
-            elseif type(vendor.coords[1]) == "table" and vendor.coords[1].x then
-                for i, c in ipairs(vendor.coords) do
-                    coordsList[i] = vector3(c.x, c.y, c.z)
-                end
             elseif type(vendor.coords) == "vector3" then
                 coordsList[1] = vendor.coords
+            elseif type(vendor.coords) == "table" then
+                for i, coord in ipairs(vendor.coords) do
+                    if coord.x ~= nil then
+                        coordsList[i] = vector3(coord.x, coord.y, coord.z)
+                    elseif type(coord) == "vector3" then
+                        coordsList[i] = coord
+                    end
+                end
             end
         end
-        if #coordsList == 0 and vendor.coords == nil then
+        if #coordsList == 0 then
             devPrint("Furniture vendor missing coordinates")
         end
 
         local headingList = {}
         if type(vendor.NpcHeading) == "table" then
-            headingList = vendor.NpcHeading
+            for i = 1, #coordsList do
+                local headingValue = vendor.NpcHeading[i]
+                headingList[i] = headingValue ~= nil and headingValue or (vendor.npc and vendor.npc.heading) or 0.0
+            end
         else
             local defaultHeading = (vendor.npc and vendor.npc.heading) or 0.0
             for i = 1, #coordsList do
@@ -160,14 +167,18 @@ CreateThread(function()
         for _, vendor in ipairs(furnitureVendors) do
             local coordsArray = {}
             if vendor.coords then
-                if vendor.coords.x then
-                    coordsArray = { vector3(vendor.coords.x, vendor.coords.y, vendor.coords.z) }
-                elseif type(vendor.coords[1]) == "table" and vendor.coords[1].x then
-                    for i, c in ipairs(vendor.coords) do
-                        coordsArray[i] = vector3(c.x, c.y, c.z)
-                    end
+                if vendor.coords.x ~= nil then
+                    coordsArray[1] = vector3(vendor.coords.x, vendor.coords.y, vendor.coords.z)
                 elseif type(vendor.coords) == "vector3" then
-                    coordsArray = { vendor.coords }
+                    coordsArray[1] = vendor.coords
+                elseif type(vendor.coords) == "table" then
+                    for i, coord in ipairs(vendor.coords) do
+                        if coord.x ~= nil then
+                            coordsArray[i] = vector3(coord.x, coord.y, coord.z)
+                        elseif type(coord) == "vector3" then
+                            coordsArray[i] = coord
+                        end
+                    end
                 end
             end
 

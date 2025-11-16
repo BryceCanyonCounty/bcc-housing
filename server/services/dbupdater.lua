@@ -23,6 +23,7 @@ CreateThread(function()
     MySQL.query.await("ALTER TABLE `bcchousing` ADD COLUMN IF NOT EXISTS `tpInstance` int(10) DEFAULT 0")
 	MySQL.query.await("ALTER TABLE `bcchousing` ADD COLUMN IF NOT EXISTS `uniqueName` VARCHAR(255) NOT NULL")
     MySQL.query.await("ALTER TABLE `bcchousing` ADD COLUMN IF NOT EXISTS `ownershipStatus` ENUM('purchased', 'rented') NOT NULL DEFAULT 'purchased'")
+    MySQL.query.await("ALTER TABLE `bcchousing` ADD COLUMN IF NOT EXISTS `inventory_current_stage` int(10) NOT NULL DEFAULT 0")
 
     -- Create the bcchousinghotels table if it doesn't exist
     MySQL.query.await([[

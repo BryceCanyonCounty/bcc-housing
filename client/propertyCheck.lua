@@ -32,7 +32,7 @@ local function propertyKeyFromVector(vec)
     return string.format("%.2f:%.2f:%.2f", vec.x, vec.y, vec.z)
 end
 
-local function registerPrivateProperty(coords, radius)
+local function registerPrivateProperty(coords, radius, houseId)
     local vec = toVector3(coords)
     if not vec then
         devPrint("Invalid coordinates supplied for private property registration.")
@@ -40,14 +40,56 @@ local function registerPrivateProperty(coords, radius)
     end
 
     local key = propertyKeyFromVector(vec)
-    local detectionRadius = (tonumber(radius) or 0.0) + 20.0
+    local detectionRadius = tonumber(radius) or 0.0
     local exitRadius = detectionRadius + 2.0
+    local houseIdNumber = tonumber(houseId)
     privateProperties[key] = {
         coords = vec,
         enterRadius = detectionRadius,
-        exitRadius = exitRadius
+        exitRadius = exitRadius,
+        houseid = houseIdNumber,
+        spawnState = "cleared",
+        devContextCreated = false
     }
     devPrint(("Registered private property: %s (enter %.2f / exit %.2f)"):format(key, detectionRadius, exitRadius))
+end
+local function devModeControlsProperty(entry, distance)
+    if not Config.DevMode or not entry or not entry.houseid then
+        return false
+    end
+
+    local spawnRadius = (entry.enterRadius or 0.0) + 100.0
+    if distance <= spawnRadius then
+        OwnedHouseContexts = OwnedHouseContexts or {}
+        if not OwnedHouseContexts[entry.houseid] then
+            OwnedHouseContexts[entry.houseid] = {
+                coords = entry.coords,
+                radius = entry.enterRadius or Config.DefaultMenuManageRadius or 2.0,
+                houseId = entry.houseid,
+                owner = "devmode",
+                ownershipStatus = "devmode"
+            }
+        end
+
+        entry.devContextCreated = true
+
+        if SetActiveHouseContext then
+            SetActiveHouseContext(OwnedHouseContexts[entry.houseid])
+        end
+
+        if StartFurnCheckHandler then
+            StartFurnCheckHandler()
+        end
+
+        entry.spawnState = "dev_controlled"
+        return true
+    end
+
+    if entry.spawnState == "dev_controlled" then
+        return true
+    end
+
+    return false
 end
 
 local function showPropertyUI()
@@ -158,6 +200,33 @@ CreateThread(function()
                 for key, data in pairs(privateProperties) do
                     if data.coords and data.enterRadius then
                         local distance = #(playerCoords - data.coords)
+
+                        if data.houseid then
+                            local spawnHandledByDev = devModeControlsProperty(data, distance)
+                            if not spawnHandledByDev then
+                                local spawnRadius = (data.enterRadius or 0.0) + 100.0
+                                local clearRadius = (data.enterRadius or 0.0) + 200.0
+                                if distance <= spawnRadius then
+                                    if data.spawnState ~= "spawned" and data.spawnState ~= "pending_spawn" then
+                                        data.spawnState = "pending_spawn"
+                                        local ok = BccUtils.RPC:CallAsync("bcc-housing:FurniturePlacedCheck", {
+                                            houseid = data.houseid,
+                                            deletion = false,
+                                            close = true
+                                        })
+                                        data.spawnState = ok and "spawned" or "cleared"
+                                    end
+                                elseif distance > clearRadius and data.spawnState == "spawned" then
+                                    data.spawnState = "pending_clear"
+                                    local ok = BccUtils.RPC:CallAsync("bcc-housing:FurniturePlacedCheck", {
+                                        houseid = data.houseid,
+                                        deletion = true
+                                    })
+                                    data.spawnState = ok and "cleared" or "spawned"
+                                end
+                            end
+                        end
+
                         local threshold = data.enterRadius
                         if isInsidePrivateProperty and currentPropertyKey == key then
                             threshold = data.exitRadius or (data.enterRadius + 2.0)
@@ -196,7 +265,7 @@ CreateThread(function()
     end
 end)
 
-local function startPrivatePropertyCheck(houseCoords, houseRadius)
+local function startPrivatePropertyCheck(houseCoords, houseRadius, houseId)
     if not Config.EnablePrivatePropertyCheck then
         devPrint("Private property check is disabled in the config.")
         return
@@ -207,7 +276,7 @@ local function startPrivatePropertyCheck(houseCoords, houseRadius)
         return
     end
 
-    registerPrivateProperty(houseCoords, houseRadius)
+    registerPrivateProperty(houseCoords, houseRadius, houseId)
 end
 
 local function stopPrivatePropertyCheck()
@@ -223,7 +292,7 @@ end
 
 BccUtils.RPC:Register('bcc-housing:PrivatePropertyCheckHandler', function(params)
     if not params or not params.coords then return end
-    startPrivatePropertyCheck(params.coords, params.radius)
+    startPrivatePropertyCheck(params.coords, params.radius, params.houseid)
 end)
 
 BccUtils.RPC:Register('bcc-housing:StopPropertyCheck', function()

@@ -38,6 +38,20 @@ Locales["ua_lang"] = {
     notEnoughRoommateSlots = "Недостаньо місця для проживання.", -- NEW
     houseInv = "Сховище будинку",
     houseInv_desc = "Відкрити сховище вашого будинку. Ваші предмети будуть у безпеці!",
+    inventoryStageTitle = 'Поліпшення сховища',
+    inventoryCurrentStage = 'Поточний рівень',
+    inventoryCurrentSlots = 'Усього слотів',
+    inventoryBaseSlots = 'Базові слоти',
+    inventoryStageBonus = 'Бонус рівня',
+    inventoryStageCost = 'Вартість наступного поліпшення',
+    inventoryStageCostNA = 'Н/Д',
+    inventoryStageMax = 'Досягнуто максимального рівня сховища.',
+    inventoryStageFetchFailed = 'Не вдалося завантажити дані сховища.',
+    inventoryStageUpgradeFailed = 'Не вдалося покращити сховище.',
+    inventoryUpgradeLabel = 'Поліпшити до рівня %s ($%s | +%s слотів)',
+    openHouseInventory = 'Відкрити сховище',
+    notEnoughCash = 'Недостатньо грошей.',
+    inventoryUpgraded = 'Сховище покращено!',
     noAccessNotify = "Ви ще нікого не заселили", -- NEW
 
     ----- Furniture Menu -----
@@ -298,4 +312,5 @@ Locales["ua_lang"] = {
     hundred = ":00",
     hours = " is open from",
     moreInfo = "More Info",
+    getFurnitureBook = "Get Furniture Catalog",
 }

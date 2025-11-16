@@ -3,13 +3,89 @@ local RotateYawPrompt, RotateYawLeftPrompt, RotatePitchPrompt, RotateBackwardPro
 local IncreasePrecisionPrompt, DecreasePrecisionPrompt, ConfirmPrompt, CancelPrompt
 local FurnitureGroup = GetRandomIntInRange(0, 0xffffff)
 local OwnedFurnitureCache = {}
-local ActivePlacementItem = nil
-local LastPlacementObject = nil
+ActivePlacementItem, ActivePlacementHouseId = nil, nil
+LastPlacementObject = nil
 local FurnitureMenuOpen = false
 
 local OpenFurnitureVendorItemMenu
 local VendorPreviewObj = nil
 local vendorCam
+
+local function NormalizeCoords(coords)
+    if not coords then return nil end
+    if type(coords) == "vector3" then return coords end
+    if coords.x and coords.y and coords.z then
+        return vector3(tonumber(coords.x), tonumber(coords.y), tonumber(coords.z))
+    end
+    if coords[1] and coords[2] and coords[3] then
+        return vector3(tonumber(coords[1]), tonumber(coords[2]), tonumber(coords[3]))
+    end
+    return nil
+end
+
+local function CacheHouseContext(context)
+    if not context or not context.houseId then return nil end
+    OwnedHouseContexts = OwnedHouseContexts or {}
+    if context.coords then
+        context.coords = NormalizeCoords(context.coords)
+    end
+    if context.radius then
+        context.radius = tonumber(context.radius)
+    end
+    OwnedHouseContexts[context.houseId] = context
+    return context
+end
+
+local function RequestHouseContext(houseId)
+    if not houseId then return nil end
+    local success, ctx = BccUtils.RPC:CallAsync('bcc-housing:GetHouseContext', { houseId = houseId })
+    if success and ctx then
+        return CacheHouseContext(ctx)
+    end
+    return nil
+end
+
+local function GetClosestCachedHouseContext(pedCoords)
+    if not pedCoords or not OwnedHouseContexts then return nil end
+    local closestCtx, closestDist = nil, nil
+    for _, ctx in pairs(OwnedHouseContexts) do
+        if ctx.coords then
+            local dist = #(pedCoords - ctx.coords)
+            if not closestDist or dist < closestDist then
+                closestDist = dist
+                closestCtx = ctx
+            end
+        end
+    end
+    return closestCtx
+end
+
+local function LoadFurnitureModel(modelName)
+    if not modelName then return nil, "missing model" end
+    local hash = modelName
+    if type(modelName) == "string" then
+        hash = joaat(modelName)
+    end
+
+    if hash == 0 or not IsModelValid(hash) then
+        return nil, "invalid model"
+    end
+
+    if not HasModelLoaded(hash) then
+        RequestModel(hash, false)
+        local attempts = 0
+        while not HasModelLoaded(hash) and attempts < 100 do
+            Citizen.Wait(50)
+            attempts = attempts + 1
+        end
+    end
+
+    if not HasModelLoaded(hash) then
+        return nil, "failed to load model"
+    end
+
+    return hash
+end
 
 function ClearVendorPreview()
     if not VendorPreviewObj then return end
@@ -109,6 +185,23 @@ function FurnitureMenu(houseId, ownershipStatus, ownedFurniture)
     if ownedFurniture then
         OwnedFurnitureCache = ownedFurniture
     end
+
+    if not houseId then
+        local pedCoords = GetEntityCoords(PlayerPedId())
+        local closestCtx = GetClosestCachedHouseContext(pedCoords)
+        if closestCtx and closestCtx.houseId then
+            houseId = closestCtx.houseId
+            if SetActiveHouseContext then
+                SetActiveHouseContext(closestCtx)
+            else
+                HouseCoords = closestCtx.coords or HouseCoords
+                HouseRadius = closestCtx.radius or HouseRadius
+                HouseId = closestCtx.houseId
+            end
+        end
+    end
+
+    ActivePlacementHouseId = houseId
 
     if not houseId then
         FurnitureMenuOpen = false
@@ -390,6 +483,18 @@ function FurnitureVendorMenu()
         style = {}
     })
 
+    vendorMenu:RegisterElement('button', {
+        label = _U("getFurnitureBook"),
+        style = {}
+    }, function()
+        local success, message = BccUtils.RPC:CallAsync("bcc-housing:GiveFurnitureBook", {})
+        if success then
+            Notify(message or _U("furnitureBookReceived"), "success", 4000)
+        else
+            Notify(message or _U("furnitureBookFailed"), "error", 4000)
+        end
+    end)
+
     for index, category in ipairs(Furniture) do
         vendorMenu:RegisterElement('button', {
             label = category.title,
@@ -428,22 +533,14 @@ function FurnitureVendorMenu()
     })
 end
 
-local function HandleFurniturePlaced(entId)
-    local furnObj = NetworkGetEntityFromNetworkId(entId)
-    if furnObj and DoesEntityExist(furnObj) then
-        table.insert(CreatedFurniture, furnObj)
-    else
+local function HandleFurniturePlaced(placementHouseId, furnObj)
+    if not furnObj or not DoesEntityExist(furnObj) then
         devPrint("Error: Furniture entity does not exist, could not add to CreatedFurniture.")
         Notify(_U("furnNotPlaced"), "error", 4000)
         return false
     end
 
-    if HouseId then
-        BccUtils.RPC:Notify('bcc-housing:StoreFurnForDeletion', {
-            entId = entId,
-            houseid = HouseId
-        })
-    end
+    table.insert(CreatedFurniture, furnObj)
 
     LastPlacementObject = nil
     ActivePlacementItem = nil
@@ -622,13 +719,22 @@ function PlaceFurnitureIntoWorldPrompt(itemData)
 
     local playerPed = PlayerPedId()
     local placementCoords = GetEntityCoords(playerPed)
-    local createdObject = CreateObject(model, placementCoords.x, placementCoords.y + 1, placementCoords.z, true, true,
+    local modelHash, err = LoadFurnitureModel(model)
+    if not modelHash then
+        devPrint(("Failed to load furniture model %s: %s"):format(tostring(model), tostring(err)))
+        Notify(_U("furnNotPlaced"), "error", 4000)
+        return
+    end
+
+    local createdObject = CreateObject(modelHash, placementCoords.x, placementCoords.y + 1, placementCoords.z, true, true,
         true)
     if createdObject == 0 then
         devPrint("Failed to create furniture object for model: " .. tostring(model))
         Notify(_U("furnNotPlaced"), "error", 4000)
         return
     end
+
+    SetModelAsNoLongerNeeded(modelHash)
 
     LastPlacementObject = createdObject
     SetEntityCollision(createdObject, false, true)
@@ -719,7 +825,6 @@ function PlaceFurnitureIntoWorldPrompt(itemData)
                     LastPlacementObject = nil
                 else
                     DeleteObject(createdObject)
-                    Notify(_U("toFar"), "error", 4000)
                     ActivePlacementItem = nil
                     LastPlacementObject = nil
                 end
@@ -793,13 +898,16 @@ function ConfirmFurniturePlacement(obj, placementContext)
         return false
     end
 
-    if not HouseId then
+    local placementHouseId = HouseId or ActivePlacementHouseId or ActiveHouseId
+    if not placementHouseId then
         Notify(_U("noHouseSelected"), "error", 4000)
         return false
     end
+    ActivePlacementHouseId = placementHouseId
 
     local isClose = closeToHouse(obj)
     if not isClose then
+        Notify(_U("toFar"), "error", 4000)
         return false
     end
 
@@ -807,13 +915,10 @@ function ConfirmFurniturePlacement(obj, placementContext)
     SetEntityCollision(obj, true, true)
     FreezeEntityPosition(obj, true)
 
-    local entId = NetworkGetNetworkIdFromEntity(obj)
-
     -- RPC instead of TriggerServerEvent
     local success = BccUtils.RPC:CallAsync("bcc-housing:PlaceOwnedFurniture", {
         ownedId = placementContext.ownedId,
-        houseId = HouseId,
-        entId = entId,
+        houseId = placementHouseId,
         placementData = {
             model = placementContext.model,
             coords = GetEntityCoords(obj),
@@ -828,7 +933,7 @@ function ConfirmFurniturePlacement(obj, placementContext)
         return false
     end
 
-    HandleFurniturePlaced(entId)
+    HandleFurniturePlaced(placementHouseId, obj)
     return true
 end
 

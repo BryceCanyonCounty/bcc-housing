@@ -1,5 +1,6 @@
 InTpHouse, CurrentTpHouse, BreakHandleLoop = false, nil, false
 local PlayerAccessibleHouses = {}
+local HousingAccessMenu
 
 BccUtils.RPC:Register('bcc-housing:ReceiveAccessibleHouses', function(params)
     devPrint("Received accessible houses list via RPC")
@@ -41,6 +42,135 @@ local function afterRemoveAccess(houseId, playerId)
     end
 end
 
+local function openHousingInventoryPage(houseId, isOwner, parentMenu)
+    if not houseId then
+        notifyNoAccess()
+        return
+    end
+
+    local success, stageData = BccUtils.RPC:CallAsync('bcc-housing:GetInventoryStages', { houseId = houseId })
+    if not success or not stageData then
+        Notify((stageData and stageData.error) or _U('inventoryStageFetchFailed'), 'error', 4000)
+        return
+    end
+
+    local currentStage = tonumber(stageData.inventory_current_stage) or 0
+    local finalSlots = tonumber(stageData.finalLimit) or 0
+    local baseSlots = tonumber(stageData.baseLimit) or finalSlots
+    local bonusSlots = tonumber(stageData.bonus) or 0
+    local nextStage = stageData.nextStage ~= false and stageData.nextStage or nil
+    local stageCostLabel = nextStage and ("$" .. tostring(nextStage.cost)) or _U('inventoryStageCostNA')
+
+    local inventoryPage = BCCHousingMenu:RegisterPage("bcc-housing:inventoryPage")
+    inventoryPage:RegisterElement('header', {
+        value = _U("inventoryStageTitle"),
+        slot = "header",
+        style = {}
+    })
+    inventoryPage:RegisterElement('line', { slot = "header", style = {} })
+
+    local htmlContent = [[
+    <div style="margin: auto; padding: 20px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 16px;">
+            <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 6px 10px; font-weight: bold;">]] .. _U("inventoryCurrentStage") .. [[</td>
+                <td style="padding: 6px 10px; color: #2a9d8f;">]] .. tostring(currentStage) .. [[</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 6px 10px; font-weight: bold;">]] .. _U("inventoryCurrentSlots") .. [[</td>
+                <td style="padding: 6px 10px; color: #f4a261;">]] .. tostring(finalSlots) .. [[</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 6px 10px; font-weight: bold;">]] .. _U("inventoryBaseSlots") .. [[</td>
+                <td style="padding: 6px 10px;">]] .. tostring(baseSlots) .. [[</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 6px 10px; font-weight: bold;">]] .. _U("inventoryStageBonus") .. [[</td>
+                <td style="padding: 6px 10px;">+]] .. tostring(bonusSlots) .. [[</td>
+            </tr>
+            <tr>
+                <td style="padding: 6px 10px; font-weight: bold;">]] .. _U("inventoryStageCost") .. [[</td>
+                <td style="padding: 6px 10px; color: #e76f51;">]] .. tostring(stageCostLabel) .. [[</td>
+            </tr>
+        </table>
+    </div>
+    ]]
+
+    inventoryPage:RegisterElement("html", {
+        value = { htmlContent },
+        slot = "content",
+        style = {}
+    })
+
+    inventoryPage:RegisterElement('line', {
+        slot = "content",
+        style = {}
+    })
+
+    inventoryPage:RegisterElement('button', {
+        label = _U("openHouseInventory"),
+        style = {}
+    }, function()
+        local invSuccess, response = BccUtils.RPC:CallAsync('bcc-house:OpenHouseInv', { houseId = houseId })
+        if not invSuccess then
+            notifyNoAccess(response and response.error)
+        end
+    end)
+
+    if isOwner and nextStage then
+        local upgradeLabel = string.format(_U("inventoryUpgradeLabel"), tostring(nextStage.stage), tostring(nextStage.cost), tostring(nextStage.slotIncrease))
+        inventoryPage:RegisterElement('button', {
+            label = upgradeLabel,
+            style = {}
+        }, function()
+            local upgradeSuccess, upgradeResponse = BccUtils.RPC:CallAsync('bcc-housing:UpgradeInventory', {
+                houseId = houseId,
+                nextStage = nextStage.stage
+            })
+            if upgradeSuccess then
+                Notify(_U("inventoryUpgraded"), "success", 4000)
+                openHousingInventoryPage(houseId, isOwner, parentMenu)
+            else
+                local reason = upgradeResponse and upgradeResponse.error
+                if reason == 'notEnoughCash' then
+                    Notify(_U("notEnoughCash"), "error", 4000)
+                else
+                    Notify(_U("inventoryStageUpgradeFailed"), "error", 4000)
+                end
+            end
+        end)
+    elseif not nextStage then
+        inventoryPage:RegisterElement('subheader', {
+            value = _U("inventoryStageMax"),
+            slot = "content",
+            style = {}
+        })
+    end
+
+    inventoryPage:RegisterElement('line', {
+        slot = "footer",
+        style = {}
+    })
+    inventoryPage:RegisterElement('button', {
+        label = _U("backButton"),
+        slot = "footer",
+        style = { ['position'] = 'relative', ['z-index'] = 9 }
+    }, function()
+        if parentMenu then
+            parentMenu:RouteTo()
+        else
+            BCCHousingMenu:Close()
+        end
+    end)
+
+    inventoryPage:RegisterElement('bottomline', {
+        slot = "footer",
+        style = {}
+    })
+
+    inventoryPage:RouteTo()
+end
+
 local function showAccessMenu(houseId)
     devPrint("Showing access menu for House ID: " .. tostring(houseId))
     PlayerListMenuForGiveAccess(houseId, afterGivingAccess, "giveAccess")
@@ -80,7 +210,12 @@ function PlayerListMenuForGiveAccess(houseId, callback, context)
         }, function()
             callback(houseId, v.staticid, v.serverId, function(success, message)
                 Notify(message, 4000)
-                HousingAccessMenu:RouteTo()
+                if HousingAccessMenu then
+                    HousingAccessMenu:RouteTo()
+                else
+                    devPrint("HousingAccessMenu not initialized, closing housing menu")
+                    BCCHousingMenu:Close()
+                end
             end)
         end)
     end
@@ -93,9 +228,14 @@ function PlayerListMenuForGiveAccess(houseId, callback, context)
     playerListGiveMenuPage:RegisterElement("button", {
         label = _U("backButton"),
         slot = "footer",
-        style = {['position'] = 'relative', ['z-index'] = 9,}
+        style = {}
     }, function()
-        HousingAccessMenu:RouteTo()
+        if HousingAccessMenu then
+            HousingAccessMenu:RouteTo()
+        else
+            devPrint("HousingAccessMenu not initialized, closing housing menu")
+            BCCHousingMenu:Close()
+        end
     end)
 
     playerListGiveMenuPage:RegisterElement('bottomline', {
@@ -148,8 +288,13 @@ function PlayerListMenuForRemoveAccess(houseId, callback, context)
                 label = v.firstname .. " " .. v.lastname,                           -- Displaying player's name
                 style = {}
             }, function()
-                AfterRemoveAccess(houseId, v.charidentifier)
-                HousingAccessMenu:RouteTo()
+                afterRemoveAccess(houseId, v.charidentifier)
+                if HousingAccessMenu then
+                    HousingAccessMenu:RouteTo()
+                else
+                    devPrint("HousingAccessMenu not initialized, closing housing menu")
+                    BCCHousingMenu:Close()
+                end
             end)
         end
 
@@ -161,9 +306,14 @@ function PlayerListMenuForRemoveAccess(houseId, callback, context)
         playerListRemoveMenuPage:RegisterElement("button", {
             label = _U("backButton"),
             slot = "footer",
-            style = {['position'] = 'relative', ['z-index'] = 9,}
+            style = {}
         }, function()
-            HousingAccessMenu:RouteTo()
+            if HousingAccessMenu then
+                HousingAccessMenu:RouteTo()
+            else
+                devPrint("HousingAccessMenu not initialized, closing housing menu")
+                BCCHousingMenu:Close()
+            end
         end)
 
         playerListRemoveMenuPage:RegisterElement('bottomline', {
@@ -203,17 +353,7 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
         label = _U("houseInv"),
         style = {}
     }, function()
-        devPrint("Attempting to open inventory for House ID: " .. tostring(houseId))
-
-        if not houseId then
-            notifyNoAccess()
-            return
-        end
-
-        local success, response = BccUtils.RPC:CallAsync('bcc-house:OpenHouseInv', { houseId = houseId })
-        if not success then
-            notifyNoAccess(response and response.error)
-        end
+        openHousingInventoryPage(houseId, isOwner, housingMainMenu)
     end)
 
     -- Enter/Exit TP House if available
@@ -242,7 +382,7 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
             label = _U('giveAccesstoHouse'),
             style = {}
         }, function()
-            local HousingAccessMenu = BCCHousingMenu:RegisterPage("bcc-housing:AccessPage")
+            HousingAccessMenu = BCCHousingMenu:RegisterPage("bcc-housing:AccessPage")
 
             HousingAccessMenu:RegisterElement('header', {
                 value = _U('giveAccesstoHouse'),
@@ -301,7 +441,7 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
             HousingAccessMenu:RegisterElement('button', {
                 label = _U("backButton"),
                 slot = "footer",
-                style = { ['position'] = 'relative', ['z-index'] = 9 }
+                style = {}
             }, function()
                 housingMainMenu:RouteTo()
             end)
@@ -390,7 +530,10 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
                                     slot = "header",
                                     style = {}
                                 })
-                                doorOptionsPage:RegisterElement('line', { slot = "header", style = {} })
+                                doorOptionsPage:RegisterElement('line', {
+                                    slot = "header",
+                                    style = {}
+                                })
 
                                 -- Remove door
                                 if Config.doors.removeDoors then
@@ -405,20 +548,24 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
                                             slot = "header",
                                             style = {}
                                         })
-                                        doorRemoveDoorPage:RegisterElement('line', { slot = "header", style = {} })
+                                        doorRemoveDoorPage:RegisterElement('line', {
+                                            slot = "header",
+                                            style = {}
+                                        })
 
                                         doorRemoveDoorPage:RegisterElement('button', {
                                             label = _U("confirmYes"),
                                             style = {}
                                         }, function()
-                                            BccUtils.RPC:Call("bcc-housing:DeleteDoor", { doorId = door.doorid }, function(success)
-                                                if success then
-                                                    Notify(_U("doorRemoved"), "success", 4000)
-                                                else
-                                                    Notify(_U("doorRemoveFailed"), "error", 4000)
-                                                end
-                                                doorListPage:RouteTo()
-                                            end)
+                                            BccUtils.RPC:Call("bcc-housing:DeleteDoor", { doorId = door.doorid },
+                                                function(success)
+                                                    if success then
+                                                        Notify(_U("doorRemoved"), "success", 4000)
+                                                    else
+                                                        Notify(_U("doorRemoveFailed"), "error", 4000)
+                                                    end
+                                                    doorListPage:RouteTo()
+                                                end)
                                         end)
 
                                         doorRemoveDoorPage:RegisterElement('button', {
@@ -428,79 +575,93 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
                                             doorListPage:RouteTo()
                                         end)
 
-                                        doorRemoveDoorPage:RegisterElement('line', { slot = "footer", style = {} })
+                                        doorRemoveDoorPage:RegisterElement('line', {
+                                            slot = "footer",
+                                            style = {}
+                                        })
                                         doorRemoveDoorPage:RegisterElement('button', {
                                             label = _U("backButton"),
                                             slot = "footer",
-                                            style = { ['position'] = 'relative', ['z-index'] = 9 }
+                                            style = {}
                                         }, function()
                                             doorOptionsPage:RouteTo()
                                         end)
-                                        doorRemoveDoorPage:RegisterElement('bottomline', { slot = "footer", style = {} })
+                                        doorRemoveDoorPage:RegisterElement('bottomline', {
+                                            slot = "footer",
+                                            style = {}
+                                        })
 
                                         BCCHousingMenu:Open({ startupPage = doorRemoveDoorPage })
                                     end)
                                 end
 
-                                -- Give access to door
                                 doorOptionsPage:RegisterElement('button', {
                                     label = _U('giveAccesstoDoor'),
                                     style = {}
                                 }, function()
-                                    BccUtils.RPC:Call("bcc-housing:GetPlayersWithAccess", { houseId = houseId }, function(players)
-                                        if not players or #players == 0 then
-                                            Notify(_U('doorNoUsersWithAccess'), "error", 4000)
-                                            return
-                                        end
+                                    BccUtils.RPC:Call("bcc-housing:GetPlayersWithAccess", { houseId = houseId },
+                                        function(players)
+                                            if not players or #players == 0 then
+                                                Notify(_U('doorNoUsersWithAccess'), "error", 4000)
+                                                return
+                                            end
 
-                                        local giveAccessPage = BCCHousingMenu:RegisterPage('give_access_page')
+                                            local giveAccessPage = BCCHousingMenu:RegisterPage('give_access_page')
 
-                                        giveAccessPage:RegisterElement('header', {
-                                            value = _U('doorSelectUser'),
-                                            slot = "header",
-                                            style = {}
-                                        })
-                                        giveAccessPage:RegisterElement('line', { slot = "header", style = {} })
+                                            giveAccessPage:RegisterElement('header', {
+                                                value = _U('doorSelectUser'),
+                                                slot = "header",
+                                                style = {}
+                                            })
+                                            giveAccessPage:RegisterElement('line', { slot = "header", style = {} })
 
-                                        for _, player in ipairs(players) do
-                                            giveAccessPage:RegisterElement('button', {
-                                                label = "ID: " .. tostring(player.charidentifier) ..
+                                            for _, player in ipairs(players) do
+                                                giveAccessPage:RegisterElement('button', {
+                                                    label = "ID: " .. tostring(player.charidentifier) ..
                                                         " Name: " .. player.firstname .. " " .. player.lastname,
+                                                    style = {}
+                                                }, function()
+                                                    if not door.doorid then
+                                                        devPrint("Invalid door ID.")
+                                                        return
+                                                    end
+
+                                                    BccUtils.RPC:Call("bcc-housing:GiveAccessToDoor",
+                                                        { doorId = door.doorid, userId = player.charidentifier },
+                                                        function(success)
+                                                            if success then
+                                                                BCCHousingMenu:Close()
+                                                                Notify(_U('doorAccessGranted') ..
+                                                                    player.firstname .. " " .. player.lastname, "success",
+                                                                    4000)
+                                                            else
+                                                                BCCHousingMenu:Close()
+                                                                Notify(player.firstname .. " " .. player.lastname ..
+                                                                    _U('doorHasAccess'), "error", 4000)
+                                                            end
+                                                        end)
+                                                end)
+                                            end
+
+                                            giveAccessPage:RegisterElement('line', {
+                                                slot = "footer",
+                                                style = {}
+                                            })
+
+                                            giveAccessPage:RegisterElement('button', {
+                                                label = _U("backButton"),
+                                                slot = "footer",
                                                 style = {}
                                             }, function()
-                                                if not door.doorid then
-                                                    devPrint("Invalid door ID.")
-                                                    return
-                                                end
-
-                                                BccUtils.RPC:Call("bcc-housing:GiveAccessToDoor",
-                                                    { doorId = door.doorid, userId = player.charidentifier },
-                                                    function(success)
-                                                        if success then
-                                                            BCCHousingMenu:Close()
-                                                            Notify(_U('doorAccessGranted') ..
-                                                                player.firstname .. " " .. player.lastname, "success", 4000)
-                                                        else
-                                                            BCCHousingMenu:Close()
-                                                            Notify(player.firstname .. " " .. player.lastname ..
-                                                                _U('doorHasAccess'), "error", 4000)
-                                                        end
-                                                    end)
+                                                doorOptionsPage:RouteTo()
                                             end)
-                                        end
+                                            giveAccessPage:RegisterElement('bottomline', {
+                                                slot = "footer",
+                                                style = {}
+                                            })
 
-                                        giveAccessPage:RegisterElement('line', { slot = "footer", style = {} })
-                                        giveAccessPage:RegisterElement('button', {
-                                            label = _U("backButton"),
-                                            slot = "footer",
-                                            style = { ['position'] = 'relative', ['z-index'] = 9 }
-                                        }, function()
-                                            doorOptionsPage:RouteTo()
+                                            BCCHousingMenu:Open({ startupPage = giveAccessPage })
                                         end)
-                                        giveAccessPage:RegisterElement('bottomline', { slot = "footer", style = {} })
-
-                                        BCCHousingMenu:Open({ startupPage = giveAccessPage })
-                                    end)
                                 end)
 
                                 -- Remove door access
@@ -508,60 +669,63 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
                                     label = _U('removeAccessFromDoor'),
                                     style = {}
                                 }, function()
-                                    BccUtils.RPC:Call("bcc-housing:GetPlayersWithAccess", { houseId = houseId }, function(players)
-                                        if not players or #players == 0 then
-                                            Notify(_U('doorNoUsersWithAccess'), "error", 4000)
-                                            return
-                                        end
+                                    BccUtils.RPC:Call("bcc-housing:GetPlayersWithAccess", { houseId = houseId },
+                                        function(players)
+                                            if not players or #players == 0 then
+                                                Notify(_U('doorNoUsersWithAccess'), "error", 4000)
+                                                return
+                                            end
 
-                                        local removeAccessPage = BCCHousingMenu:RegisterPage('remove_access_page')
+                                            local removeAccessPage = BCCHousingMenu:RegisterPage('remove_access_page')
 
-                                        removeAccessPage:RegisterElement('header', {
-                                            value = _U('doorSelectUserToRemove'),
-                                            slot = "header",
-                                            style = {}
-                                        })
-                                        removeAccessPage:RegisterElement('line', { slot = "header", style = {} })
+                                            removeAccessPage:RegisterElement('header', {
+                                                value = _U('doorSelectUserToRemove'),
+                                                slot = "header",
+                                                style = {}
+                                            })
+                                            removeAccessPage:RegisterElement('line', { slot = "header", style = {} })
 
-                                        for _, player in ipairs(players) do
-                                            removeAccessPage:RegisterElement('button', {
-                                                label = "ID: " .. tostring(player.charidentifier) ..
+                                            for _, player in ipairs(players) do
+                                                removeAccessPage:RegisterElement('button', {
+                                                    label = "ID: " .. tostring(player.charidentifier) ..
                                                         " Name: " .. player.firstname .. " " .. player.lastname,
+                                                    style = {}
+                                                }, function()
+                                                    if not door.doorid then
+                                                        devPrint("Invalid door ID.")
+                                                        return
+                                                    end
+
+                                                    BccUtils.RPC:Call("bcc-housing:RemoveAccessFromDoor",
+                                                        { doorId = door.doorid, userId = player.charidentifier },
+                                                        function(success)
+                                                            if success then
+                                                                doorOptionsPage:RouteTo()
+                                                                Notify(player.firstname .. " " .. player.lastname ..
+                                                                    _U('doorAccessRevoked'), "success", 4000)
+                                                            else
+                                                                doorOptionsPage:RouteTo()
+                                                                Notify(_U('doorRemoveAccessFailed') ..
+                                                                    player.firstname .. " " .. player.lastname, "error",
+                                                                    4000)
+                                                            end
+                                                        end)
+                                                end)
+                                            end
+
+                                            removeAccessPage:RegisterElement('line', { slot = "footer", style = {} })
+                                            removeAccessPage:RegisterElement('button', {
+                                                label = _U("backButton"),
+                                                slot = "footer",
                                                 style = {}
                                             }, function()
-                                                if not door.doorid then
-                                                    devPrint("Invalid door ID.")
-                                                    return
-                                                end
-
-                                                BccUtils.RPC:Call("bcc-housing:RemoveAccessFromDoor",
-                                                    { doorId = door.doorid, userId = player.charidentifier },
-                                                    function(success)
-                                                        if success then
-                                                            doorOptionsPage:RouteTo()
-                                                            Notify(player.firstname .. " " .. player.lastname ..
-                                                                _U('doorAccessRevoked'), "success", 4000)
-                                                        else
-                                                            doorOptionsPage:RouteTo()
-                                                            Notify(_U('doorRemoveAccessFailed') ..
-                                                                player.firstname .. " " .. player.lastname, "error", 4000)
-                                                        end
-                                                    end)
+                                                doorOptionsPage:RouteTo()
                                             end)
-                                        end
+                                            removeAccessPage:RegisterElement('bottomline',
+                                                { slot = "footer", style = {} })
 
-                                        removeAccessPage:RegisterElement('line', { slot = "footer", style = {} })
-                                        removeAccessPage:RegisterElement('button', {
-                                            label = _U("backButton"),
-                                            slot = "footer",
-                                            style = { ['position'] = 'relative', ['z-index'] = 9 }
-                                        }, function()
-                                            doorOptionsPage:RouteTo()
+                                            BCCHousingMenu:Open({ startupPage = removeAccessPage })
                                         end)
-                                        removeAccessPage:RegisterElement('bottomline', { slot = "footer", style = {} })
-
-                                        BCCHousingMenu:Open({ startupPage = removeAccessPage })
-                                    end)
                                 end)
 
                                 -- Footer
@@ -569,7 +733,7 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
                                 doorOptionsPage:RegisterElement('button', {
                                     label = _U("backButton"),
                                     slot = "footer",
-                                    style = { ['position'] = 'relative', ['z-index'] = 9 }
+                                    style = {}
                                 }, function()
                                     doorListPage:RouteTo()
                                 end)
@@ -580,7 +744,11 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
                         end
                     end
 
-                    doorListPage:RegisterElement('line', { slot = "footer", style = {} })
+                    doorListPage:RegisterElement('line', {
+                        slot = "footer",
+                        style = {}
+                    })
+
                     doorListPage:RegisterElement('button', {
                         label = _U("backButton"),
                         slot = "footer",
@@ -589,16 +757,24 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
                         doorManagementPage:RouteTo()
                     end)
 
+                    doorListPage:RegisterElement('bottomline', {
+                        slot = "footer",
+                        style = {}
+                    })
+
                     BCCHousingMenu:Open({ startupPage = doorListPage })
                 end)
             end)
 
             -- Footer
-            doorManagementPage:RegisterElement('line', { slot = "footer", style = {} })
+            doorManagementPage:RegisterElement('line', {
+                slot = "footer",
+                style = {}
+            })
             doorManagementPage:RegisterElement('button', {
                 label = _U("backButton"),
                 slot = "footer",
-                style = { ['position'] = 'relative', ['z-index'] = 9 }
+                style = {}
             }, function()
                 housingMainMenu:RouteTo()
             end)
@@ -613,17 +789,55 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
                 label = _U("sellHouse"),
                 style = {}
             }, function()
-                sellHouseConfirmation(houseId, ownershipStatus)
-            end)
+                SellHousePage = BCCHousingMenu:RegisterPage('bcc-housing:ledger:page')
 
-            if Config.SellToPlayer then
-                housingMainMenu:RegisterElement('button', {
-                    label = _U('sellHouseToPlayer'),
+                SellHousePage:RegisterElement('header', {
+                    value = _U("sellHouse"),
+                    slot = "header",
+                    style = {}
+                })
+
+                SellHousePage:RegisterElement('line', {
+                    slot = "header",
+                    style = {}
+                })
+
+                SellHousePage:RegisterElement('button', {
+                    label = _U("sellHouse"),
                     style = {}
                 }, function()
-                    sellHouseToPlayer(houseId, ownershipStatus)
+                    sellHouseConfirmation(houseId, ownershipStatus)
                 end)
-            end
+
+                if Config.SellToPlayer then
+                    SellHousePage:RegisterElement('button', {
+                        label = _U('sellHouseToPlayer'),
+                        style = {}
+                    }, function()
+                        sellHouseToPlayer(houseId, ownershipStatus)
+                    end)
+                end
+
+                SellHousePage:RegisterElement('line', {
+                    style = {},
+                    slot = "footer"
+                })
+
+                SellHousePage:RegisterElement('button', {
+                    label = _U("backButton"),
+                    slot = "footer",
+                    style = {}
+                }, function()
+                    housingMainMenu:RouteTo()
+                end)
+
+                SellHousePage:RegisterElement('bottomline', {
+                    style = {},
+                    slot = "footer"
+                })
+
+                BCCHousingMenu:Open({ startupPage = SellHousePage })
+            end)
         end
     end
 
@@ -678,11 +892,12 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
         ledgerPage:RegisterElement('button', {
             label = _U("backButton"),
             slot = "footer",
-            style = { ['position'] = 'relative', ['z-index'] = 9 }
+            style = {}
         }, function()
             OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
         end)
-        ledgerPage:RegisterElement('bottomline', { style = { ['position'] = 'relative', ['z-index'] = 9 }, slot = "footer" })
+        ledgerPage:RegisterElement('bottomline',
+            { style = {}, slot = "footer" })
 
         BCCHousingMenu:Open({ startupPage = ledgerPage })
     end)
@@ -715,7 +930,7 @@ function enterOrExitHouse(enter, tpHouseIndex)
         Wait(500)
         FreezeEntityPosition(playerPed, false)
         InTpHouse = false
-        showManageOpt(HouseCoords.x, HouseCoords.y, HouseCoords.z, HouseId)
+        showManageOpt(HouseCoords.x, HouseCoords.y, HouseCoords.z, HouseId, GetHouseContext and GetHouseContext(HouseId))
     end
 end
 
@@ -776,7 +991,7 @@ AddEventHandler('bcc-housing:addLedger', function(houseId, isOwner)
     AddLedgerPage:RegisterElement('button', {
         label = _U("backButton"),
         slot = "footer",
-        style = {['position'] = 'relative', ['z-index'] = 9,}
+        style = {}
     }, function()
         OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
     end)
@@ -846,7 +1061,7 @@ AddEventHandler('bcc-housing:removeLedger', function(houseId, isOwner)
     RemoveLedgerPage:RegisterElement('button', {
         label = _U("backButton"),
         slot = "footer",
-        style = {['position'] = 'relative', ['z-index'] = 9,}
+        style = {}
     }, function()
         OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
     end)
@@ -865,9 +1080,8 @@ function enterTpHouse(houseTable)
     local playerPed = PlayerPedId()
     HousingInstance.Set(HousingInstance.Compute(TpHouseInstance))
     SetEntityCoords(playerPed, houseTable.exitCoords.x, houseTable.exitCoords.y, houseTable.exitCoords.z, false, false, false, false)
-
     FreezeEntityPosition(playerPed, true)
     Wait(1000)
     FreezeEntityPosition(playerPed, false)
-    showManageOpt(houseTable.exitCoords.x, houseTable.exitCoords.y, houseTable.exitCoords.z, HouseId)
+    showManageOpt(houseTable.exitCoords.x, houseTable.exitCoords.y, houseTable.exitCoords.z, HouseId, GetHouseContext and GetHouseContext(HouseId))
 end
