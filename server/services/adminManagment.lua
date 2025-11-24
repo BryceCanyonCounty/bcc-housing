@@ -1,16 +1,16 @@
 local function collectAdminHouseData()
     local result = MySQL.query.await('SELECT * FROM bcchousing')
     if not result then
-        print('Error: No house data found in the database.')
+        DBG:Error('Error: No house data found in the database.')
         return {}
     end
-    print('House data retrieved from database:', #result, 'houses found.')
+    DBG:Info('House data retrieved from database:', #result, 'houses found.')
 
     local allHouses = {}
 
     for _, houseInfo in ipairs(result) do
         local houseCharIdentifier = houseInfo.charidentifier
-        print('Processing house with ID:', houseInfo.houseid, 'and character identifier:', houseCharIdentifier)
+        DBG:Info('Processing house with ID:', houseInfo.houseid, 'and character identifier:', houseCharIdentifier)
 
         if houseCharIdentifier then
             local characterData = MySQL.query.await('SELECT firstname, lastname FROM characters WHERE charidentifier = ?', { houseCharIdentifier })
@@ -18,22 +18,22 @@ local function collectAdminHouseData()
             if characterData and #characterData > 0 then
                 houseInfo.firstName = characterData[1].firstname
                 houseInfo.lastName = characterData[1].lastname
-                print('Character found in database - First Name:', houseInfo.firstName, 'Last Name:', houseInfo.lastName)
+                DBG:Info('Character found in database - First Name:', houseInfo.firstName, 'Last Name:', houseInfo.lastName)
             else
                 houseInfo.firstName = 'Unknown'
                 houseInfo.lastName = 'Unknown'
-                print('Warning: No character data found for character identifier:', houseCharIdentifier)
+                DBG:Info('Warning: No character data found for character identifier:', houseCharIdentifier)
             end
         else
             houseInfo.firstName = 'Unknown'
             houseInfo.lastName = 'Unknown'
-            print('Warning: houseCharIdentifier is missing for house ID:', houseInfo.houseid)
+            DBG:Info('Warning: houseCharIdentifier is missing for house ID:', houseInfo.houseid)
         end
 
         table.insert(allHouses, houseInfo)
     end
 
-    print('All houses prepared for client:', allHouses)
+    DBG:Info('All houses prepared for client:', allHouses)
     return allHouses
 end
 
@@ -42,7 +42,7 @@ local function pushAdminHouseData(src, houses)
 end
 
 BccUtils.RPC:Register('bcc-housing:AdminGetAllHouses', function(_, cb, src)
-    print('AdminGetAllHouses RPC triggered by source:', src)
+    DBG:Info('AdminGetAllHouses RPC triggered by source:', src)
     local houses = collectAdminHouseData()
     pushAdminHouseData(src, houses)
     if cb then cb(true, houses) end

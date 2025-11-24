@@ -1,4 +1,3 @@
--- ensure table exists
 PurchasedHouses = PurchasedHouses or {}
 
 CreateThread(function()
@@ -14,7 +13,7 @@ CreateThread(function()
             end
         end
     else
-        devPrint("Failed to fetch purchased houses via RPC")
+        DBG:Error("Failed to fetch purchased houses via RPC")
     end
 
     local PromptGroup = BccUtils.Prompt:SetupPromptGroup()
@@ -121,10 +120,10 @@ end)
 
 function OpenBuyHouseMenu(house)
     if not house then
-        devPrint("OpenBuyHouseMenu: missing 'house' param"); return
+        DBG:Info("OpenBuyHouseMenu: missing 'house' param"); return
     end
 
-    devPrint("Opening buy house menu for house with coordinates: " .. tostring(house.houseCoords))
+    DBG:Info("Opening buy house menu for house with coordinates: " .. tostring(house.houseCoords))
 
     if HandlePlayerDeathAndCloseMenu() then
         return
@@ -223,7 +222,7 @@ function OpenBuyHouseMenu(house)
             moneyType = 0 -- Cash
         })
         if not success then
-            devPrint("House purchase RPC failed: " .. tostring(err and err.error))
+            DBG:Info("House purchase RPC failed: " .. tostring(err and err.error))
         end
     end)
 
@@ -238,7 +237,7 @@ function OpenBuyHouseMenu(house)
             moneyType = 1 -- Rental
         })
         if not success then
-            devPrint("House rental RPC failed: " .. tostring(err and err.error))
+            DBG:Info("House rental RPC failed: " .. tostring(err and err.error))
         end
     end)
 

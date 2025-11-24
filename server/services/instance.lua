@@ -16,7 +16,7 @@ local function setPlayerBucket(src, bucketId)
 end
 
 BccUtils.RPC:Register('bcc-housing:SetInstance', function(params, cb, src)
-    print('Registered bcc-housing:SetInstance RPC')
+    DBG:Info('Registered bcc-housing:SetInstance RPC')
     if not src then
         if cb then cb(false, { error = 'invalid_source' }) end
         return

@@ -1,6 +1,6 @@
 BccUtils.RPC:Register("bcc-housing:GetPlayersWithAccess", function(params, cb, recSource)
     local houseId = params.houseId
-    devPrint("Fetching players with access for House ID: " .. tostring(houseId))
+    DBG:Info("Fetching players with access for House ID: " .. tostring(houseId))
 
     -- Query to fetch allowed character IDs for the house
     local result = MySQL.query.await("SELECT allowed_ids FROM bcchousing WHERE houseid = ?", { houseId })
@@ -16,20 +16,20 @@ BccUtils.RPC:Register("bcc-housing:GetPlayersWithAccess", function(params, cb, r
             local characterDetails = MySQL.query.await(query, allowedIds)
             if characterDetails and #characterDetails > 0 then
                 for _, character in ipairs(characterDetails) do
-                    devPrint("Character found: ID=" ..
+                    DBG:Info("Character found: ID=" ..
                         character.charidentifier .. ", Name=" .. character.firstname .. " " .. character.lastname)
                 end
                 cb(characterDetails) -- Pass the character details back to the client
             else
-                devPrint("No character details found for the allowed IDs.")
+                DBG:Info("No character details found for the allowed IDs.")
                 cb({})
             end
         else
-            devPrint("No allowed IDs found for House ID: " .. tostring(houseId))
+            DBG:Info("No allowed IDs found for House ID: " .. tostring(houseId))
             cb({})
         end
     else
-        devPrint("No players found with access to house ID: " .. tostring(houseId))
+        DBG:Info("No players found with access to house ID: " .. tostring(houseId))
         cb({})
     end
 end)
@@ -44,7 +44,7 @@ BccUtils.RPC:Register('bcc-housing:NewPlayerGivenAccess', function(params, cb, s
         return
     end
 
-    devPrint("NewPlayerGivenAccess event triggered with ID: " .. tostring(id) ..
+    DBG:Info("NewPlayerGivenAccess event triggered with ID: " .. tostring(id) ..
         ", HouseID: " .. tostring(houseid) .. ", RecSource: " .. tostring(recSource)
     )
     local _source = src
@@ -52,7 +52,7 @@ BccUtils.RPC:Register('bcc-housing:NewPlayerGivenAccess', function(params, cb, s
     local result = MySQL.query.await("SELECT * FROM bcchousing WHERE houseid = ?", { houseid })
 
     if not result or #result == 0 then
-        devPrint("Error: No results found for houseid: " .. tostring(houseid))
+        DBG:Error("Error: No results found for houseid: " .. tostring(houseid))
         NotifyClient(_source, _U("noSuchHouseId"), 4000, "error")
         if cb then cb(false) end
         return
@@ -60,7 +60,7 @@ BccUtils.RPC:Register('bcc-housing:NewPlayerGivenAccess', function(params, cb, s
 
     local houseData = result[1]
     if not houseData then
-        devPrint("Error: House data is nil for houseid: " .. tostring(houseid))
+        DBG:Error("Error: House data is nil for houseid: " .. tostring(houseid))
         NotifyClient(_source, _U("noSuchHouseId"), 4000, "error")
         if cb then cb(false) end
         return
@@ -70,7 +70,7 @@ BccUtils.RPC:Register('bcc-housing:NewPlayerGivenAccess', function(params, cb, s
     if houseData.allowed_ids ~= 'none' and houseData.allowed_ids ~= nil then
         idsTable = json.decode(houseData.allowed_ids)
         if not idsTable then
-            devPrint("Error: Failed to decode 'allowed_ids' for houseid: " .. tostring(houseid))
+            DBG:Error("Error: Failed to decode 'allowed_ids' for houseid: " .. tostring(houseid))
             if cb then cb(false) end
             return
         end
@@ -83,19 +83,19 @@ BccUtils.RPC:Register('bcc-housing:NewPlayerGivenAccess', function(params, cb, s
             break
         end
     end
-    devPrint("Exists check: " .. tostring(exists))
+    DBG:Info("Exists check: " .. tostring(exists))
 
     local houseMaxResident
     for _, h in pairs(Houses) do
         if h.uniqueName == houseData.uniqueName then
             houseMaxResident = h.playerMax
-            devPrint("Matching house configuration found, House has a " .. houseMaxResident .. " person limit.")
+            DBG:Info("Matching house configuration found, House has a " .. houseMaxResident .. " person limit.")
             break
         end
     end
 
     if not houseMaxResident or houseMaxResident <= #idsTable then
-        devPrint("Resident limit exceeded: " .. #idsTable)
+        DBG:Info("Resident limit exceeded: " .. #idsTable)
         NotifyClient(recSource, _U("notEnoughRoommateSlots"), 4000, "error")
         NotifyClient(_source, _U("notEnoughRoommateSlots"), 4000, "error")
         if cb then cb(false) end
@@ -108,12 +108,12 @@ BccUtils.RPC:Register('bcc-housing:NewPlayerGivenAccess', function(params, cb, s
         local encodedIds = json.encode(idsTable)
         local affectedRows = MySQL.update.await("UPDATE bcchousing SET allowed_ids = ? WHERE houseid = ?", { encodedIds, houseid })
         if affectedRows > 0 then
-            devPrint("Access list updated successfully for houseid: " .. tostring(houseid))
+            DBG:Info("Access list updated successfully for houseid: " .. tostring(houseid))
             if recSource then
                 BccUtils.RPC:Notify('bcc-housing:ClientRecHouseLoad', {}, recSource)
             end
         else
-            devPrint("Update failed for houseid: " .. tostring(houseid))
+            DBG:Info("Update failed for houseid: " .. tostring(houseid))
             if recSource then
                 NotifyClient(recSource, _U("giveAccesFailed"), 4000, "error")
             end
@@ -121,7 +121,7 @@ BccUtils.RPC:Register('bcc-housing:NewPlayerGivenAccess', function(params, cb, s
             return
         end
     else
-        devPrint("ID already exists in the access list for houseid: " .. tostring(houseid))
+        DBG:Info("ID already exists in the access list for houseid: " .. tostring(houseid))
         if cb then cb(false) end
         return
     end
@@ -130,11 +130,11 @@ BccUtils.RPC:Register('bcc-housing:NewPlayerGivenAccess', function(params, cb, s
         local doors = json.decode(houseData.doors)
         if doors then
             for _, doorId in ipairs(doors) do
-                devPrint("Updating door access for door ID: " .. tostring(doorId))
+                DBG:Info("Updating door access for door ID: " .. tostring(doorId))
                 updateDoorAccess(doorId, id)
             end
         else
-            devPrint("Error: Failed to decode 'doors' for houseid: " .. tostring(houseid))
+            DBG:Error("Error: Failed to decode 'doors' for houseid: " .. tostring(houseid))
         end
     end
     if cb then cb(true) end
@@ -148,33 +148,33 @@ BccUtils.RPC:Register('bcc-housing:RemovePlayerAccess', function(params, cb, src
         return
     end
 
-    devPrint("Starting removal of player access. House ID: " ..
+    DBG:Info("Starting removal of player access. House ID: " ..
         tostring(houseId) .. ", Player ID: " .. tostring(playerId))
 
     local result = MySQL.query.await("SELECT allowed_ids FROM bcchousing WHERE houseid = ?", { houseId })
     if not result or #result == 0 then
-        devPrint("No house found with ID: " .. tostring(houseId) .. " or allowed_ids is empty.")
+        DBG:Info("No house found with ID: " .. tostring(houseId) .. " or allowed_ids is empty.")
         NotifyClient(src, _U("noSuchHouseId"), 4000, "error")
         if cb then cb(false) end
         return
     end
 
     local allowedIds = json.decode(result[1].allowed_ids) or {}
-    devPrint("Current allowed IDs: " .. json.encode(allowedIds))
+    DBG:Info("Current allowed IDs: " .. json.encode(allowedIds))
 
     local found = false
     for i, id in ipairs(allowedIds) do
         if id == playerId then
             table.remove(allowedIds, i)
             found = true
-            devPrint("Found and removed player ID from allowed list. Updated list: " ..
+            DBG:Info("Found and removed player ID from allowed list. Updated list: " ..
                 json.encode(allowedIds))
             break
         end
     end
 
     if not found then
-        devPrint("Player ID not found in allowed list, nothing to remove.")
+        DBG:Info("Player ID not found in allowed list, nothing to remove.")
         NotifyClient(src, _U("updateFailed"), 4000, "error")
         if cb then cb(false) end
         return
@@ -186,12 +186,12 @@ BccUtils.RPC:Register('bcc-housing:RemovePlayerAccess', function(params, cb, src
     })
 
     if affectedRows and affectedRows > 0 then
-        devPrint("Removed player access successfully for Player ID: " .. tostring(playerId))
+        DBG:Info("Removed player access successfully for Player ID: " .. tostring(playerId))
         BccUtils.RPC:Notify('bcc-housing:ClientRecHouseLoad', {}, src)
         NotifyClient(src, _U("removeAccessTo") .. tostring(playerId), 4000, "success")
         if cb then cb(true) end
     else
-        devPrint("Failed to update database with new allowed IDs list.")
+        DBG:Error("Failed to update database with new allowed IDs list.")
         NotifyClient(src, _U("updateFailed"), 4000, "error")
         if cb then cb(false) end
     end

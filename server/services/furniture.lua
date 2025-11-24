@@ -1,5 +1,5 @@
 local function InsertFurnitureIntoDB(furnTable, houseId)
-    devPrint("Inserting furniture into DB for house ID: " .. tostring(houseId))
+    DBG:Info("Inserting furniture into DB for house ID: " .. tostring(houseId))
     local param = { ['houseid'] = houseId }
     local result = MySQL.query.await("SELECT * FROM bcchousing WHERE houseid=@houseid", param)
     if result[1].furniture == 'none' then
@@ -46,7 +46,7 @@ BccUtils.RPC:Register("bcc-housing:FurniturePlacedCheck", function(params, cb, s
     local close    = params and params.close
 
     if not houseid then
-        devPrint("bcc-housing: FurniturePlacedCheck missing houseid from src " .. tostring(src))
+        DBG:Info("bcc-housing: FurniturePlacedCheck missing houseid from src " .. tostring(src))
         return cb(false)
     end
 
@@ -76,7 +76,7 @@ BccUtils.RPC:Register("bcc-housing:FurniturePlacedCheck", function(params, cb, s
 
     local decodeOk, decodedFurniture = pcall(json.decode, furnitureData)
     if not decodeOk then
-        devPrint("Failed to decode furniture data for house ID " ..
+        DBG:Error("Failed to decode furniture data for house ID " ..
         tostring(houseid) .. ": " .. tostring(decodedFurniture))
         return cb(false)
     end
@@ -91,7 +91,7 @@ BccUtils.RPC:Register("bcc-housing:FurniturePlacedCheck", function(params, cb, s
 
     markHouseSpawnState(src, houseid, true)
 
-    devPrint("Sending " ..
+    DBG:Info("Sending " ..
     tostring(#decodedFurniture) .. " furniture entries to player " .. tostring(src) .. " for house " .. tostring(houseid))
 
     -- Push the payload to the specific client via RPC Notify
@@ -106,19 +106,59 @@ end)
 function DelSpawnedFurn(source, houseid)
     if not spawnedFurnitureByPlayer[source] then return end
 
+    local notifyClient = (BCCHousingResourceStopping ~= true)
+
     if houseid then
         markHouseSpawnState(source, houseid, false)
+        if notifyClient then
+            -- Tell the specific client to clear props for this house
+            BccUtils.RPC:Notify("bcc-housing:ClearFurnitureEvent", { houseid = houseid }, source)
+        end
         return
     end
 
+    local hadEntries = false
+    -- Clear all tracked houses for this player and notify to clear props
     for trackedHouseId in pairs(spawnedFurnitureByPlayer[source]) do
+        hadEntries = true
         markHouseSpawnState(source, trackedHouseId, false)
+    end
+    if notifyClient and hadEntries then
+        BccUtils.RPC:Notify("bcc-housing:ClearFurnitureEvent", {}, source)
     end
 end
 
+BccUtils.RPC:Register("bcc-housing:GetHouseFurnitureCount", function(params, cb, src)
+    local houseId = params and params.houseId
+    if not houseId then
+        DBG:Info("GetHouseFurnitureCount called without houseId from src " .. tostring(src))
+        return cb(false, "invalidHouseId")
+    end
+
+    local result = MySQL.query.await("SELECT furniture FROM bcchousing WHERE houseid=@houseid", { ['houseid'] = houseId })
+    if not result or not result[1] then
+        DBG:Info("GetHouseFurnitureCount found no data for house ID " .. tostring(houseId))
+        return cb(true, 0)
+    end
+
+    local furnitureData = result[1].furniture
+    if not furnitureData or furnitureData == '' or furnitureData == 'none' then
+        return cb(true, 0)
+    end
+
+    local decodeOk, furnitureTable = pcall(json.decode, furnitureData)
+    if not decodeOk or type(furnitureTable) ~= "table" then
+        DBG:Error("GetHouseFurnitureCount failed to decode furniture data for house ID " ..
+            tostring(houseId) .. ": " .. tostring(furnitureTable))
+        return cb(false, "decodeError")
+    end
+
+    return cb(true, #furnitureTable)
+end)
+
 BccUtils.RPC:Register("bcc-housing:GetOwnerFurniture", function(params, cb, src)
     local houseId = params and params.houseId
-    devPrint("Getting owner furniture for house ID: " .. tostring(houseId))
+    DBG:Info("Getting owner furniture for house ID: " .. tostring(houseId))
     if not houseId then
         local message = _U("invalidHouseId") or "Invalid house"
         NotifyClient(src, message, 4000, "error")
@@ -129,7 +169,7 @@ BccUtils.RPC:Register("bcc-housing:GetOwnerFurniture", function(params, cb, src)
 
     if not result or not result[1] then
         NotifyClient(src, _U("noFurn"), 4000, "info")
-        devPrint("No house data found for house ID: " .. tostring(houseId))
+        DBG:Info("No house data found for house ID: " .. tostring(houseId))
         return cb(false, _U("noFurn"))
     end
 
@@ -138,28 +178,28 @@ BccUtils.RPC:Register("bcc-housing:GetOwnerFurniture", function(params, cb, src)
 
     if furnitureData == "none" or furnitureData == nil or furnitureData == "" then
         NotifyClient(src, _U("noFurn"), 4000, "info")
-        devPrint("No furniture found for house ID: " .. tostring(houseId))
+        DBG:Info("No furniture found for house ID: " .. tostring(houseId))
         return cb(false, _U("noFurn"))
     end
 
     local furniture, decodeErr = json.decode(furnitureData)
     if not furniture then
-        devPrint("Error decoding furniture data: " .. tostring(decodeErr) .. ". Raw data: " .. tostring(furnitureData))
+        DBG:Error("Error decoding furniture data: " .. tostring(decodeErr) .. ". Raw data: " .. tostring(furnitureData))
         NotifyClient(src, "Error loading furniture data.", 4000, "error")
         return cb(false, "Error loading furniture data.")
     end
 
     if #furniture == 0 then
         NotifyClient(src, _U("noFurn"), 4000, "info")
-        devPrint("No furniture found for house ID: " .. tostring(houseId))
+        DBG:Info("No furniture found for house ID: " .. tostring(houseId))
         return cb(false, _U("noFurn"))
     end
 
     for i, item in ipairs(furniture) do
-        devPrint(string.format("Furniture Item %d: Model: %s, DisplayName: %s", i, item.model, item.displayName))
+        DBG:Info(string.format("Furniture Item %d: Model: %s, DisplayName: %s", i, item.model, item.displayName))
     end
 
-    devPrint("Sending furniture data via RPC for house ID: " ..
+    DBG:Info("Sending furniture data via RPC for house ID: " ..
         tostring(houseId) .. " with " .. tostring(#furniture) .. " items.")
     return cb(true, furniture, houseData.ownershipStatus)
 end)
@@ -177,7 +217,7 @@ BccUtils.RPC:Register('bcc-housing:FurnSoldRemoveFromTable', function(params, cb
     end
     local character = user.getUsedCharacter
 
-    devPrint("Furniture sold, removing from table for house ID: " .. tostring(houseId))
+    DBG:Info("Furniture sold, removing from table for house ID: " .. tostring(houseId))
 
     if not furnTable or not houseId or wholeFurnTable == nil or wholeFurnTableKey == nil then
         if cb then cb(false) end
@@ -185,7 +225,7 @@ BccUtils.RPC:Register('bcc-housing:FurnSoldRemoveFromTable', function(params, cb
     end
 
     if ownershipStatus ~= 'purchased' then
-        devPrint("ownershipStatus must be 'purchased' to allow selling.")
+        DBG:Info("ownershipStatus must be 'purchased' to allow selling.")
         if cb then cb(false) end
         return
     end
@@ -292,13 +332,13 @@ end)
 
 BccUtils.RPC:Register("bcc-housing:GiveFurnitureBook", function(_, cb, src)
     if not Furniture.MenuItem or Furniture.MenuItem == '' then
-        devPrint("bcc-housing: Furniture.MenuItem not configured, cannot give book.")
+        DBG:Info("bcc-housing: Furniture.MenuItem not configured, cannot give book.")
         return cb(false, _U("furnitureBookUnavailable"))
     end
 
     local character = getCharacter(src)
     if not character then
-        devPrint("bcc-housing: invalid character while giving furniture book for src " .. tostring(src))
+        DBG:Info("bcc-housing: invalid character while giving furniture book for src " .. tostring(src))
         return cb(false, _U("unknownError"))
     end
 
@@ -309,7 +349,7 @@ BccUtils.RPC:Register("bcc-housing:GiveFurnitureBook", function(_, cb, src)
 
     local added = exports.vorp_inventory:addItem(src, Furniture.MenuItem, 1)
     if not added then
-        devPrint("bcc-housing: vorp_inventory refused to add furniture book for src " .. tostring(src))
+        DBG:Info("bcc-housing: vorp_inventory refused to add furniture book for src " .. tostring(src))
         return cb(false, _U("furnitureBookFailed"))
     end
 
@@ -319,7 +359,7 @@ end)
 BccUtils.RPC:Register("bcc-housing:RequestOwnedFurniture", function(params, cb, src)
     local character = getCharacter(src)
     if not character then
-        devPrint("bcc-housing: invalid character for src " .. tostring(src))
+        DBG:Info("bcc-housing: invalid character for src " .. tostring(src))
         return cb(false)
     end
 
@@ -334,26 +374,26 @@ BccUtils.RPC:Register("bcc-housing:PurchaseFurnitureItem", function(params, cb, 
 
     local character = getCharacter(src)
     if not character then
-        devPrint("bcc-housing: invalid character for src " .. tostring(src))
+        DBG:Info("bcc-housing: invalid character for src " .. tostring(src))
         return cb(false)
     end
 
     local furnCategory = Furniture[categoryIndex]
     local furnItem = furnCategory and furnCategory[itemIndex]
     if not furnItem then
-        devPrint("bcc-housing: invalid furniture (" ..
+        DBG:Info("bcc-housing: invalid furniture (" ..
         tostring(categoryIndex) .. ", " .. tostring(itemIndex) .. ") from " .. tostring(src))
         return cb(false)
     end
 
     local cost = tonumber(furnItem.costToBuy) or 0
     if cost <= 0 then
-        devPrint("bcc-housing: invalid price for " .. tostring(furnItem.displayName) .. " (" .. tostring(cost) .. ")")
+        DBG:Info("bcc-housing: invalid price for " .. tostring(furnItem.displayName) .. " (" .. tostring(cost) .. ")")
         return cb(false)
     end
 
     if character.money < cost then
-        devPrint("bcc-housing: " ..
+        DBG:Info("bcc-housing: " ..
         tostring(src) ..
         " tried to buy " .. tostring(furnItem.displayName) .. " but lacks money (needs " .. tostring(cost) .. ")")
         return cb(false)
@@ -363,7 +403,7 @@ BccUtils.RPC:Register("bcc-housing:PurchaseFurnitureItem", function(params, cb, 
     local ownedItems = loadOwnedFurniture(character.charIdentifier)
     local modelName = furnItem.propModel or furnItem.model
     if not modelName then
-        devPrint("bcc-housing: furniture item missing model definition for " .. tostring(furnItem.displayName))
+        DBG:Info("bcc-housing: furniture item missing model definition for " .. tostring(furnItem.displayName))
         return cb(false)
     end
 
@@ -400,12 +440,12 @@ BccUtils.RPC:Register("bcc-housing:PlaceOwnedFurniture", function(params, cb, sr
 
     local character     = getCharacter(src)
     if not character then
-        devPrint("bcc-housing: invalid character for src " .. tostring(src))
+        DBG:Info("bcc-housing: invalid character for src " .. tostring(src))
         return cb(false)
     end
 
     if not ownedId or not placementData or not houseId then
-        devPrint("bcc-housing: missing params for PlaceOwnedFurniture from src " .. tostring(src))
+        DBG:Info("bcc-housing: missing params for PlaceOwnedFurniture from src " .. tostring(src))
         return cb(false)
     end
 
@@ -420,12 +460,12 @@ BccUtils.RPC:Register("bcc-housing:PlaceOwnedFurniture", function(params, cb, sr
     end
 
     if not ownedEntry then
-        devPrint("bcc-housing: owned furniture not found for src " .. tostring(src) .. " ownedId " .. tostring(ownedId))
+        DBG:Info("bcc-housing: owned furniture not found for src " .. tostring(src) .. " ownedId " .. tostring(ownedId))
         return cb(false)
     end
 
     if placementData.model ~= ownedEntry.model then
-        devPrint("bcc-housing: model mismatch for src " ..
+        DBG:Info("bcc-housing: model mismatch for src " ..
         tostring(src) ..
         " (owned " .. tostring(ownedEntry.model) .. ", provided " .. tostring(placementData.model) .. ")")
         return cb(false)
@@ -452,7 +492,7 @@ BccUtils.RPC:Register("bcc-housing:PlaceOwnedFurniture", function(params, cb, sr
 end)
 
 BccUtils.RPC:Register('bcc-housing:SellFurniture', function(params, cb, src)
-    devPrint("SellFurniture RPC invoked but not implemented; returning failure.")
+    DBG:Info("SellFurniture RPC invoked but not implemented; returning failure.")
     NotifyClient(src, _U('furnNotSold'), 4000, 'error')
     if cb then cb(false, { error = 'not_implemented' }) end
 end)

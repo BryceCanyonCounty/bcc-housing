@@ -116,7 +116,7 @@ local function handleHousePurchase(src, houseCoords, moneyTypeParam, cb)
                         insertHouseDoors(selectedHouse.doors, character.charIdentifier, houseId, selectedHouse.uniqueName)
                     end)
                 else
-                    devPrint('handleHousePurchase: failed to insert house for uniqueName ' .. tostring(selectedHouse.uniqueName))
+                    DBG:Info('handleHousePurchase: failed to insert house for uniqueName ' .. tostring(selectedHouse.uniqueName))
                 end
             end
         )
@@ -173,7 +173,7 @@ function insertHouseDoors(doors, charidentifier, houseId, uniqueName)
 
             local doorData = MySQL.query.await('SELECT * FROM `doorlocks` WHERE `doorinfo` = ?', { doorinfo })
             if not doorData then
-                devPrint("Database query failed while checking if the door exists.")
+                DBG:Info("Database query failed while checking if the door exists.")
                 return
             end
             if #doorData == 0 then
@@ -182,31 +182,31 @@ function insertHouseDoors(doors, charidentifier, houseId, uniqueName)
                     "INSERT INTO doorlocks (doorinfo, jobsallowedtoopen, keyitem, locked, ids_allowed) VALUES (?, ?, ?, ?, ?)",
                     { doorinfo, jobsAllowed, keyItem, locked, idsAllowed }
                 )
-                devPrint("Door inserted into DB with jobs: " .. jobsAllowed .. ", key: " .. keyItem .. ", ids: " .. idsAllowed)
+                DBG:Info("Door inserted into DB with jobs: " .. jobsAllowed .. ", key: " .. keyItem .. ", ids: " .. idsAllowed)
 
                 TriggerClientEvent('bcc-doorlocks:ClientSetDoorStatus', -1, json.decode(doorinfo), locked, true, false, false)
 
                 -- Debug: print the values to be inserted
-                devPrint("Door inserted with ID: ", doorId)
+                DBG:Info("Door inserted with ID: ", doorId)
                 table.insert(doorIds, doorId)
 
             else
-                devPrint("Door already exists in DB")
+                DBG:Info("Door already exists in DB")
                 local affectedRows = MySQL.update.await(
                     "UPDATE doorlocks SET jobsallowedtoopen = ?, keyitem = ?, locked = ?, ids_allowed = ? WHERE doorinfo = ?",
                     { jobsAllowed, keyItem, locked, idsAllowed, doorinfo }
                 )
                 assert(affectedRows > 0, "Failed to update doorlocks table with new values.")
-                devPrint("Door updated in DB with jobs: " .. jobsAllowed .. ", key: " .. keyItem .. ", ids: " .. idsAllowed)
+                DBG:Info("Door updated in DB with jobs: " .. jobsAllowed .. ", key: " .. keyItem .. ", ids: " .. idsAllowed)
 
                 if #doorData > 1 then
-                    print("Multiple doors found with the same doorinfo:", doorData[0].doorinfo)
-                    print("Multiple doors found with the same doorinfo:", doorData[1].doorinfo)
+                    DBG:Warning("Multiple doors found with the same doorinfo:", doorData[0].doorinfo)
+                    DBG:Warning("Multiple doors found with the same doorinfo:", doorData[1].doorinfo)
                 end
                 -- TriggerClientEvent('bcc-doorlocks:ClientSetDoorStatus', -1, json.decode(doorinfo), locked, false, false, false)
                 for i = 1, #doorData do
                     local doorId = doorData[i].doorid
-                    devPrint("Door inserted with ID: ", doorId)
+                    DBG:Info("Door inserted with ID: ", doorId)
                     table.insert(doorIds, doorId)
                 end
             end
@@ -214,20 +214,20 @@ function insertHouseDoors(doors, charidentifier, houseId, uniqueName)
 
         -- Once all doors are inserted, update the house with the door IDs
         if #doorIds ~= #houseConfig.doors then
-            devPrint("Failed to insert all doors for the house.", #doorIds .. " from " .. #houseConfig.doors)
+            DBG:Error("Failed to insert all doors for the house.", #doorIds .. " from " .. #houseConfig.doors)
         end
         local doorIdsJson = json.encode(doorIds)
         MySQL.Async.execute("UPDATE bcchousing SET doors = ? WHERE houseid = ?", { doorIdsJson, houseId },
             function(affectedRows)
                 if affectedRows > 0 then
-                    devPrint("Updated house with door IDs:" .. doorIdsJson)
+                    DBG:Info("Updated house with door IDs:" .. doorIdsJson)
                 else
-                    devPrint("Failed to update house with door IDs.")
+                    DBG:Error("Failed to update house with door IDs.")
                 end
             end
         )
     else
-        devPrint("No doors found for the house.")
+        DBG:Info("No doors found for the house.")
     end
 end
 

@@ -195,20 +195,20 @@ end)
 local function refreshPlayerHouses(targetSource)
     local user = VORPcore.getUser(targetSource)
     if not user then
-        devPrint("refreshPlayerHouses: no user for source " .. tostring(targetSource))
+        DBG:Info("refreshPlayerHouses: no user for source " .. tostring(targetSource))
         return nil
     end
 
     local character = user.getUsedCharacter
     if not character or not character.charIdentifier then
-        devPrint("refreshPlayerHouses: missing character for source " .. tostring(targetSource))
+        DBG:Info("refreshPlayerHouses: missing character for source " .. tostring(targetSource))
         return nil
     end
 
     local charIdentifierString = tostring(character.charIdentifier)
     local charIdentifierNumber = tonumber(character.charIdentifier)
 
-    devPrint("Checking if player owns or has access to a house for character ID: " .. charIdentifierString)
+    DBG:Info("Checking if player owns or has access to a house for character ID: " .. charIdentifierString)
 
     local result = MySQL.query.await("SELECT * FROM bcchousing", {})
     local accessibleHouses = {}
@@ -235,7 +235,7 @@ local function refreshPlayerHouses(targetSource)
                 -- ✅ Notify player they own this house and show the ID
                 BccUtils.RPC:Notify('bcc-housing:OwnsHouseClientHandler', { house = v, isOwner = true }, targetSource)
                 BccUtils.RPC:Notify('bcc-housing:ShowMessage', { message = "You own house ID: " .. tostring(v.houseid) }, targetSource)
-                devPrint("Player " .. charIdentifierString .. " owns house ID: " .. tostring(v.houseid))
+                DBG:Info("Player " .. charIdentifierString .. " owns house ID: " .. tostring(v.houseid))
             else
                 local allowedIdsTable = (v.allowed_ids ~= nil and v.allowed_ids ~= 'none') and json.decode(v.allowed_ids) or nil
                 if allowedIdsTable then
@@ -258,7 +258,7 @@ end
 BccUtils.RPC:Register('bcc-housing:CheckIfHasHouse', function(params, cb, src)
     local targetSource = params and params.targetSource
     if targetSource and GetPlayerName(targetSource) == nil then
-        devPrint("CheckIfHasHouse RPC received invalid target source " .. tostring(targetSource))
+        DBG:Info("CheckIfHasHouse RPC received invalid target source " .. tostring(targetSource))
         if cb then cb(false, { error = 'invalid_target' }) end
         return
     end
@@ -300,11 +300,11 @@ BccUtils.RPC:Register('bcc-house:OpenHouseInv', function(params, cb, src)
     end
 
     local charIdentifier = character.charIdentifier
-    devPrint("Opening house inventory for House ID: " .. tostring(houseId) .. " and character ID: " .. tostring(charIdentifier))
+    DBG:Info("Opening house inventory for House ID: " .. tostring(houseId) .. " and character ID: " .. tostring(charIdentifier))
 
     local result = MySQL.query.await("SELECT * FROM bcchousing WHERE houseid = ?", { houseId })
     if not result or #result == 0 then
-        devPrint("Error: No results found for house ID: " .. tostring(houseId))
+        DBG:Error("Error: No results found for house ID: " .. tostring(houseId))
         if cb then cb(false, { error = _U('noHouseFound') }) end
         return
     end
@@ -320,7 +320,7 @@ BccUtils.RPC:Register('bcc-house:OpenHouseInv', function(params, cb, src)
     end
 
     if tostring(houseData.charidentifier) == tostring(charIdentifier) then
-        devPrint("Player is the owner of house ID: " .. tostring(houseId))
+        DBG:Info("Player is the owner of house ID: " .. tostring(houseId))
         openInventory()
         return
     end
@@ -328,13 +328,13 @@ BccUtils.RPC:Register('bcc-house:OpenHouseInv', function(params, cb, src)
     local allowedIds = json.decode(houseData.allowed_ids) or {}
     for _, id in ipairs(allowedIds) do
         if tostring(id) == tostring(charIdentifier) then
-            devPrint("Player is allowed to access house ID: " .. tostring(houseId))
+            DBG:Info("Player is allowed to access house ID: " .. tostring(houseId))
             openInventory()
             return
         end
     end
 
-    devPrint("Player does not have access to house inventory: " .. tostring(houseId))
+    DBG:Info("Player does not have access to house inventory: " .. tostring(houseId))
     NotifyClient(src, _U('noAccessToHouse'), 4000, 'error')
     if cb then cb(false, { error = _U('noAccessToHouse') }) end
 end)
@@ -440,11 +440,11 @@ function updateDoorAccess(doorId, newId)
     -- Get the door object using the API
     local door = DoorLocksAPI:GetDoorById(doorId)
     if not door then
-        devPrint("Door ID " .. tostring(doorId) .. " not found.")
+        DBG:Info("Door ID " .. tostring(doorId) .. " not found.")
         return
     end
 
-    devPrint("Updating door access for door ID: " .. tostring(doorId) .. " with new ID: " .. tostring(newId))
+    DBG:Info("Updating door access for door ID: " .. tostring(doorId) .. " with new ID: " .. tostring(newId))
 
     -- Get the current allowed IDs
     local allowedIds = door:GetAllowedIds()
@@ -454,9 +454,9 @@ function updateDoorAccess(doorId, newId)
         table.insert(allowedIds, newId)
         -- Update the allowed IDs using the API method
         door:UpdateAllowedIds(allowedIds)
-        devPrint("Door access updated successfully for door ID: " .. tostring(doorId))
+        DBG:Info("Door access updated successfully for door ID: " .. tostring(doorId))
     else
-        devPrint("ID " .. tostring(newId) .. " is already allowed for door ID: " .. tostring(doorId))
+        DBG:Info("ID " .. tostring(newId) .. " is already allowed for door ID: " .. tostring(doorId))
     end
 end
 
@@ -548,17 +548,17 @@ BccUtils.RPC:Register("bcc-housing:GiveAccessToDoor", function(params, cb)
     local doorId = params.doorId
     local userId = params.userId
 
-    devPrint("DEBUG: Received doorId: " .. tostring(doorId) .. ", userId: " .. tostring(userId))
+    DBG:Info("DEBUG: Received doorId: " .. tostring(doorId) .. ", userId: " .. tostring(userId))
 
     if not doorId or not userId then
-        devPrint("Invalid parameters for GiveAccessToDoor: Door ID or User ID is missing.")
+        DBG:Warning("Invalid parameters for GiveAccessToDoor: Door ID or User ID is missing.")
         cb(false)
         return
     end
     local door = DoorLocksAPI:GetDoorById(doorId)
     
     if not door then
-        devPrint("Door ID not found in API: " .. tostring(doorId))
+        DBG:Info("Door ID not found in API: " .. tostring(doorId))
         cb(false)
         return
     end
@@ -573,10 +573,10 @@ BccUtils.RPC:Register("bcc-housing:GiveAccessToDoor", function(params, cb)
         -- Update the allowed IDs for the door using the API
         DoorLocksAPI:GetDoorById(doorId):UpdateAllowedIds(idsAllowed)
 
-        devPrint("Access granted to user ID: " .. tostring(userId) .. " for door ID: " .. tostring(doorId))
+        DBG:Info("Access granted to user ID: " .. tostring(userId) .. " for door ID: " .. tostring(doorId))
         cb(true)
     else
-        devPrint("User ID: " .. tostring(userId) .. " already has access to door ID: " .. tostring(doorId))
+        DBG:Info("User ID: " .. tostring(userId) .. " already has access to door ID: " .. tostring(doorId))
         cb(false)
     end
 end)
@@ -586,7 +586,7 @@ BccUtils.RPC:Register("bcc-housing:RemoveAccessFromDoor", function(params, cb, r
     local userId = params.userId
 
     if not doorId or not userId then
-        devPrint("Invalid parameters for RemoveAccessFromDoor: Door ID or User ID is missing.")
+        DBG:Warning("Invalid parameters for RemoveAccessFromDoor: Door ID or User ID is missing.")
         cb(false)
         return
     end
@@ -595,7 +595,7 @@ BccUtils.RPC:Register("bcc-housing:RemoveAccessFromDoor", function(params, cb, r
     local door = DoorLocksAPI:GetDoorById(doorId)
 
     if not door then
-        devPrint("Door ID not found in API: " .. tostring(doorId))
+        DBG:Info("Door ID not found in API: " .. tostring(doorId))
         cb(false)
         return
     end
@@ -611,13 +611,13 @@ BccUtils.RPC:Register("bcc-housing:RemoveAccessFromDoor", function(params, cb, r
             -- Update the allowed IDs for the door using the API
             door:UpdateAllowedIds(idsAllowed)
 
-            devPrint("Access removed for user ID: " .. tostring(userId) .. " from door ID: " .. tostring(doorId))
+            DBG:Info("Access removed for user ID: " .. tostring(userId) .. " from door ID: " .. tostring(doorId))
             cb(true)
             return
         end
     end
 
-    devPrint("User ID: " .. tostring(userId) .. " did not have access to door ID: " .. tostring(doorId))
+    DBG:Info("User ID: " .. tostring(userId) .. " did not have access to door ID: " .. tostring(doorId))
     cb(false)
 end)
 
@@ -625,7 +625,7 @@ BccUtils.RPC:Register("bcc-housing:DeleteDoor", function(params, cb, recSource)
     local doorId = params.doorId
 
     if not doorId then
-        devPrint("Invalid door ID received for deletion.")
+        DBG:Warning("Invalid door ID received for deletion.")
         cb(false)
         return
     end
@@ -633,14 +633,14 @@ BccUtils.RPC:Register("bcc-housing:DeleteDoor", function(params, cb, recSource)
     local door = DoorLocksAPI:GetDoorById(doorId)
 
     if not door then
-        devPrint("Door not found in API for deletion. Door ID: " .. tostring(doorId))
+        DBG:Info("Door not found in API for deletion. Door ID: " .. tostring(doorId))
         cb(false)
         return
     end
 
     -- Delete the door
     door:DeleteDoor()
-    devPrint("Door deleted successfully. Door ID: " .. tostring(doorId))
+    DBG:Info("Door deleted successfully. Door ID: " .. tostring(doorId))
     cb(true)
 end)
 
@@ -687,7 +687,7 @@ local function handleLedgerHandling(src, amountParam, houseIdParam, isAdding, cb
     local uniqueName = row.uniqueName
 
     if ownershipStatus ~= 'purchased' and ownershipStatus ~= 'rented' then
-        devPrint('handleLedgerHandling: Unknown ownershipStatus ' .. tostring(ownershipStatus))
+        DBG:Info('handleLedgerHandling: Unknown ownershipStatus ' .. tostring(ownershipStatus))
         if cbFn then cbFn(false, { error = 'unknown_status' }) end
         return
     end
@@ -799,7 +799,7 @@ local function handleCheckLedger(src, houseIdParam, cb)
         return
     end
 
-    devPrint('Checking ledger for house ID: ' .. tostring(houseId))
+    DBG:Info('Checking ledger for house ID: ' .. tostring(houseId))
     local result = MySQL.query.await('SELECT ledger, tax_amount FROM bcchousing WHERE houseid=@houseid', { ['houseid'] = houseId })
     if result and #result > 0 then
         NotifyClient(src, tostring(result[1].ledger) .. '/' .. tostring(result[1].tax_amount), 5000, 'info')
@@ -836,11 +836,11 @@ BccUtils.RPC:Register('bcc-housing:getHouseId', function(params, cb, src)
     end
 
     local charIdentifier = character.charIdentifier
-    devPrint(("getHouseId RPC invoked with charidentifier %s for House ID %s"):format(tostring(charIdentifier), tostring(houseId)))
+    DBG:Info(("getHouseId RPC invoked with charidentifier %s for House ID %s"):format(tostring(charIdentifier), tostring(houseId)))
 
     local result = MySQL.query.await("SELECT * FROM bcchousing WHERE houseid = ?", { houseId })
     if not result or #result == 0 then
-        devPrint("Error: No results found for house ID: " .. tostring(houseId))
+        DBG:Error("Error: No results found for house ID: " .. tostring(houseId))
         if cb then cb(false, { error = _U('noHouseFound') }) end
         return
     end
@@ -851,10 +851,10 @@ BccUtils.RPC:Register('bcc-housing:getHouseId', function(params, cb, src)
     local hasAccess = isOwner
 
     if context == 'access' or context == 'removeAccess' then
-        devPrint(("[ACCESS CMD] charidentifier %s targeting house %s | owner charidentifier %s | isOwner: %s"):format(
+        DBG:Info(("[ACCESS CMD] charidentifier %s targeting house %s | owner charidentifier %s | isOwner: %s"):format(
             tostring(charIdentifier), tostring(houseId), ownerCharId, tostring(isOwner)))
     else
-        devPrint(("[HOUSE CMD] context %s | charidentifier %s | house %s | owner charidentifier %s | isOwner: %s"):format(
+        DBG:Info(("[HOUSE CMD] context %s | charidentifier %s | house %s | owner charidentifier %s | isOwner: %s"):format(
             tostring(context), tostring(charIdentifier), tostring(houseId), ownerCharId, tostring(isOwner)))
     end
 
@@ -869,7 +869,7 @@ BccUtils.RPC:Register('bcc-housing:getHouseId', function(params, cb, src)
     end
 
     if not hasAccess then
-        devPrint("Player does not have access to the house ID: " .. tostring(houseId))
+        DBG:Info("Player does not have access to the house ID: " .. tostring(houseId))
         if cb then cb(false, { error = _U('noAccessToHouse') }) end
         return
     end
@@ -909,11 +909,11 @@ BccUtils.RPC:Register('bcc-housing:getHouseOwner', function(params, cb, src)
     end
 
     local charIdentifier = character.charIdentifier
-    devPrint(("getHouseOwner RPC invoked with charidentifier %s for House ID %s"):format(tostring(charIdentifier), tostring(houseId)))
+    DBG:Info(("getHouseOwner RPC invoked with charidentifier %s for House ID %s"):format(tostring(charIdentifier), tostring(houseId)))
 
     local result = MySQL.query.await("SELECT * FROM bcchousing WHERE houseid = @houseid", { ['@houseid'] = houseId })
     if not result or #result == 0 then
-        devPrint("Error: No results found for house ID: " .. tostring(houseId))
+        DBG:Error("Error: No results found for house ID: " .. tostring(houseId))
         if cb then cb(false, { error = _U('noHouseFound') }) end
         return
     end

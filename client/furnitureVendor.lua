@@ -69,10 +69,10 @@ CleanupFurnitureVendors = cleanupFurnitureVendors
 
 CreateThread(function()
     cleanupFurnitureVendors()
-    devPrint("Furniture vendors thread started")
+    DBG:Info("Furniture vendors thread started")
 
     if not furnitureVendors or #furnitureVendors == 0 then
-        devPrint("No furniture vendors configured.")
+        DBG:Info("No furniture vendors configured.")
         return
     end
 
@@ -98,7 +98,7 @@ CreateThread(function()
             end
         end
         if #coordsList == 0 then
-            devPrint("Furniture vendor missing coordinates")
+            DBG:Info("Furniture vendor missing coordinates")
         end
 
         local headingList = {}
@@ -188,7 +188,7 @@ CreateThread(function()
                     ActiveFurnitureVendor = vendor
                     vendorPromptGroup:ShowGroup(vendor.name or _U('furnitureVendorTitle'))
                     if vendorPrompt:HasCompleted() then
-                        devPrint("Furniture vendor prompt completed")
+                        DBG:Info("Furniture vendor prompt completed")
                         FurnitureVendorMenu()
                     end
                 end

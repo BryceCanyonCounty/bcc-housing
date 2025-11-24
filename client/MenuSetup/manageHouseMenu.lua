@@ -3,7 +3,7 @@ local PlayerAccessibleHouses = {}
 local HousingAccessMenu
 
 BccUtils.RPC:Register('bcc-housing:ReceiveAccessibleHouses', function(params)
-    devPrint("Received accessible houses list via RPC")
+    DBG:Info("Received accessible houses list via RPC")
     PlayerAccessibleHouses = params and params.houses or {}
 end)
 
@@ -30,7 +30,7 @@ local function afterGivingAccess(houseId, playerId, playerServerId, completion)
 end
 
 local function afterRemoveAccess(houseId, playerId)
-    devPrint("Attempting to remove access with House ID: " .. tostring(houseId) .. ", Player ID: " .. tostring(playerId))
+    DBG:Info("Attempting to remove access with House ID: " .. tostring(houseId) .. ", Player ID: " .. tostring(playerId))
     if houseId and playerId then
         local success = BccUtils.RPC:CallAsync('bcc-housing:RemovePlayerAccess', {
             houseId = houseId,
@@ -172,19 +172,19 @@ local function openHousingInventoryPage(houseId, isOwner, parentMenu)
 end
 
 local function showAccessMenu(houseId)
-    devPrint("Showing access menu for House ID: " .. tostring(houseId))
+    DBG:Info("Showing access menu for House ID: " .. tostring(houseId))
     PlayerListMenuForGiveAccess(houseId, afterGivingAccess, "giveAccess")
 end
 
 -- Function to show the remove access menu
 local function showRemoveAccessMenu(houseId)
-    devPrint("Showing access menu for House ID: " .. tostring(houseId))
+    DBG:Info("Showing access menu for House ID: " .. tostring(houseId))
     PlayerListMenuForRemoveAccess(houseId, afterRemoveAccess, "removeAccess")
 end
 
 -- Function to show the player list menu for giving access
 function PlayerListMenuForGiveAccess(houseId, callback, context)
-    devPrint("Opening player list menu for giving access to House ID: " .. tostring(houseId))
+    DBG:Info("Opening player list menu for giving access to House ID: " .. tostring(houseId))
     BCCHousingMenu:Close()
     local players = GetPlayers()
     table.sort(players, function(a, b)
@@ -213,7 +213,7 @@ function PlayerListMenuForGiveAccess(houseId, callback, context)
                 if HousingAccessMenu then
                     HousingAccessMenu:RouteTo()
                 else
-                    devPrint("HousingAccessMenu not initialized, closing housing menu")
+                    DBG:Info("HousingAccessMenu not initialized, closing housing menu")
                     BCCHousingMenu:Close()
                 end
             end)
@@ -233,7 +233,7 @@ function PlayerListMenuForGiveAccess(houseId, callback, context)
         if HousingAccessMenu then
             HousingAccessMenu:RouteTo()
         else
-            devPrint("HousingAccessMenu not initialized, closing housing menu")
+            DBG:Info("HousingAccessMenu not initialized, closing housing menu")
             BCCHousingMenu:Close()
         end
     end)
@@ -253,14 +253,14 @@ function PlayerListMenuForGiveAccess(houseId, callback, context)
 end
 
 function PlayerListMenuForRemoveAccess(houseId, callback, context)
-    devPrint("Opening player list menu for removing access to House ID: " .. tostring(houseId))
+    DBG:Info("Opening player list menu for removing access to House ID: " .. tostring(houseId))
     BCCHousingMenu:Close()
     if HandlePlayerDeathAndCloseMenu() then
         return
     end
 
     GetPlayersWithAccess(houseId, function(rplayers)
-        devPrint("Number of players with access: " .. #rplayers) -- This will print the count of players fetched
+        DBG:Info("Number of players with access: " .. #rplayers) -- This will print the count of players fetched
 
         local playerListRemoveMenuPage = BCCHousingMenu:RegisterPage("bcc-housing:playerListRemoveMenuPage")
         playerListRemoveMenuPage:RegisterElement("header", {
@@ -275,7 +275,7 @@ function PlayerListMenuForRemoveAccess(houseId, callback, context)
         })
 
         if #rplayers == 0 then
-            devPrint("No players to display in menu")
+            DBG:Info("No players to display in menu")
             TextDisplay = playerListRemoveMenuPage:RegisterElement('textdisplay', {
                 value = _U("noAccessNotify"),
                 style = {}
@@ -283,7 +283,7 @@ function PlayerListMenuForRemoveAccess(houseId, callback, context)
         end
 
         for k, v in pairs(rplayers) do
-            devPrint("Adding button for player ID: " .. tostring(v.charidentifier)) -- Ensure charidentifier is correct
+            DBG:Info("Adding button for player ID: " .. tostring(v.charidentifier)) -- Ensure charidentifier is correct
             playerListRemoveMenuPage:RegisterElement("button", {
                 label = v.firstname .. " " .. v.lastname,                           -- Displaying player's name
                 style = {}
@@ -292,7 +292,7 @@ function PlayerListMenuForRemoveAccess(houseId, callback, context)
                 if HousingAccessMenu then
                     HousingAccessMenu:RouteTo()
                 else
-                    devPrint("HousingAccessMenu not initialized, closing housing menu")
+                    DBG:Info("HousingAccessMenu not initialized, closing housing menu")
                     BCCHousingMenu:Close()
                 end
             end)
@@ -311,7 +311,7 @@ function PlayerListMenuForRemoveAccess(houseId, callback, context)
             if HousingAccessMenu then
                 HousingAccessMenu:RouteTo()
             else
-                devPrint("HousingAccessMenu not initialized, closing housing menu")
+                DBG:Info("HousingAccessMenu not initialized, closing housing menu")
                 BCCHousingMenu:Close()
             end
         end)
@@ -332,7 +332,7 @@ function PlayerListMenuForRemoveAccess(houseId, callback, context)
 end
 
 function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
-    devPrint("Opening housing main menu for House ID: " .. tostring(houseId) .. ", Is Owner: " .. tostring(isOwner))
+    DBG:Info("Opening housing main menu for House ID: " .. tostring(houseId) .. ", Is Owner: " .. tostring(isOwner))
 
     if HandlePlayerDeathAndCloseMenu() then
         return
@@ -396,7 +396,7 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
                 label = _U("giveAccess"),
                 style = {}
             }, function()
-                devPrint("Validating access for House ID: " .. tostring(houseId))
+                DBG:Info("Validating access for House ID: " .. tostring(houseId))
                 if not houseId then
                     Notify(_U('noAccessToHouse'), 'error', 4000)
                     return
@@ -419,7 +419,7 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
                 label = _U("removeAccess"),
                 style = {}
             }, function()
-                devPrint("Validating remove access for House ID: " .. tostring(houseId))
+                DBG:Info("Validating remove access for House ID: " .. tostring(houseId))
                 if not houseId then
                     Notify(_U('noAccessToHouse'), 'error', 4000)
                     return
@@ -474,7 +474,7 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
                     local newDoorId = exports['bcc-doorlocks']:addPlayerToDoor(playerId)
 
                     if newDoorId then
-                        devPrint("Door created and player added successfully: " .. tostring(newDoorId))
+                        DBG:Info("Door created and player added successfully: " .. tostring(newDoorId))
                         BccUtils.RPC:Call("bcc-housing:AddDoorToHouse",
                             { houseId = houseId, newDoor = newDoorId },
                             function(success)
@@ -622,7 +622,7 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
                                                     style = {}
                                                 }, function()
                                                     if not door.doorid then
-                                                        devPrint("Invalid door ID.")
+                                                        DBG:Warning("Invalid door ID.")
                                                         return
                                                     end
 
@@ -692,7 +692,7 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
                                                     style = {}
                                                 }, function()
                                                     if not door.doorid then
-                                                        devPrint("Invalid door ID.")
+                                                        DBG:Warning("Invalid door ID.")
                                                         return
                                                     end
 
@@ -860,7 +860,7 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
         }, function()
             local success, err = BccUtils.RPC:CallAsync('bcc-housing:CheckLedger', { houseid = houseId })
             if not success then
-                devPrint("CheckLedger RPC failed: " .. tostring(err and err.error))
+                DBG:Info("CheckLedger RPC failed: " .. tostring(err and err.error))
             end
         end)
 
@@ -871,7 +871,7 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
             if houseId then
                 TriggerEvent('bcc-housing:addLedger', houseId, isOwner)
             else
-                devPrint("Error: HouseId is undefined or invalid.")
+                DBG:Error("Error: HouseId is undefined or invalid.")
             end
         end)
 
@@ -883,7 +883,7 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
                 if houseId then
                     TriggerEvent('bcc-housing:removeLedger', houseId, isOwner)
                 else
-                    devPrint("Error: HouseId is undefined or invalid.")
+                    DBG:Error("Error: HouseId is undefined or invalid.")
                 end
             end)
         end
@@ -918,13 +918,13 @@ end
 function enterOrExitHouse(enter, tpHouseIndex)
     BCCHousingMenu.Close()
     if enter then
-        devPrint("Entering house with tpHouseIndex: " .. tostring(tpHouseIndex))
+        DBG:Info("Entering house with tpHouseIndex: " .. tostring(tpHouseIndex))
         local houseTable = Config.TpInteriors["Interior" .. tostring(tpHouseIndex)]
         CurrentTpHouse = tpHouseIndex
         enterTpHouse(houseTable)
     else
         local playerPed = PlayerPedId()
-        devPrint("Exiting house")
+        DBG:Info("Exiting house")
         SetEntityCoords(playerPed, HouseCoords.x, HouseCoords.y, HouseCoords.z, false, false, false, false)
         FreezeEntityPosition(playerPed, true)
         Wait(500)
@@ -937,7 +937,7 @@ end
 -- Event to open the add ledger page
 RegisterNetEvent('bcc-housing:addLedger')
 AddEventHandler('bcc-housing:addLedger', function(houseId, isOwner)
-    devPrint("Adding ledger for House ID: " .. tostring(houseId))
+    DBG:Info("Adding ledger for House ID: " .. tostring(houseId))
     local AddLedgerPage = BCCHousingMenu:RegisterPage('add_ledger_page')
     local amountToInsert = nil
 
@@ -958,7 +958,7 @@ AddEventHandler('bcc-housing:addLedger', function(houseId, isOwner)
             amountToInsert = tonumber(data.value)
         else
             amountToInsert = nil
-            devPrint("Invalid input for amount.")
+            DBG:Warning("Invalid input for amount.")
         end
     end)
 
@@ -973,18 +973,18 @@ AddEventHandler('bcc-housing:addLedger', function(houseId, isOwner)
         style = {}
     }, function()
         if amountToInsert then
-            devPrint("Submitting ledger update for amount: " .. tostring(amountToInsert) .. " (Adding)")
+            DBG:Info("Submitting ledger update for amount: " .. tostring(amountToInsert) .. " (Adding)")
             local success, err = BccUtils.RPC:CallAsync('bcc-housing:LedgerHandling', {
                 amount = amountToInsert,
                 houseid = houseId,
                 isAdding = true
             }) -- true for adding
             if not success then
-                devPrint("Ledger add RPC failed: " .. tostring(err and err.error))
+                DBG:Info("Ledger add RPC failed: " .. tostring(err and err.error))
             end
             BCCHousingMenu:Close()
         else
-            devPrint("Error: Amount not set or invalid.")
+            DBG:Error("Error: Amount not set or invalid.")
         end
     end)
 
@@ -1007,7 +1007,7 @@ end)
 -- Event to open the remove ledger page
 RegisterNetEvent('bcc-housing:removeLedger')
 AddEventHandler('bcc-housing:removeLedger', function(houseId, isOwner)
-    devPrint("Remove ledger for House ID: " .. tostring(houseId))
+    DBG:Info("Remove ledger for House ID: " .. tostring(houseId))
     local RemoveLedgerPage = BCCHousingMenu:RegisterPage('remove_ledger_page')
     local amountToInsert = nil
 
@@ -1028,7 +1028,7 @@ AddEventHandler('bcc-housing:removeLedger', function(houseId, isOwner)
             amountToInsert = tonumber(data.value)
         else
             amountToInsert = nil
-            devPrint("Invalid input for amount.")
+            DBG:Warning("Invalid input for amount.")
         end
     end)
 
@@ -1043,18 +1043,18 @@ AddEventHandler('bcc-housing:removeLedger', function(houseId, isOwner)
         style = {}
     }, function()
         if amountToInsert then
-            devPrint("Submitting ledger update for amount: " .. tostring(amountToInsert) .. " (Removing)")
+            DBG:Info("Submitting ledger update for amount: " .. tostring(amountToInsert) .. " (Removing)")
             local success, err = BccUtils.RPC:CallAsync('bcc-housing:LedgerHandling', {
                 amount = amountToInsert,
                 houseid = houseId,
                 isAdding = false
             }) -- false for removing
             if not success then
-                devPrint("Ledger remove RPC failed: " .. tostring(err and err.error))
+                DBG:Info("Ledger remove RPC failed: " .. tostring(err and err.error))
             end
             BCCHousingMenu:Close()
         else
-            devPrint("Error: Amount not set or invalid.")
+            DBG:Error("Error: Amount not set or invalid.")
         end
     end)
 
@@ -1075,7 +1075,7 @@ AddEventHandler('bcc-housing:removeLedger', function(houseId, isOwner)
 end)
 
 function enterTpHouse(houseTable)
-    devPrint("Entering TP house")
+    DBG:Info("Entering TP house")
     InTpHouse = true
     local playerPed = PlayerPedId()
     HousingInstance.Set(HousingInstance.Compute(TpHouseInstance))
