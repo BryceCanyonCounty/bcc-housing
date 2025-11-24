@@ -1,3 +1,12 @@
+<2.3.0>
+- Replaced `devPrint` with `DBG.utils` (requires **bcc-utils v1.4.0**)
+- Added `onClientRestartResource` to clear all furniture
+- Added rotate and zoom for vendor furniture menu (you can now preview furniture before buying)
+- Added option to obtain the `furniture_book` at the vendor shop
+- Added furniture count in the furniture book menu to track spawned and purchased furniture
+- Improved furniture despawn behavior
+- Minor improvements
+
 <2.2.0>
 ## Furniture Enhancements, Prompt Fixes & Performance Updates
 -  Added house-context system to ensure prompts display correctly for all players.

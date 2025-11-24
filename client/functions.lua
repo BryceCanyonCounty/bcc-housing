@@ -5,13 +5,19 @@ FeatherMenu = exports["feather-menu"].initiate()
 BccUtils = exports["bcc-utils"].initiate()
 MiniGame = exports["bcc-minigames"].initiate()
 
+DBG = BccUtils.Debug:Get("bcc-housing", Config.DevMode)
+if Config.DevMode then 
+    DBG:Enable()
+end
+DBG:Info("Housing debug initialized (client)")
+
 HousingInstance = {}
 
 function HousingInstance.Set(bucketId)
     bucketId = tonumber(bucketId) or 0
     local success, response = BccUtils.RPC:CallAsync('bcc-housing:SetInstance', { bucketId = bucketId })
     if not success then
-        devPrint("Failed to set instance: " .. tostring(response and response.error))
+        DBG:Error("Failed to set instance: " .. tostring(response and response.error))
     end
     return success, response
 end
@@ -19,7 +25,8 @@ end
 function HousingInstance.Clear()
     local success, response = BccUtils.RPC:CallAsync('bcc-housing:LeaveInstance', {})
     if not success then
-        devPrint("Failed to clear instance: " .. tostring(response and response.error))
+        -- Use the local debug instance to avoid nil access when the RPC fails
+        DBG:Error("Failed to clear instance: " .. tostring(response and response.error))
     end
     return success, response
 end
@@ -126,7 +133,7 @@ function Notify(message, typeOrDuration, maybeDuration, overrides)
     elseif Config.Notify == "vorp-core" then
         VORPcore.NotifyRightTip(message, notifyDuration)
     else
-        print("^1[Notify] Invalid Config.Notify: " .. tostring(Config.Notify))
+        DBG:Info("^1[Notify] Invalid Config.Notify: " .. tostring(Config.Notify))
     end
 end
 
@@ -141,7 +148,7 @@ end)
 
 function LoadModel(model, modelName)
     if not IsModelValid(model) then
-        print('Invalid model:', modelName)
+        DBG:Warning('Invalid model:', modelName)
         return
     end
 
@@ -169,18 +176,18 @@ function GetPlayers()
 end
 
 function GetPlayersWithAccess(houseId, callback)
-    devPrint("Requesting players with access for House ID: " .. tostring(houseId))
+    DBG:Info("Requesting players with access for House ID: " .. tostring(houseId))
 
     -- Use RPC to call the server-side function and handle the response
     BccUtils.RPC:Call("bcc-housing:GetPlayersWithAccess", { houseId = houseId }, function(result)
         if result and #result > 0 then
-            devPrint("Number of players with access received: " .. tostring(#result))
+            DBG:Info("Number of players with access received: " .. tostring(#result))
             for _, player in ipairs(result) do
-                devPrint("Player: ID=" .. player.charidentifier .. ", Name=" .. player.firstname .. " " .. player.lastname)
+                DBG:Info("Player: ID=" .. player.charidentifier .. ", Name=" .. player.firstname .. " " .. player.lastname)
             end
             callback(result) -- Pass the result to the callback
         else
-            devPrint("No players with access received.")
+            DBG:Info("No players with access received.")
             callback({})
         end
 
@@ -195,7 +202,7 @@ function showManageOpt(x, y, z, houseId, houseContext)
     end
 
     if contextTaxes then
-        devPrint("Taxes overdue for House ID: " .. tostring(houseId) .. ". Skipping manage prompt.")
+        DBG:Info("Taxes overdue for House ID: " .. tostring(houseId) .. ". Skipping manage prompt.")
         return
     end
 
@@ -213,7 +220,7 @@ function showManageOpt(x, y, z, houseId, houseContext)
         context = houseContext
     }
 
-    devPrint("Setting up manage options for House ID: " .. tostring(houseId) .. " at coordinates: " .. tostring(x) .. ", " .. tostring(y) .. ", " .. tostring(z))
+    DBG:Info("Setting up manage options for House ID: " .. tostring(houseId) .. " at coordinates: " .. tostring(x) .. ", " .. tostring(y) .. ", " .. tostring(z))
 
     local houseExists = false
     local success, data = BccUtils.RPC:CallAsync('bcc-housing:CheckIfHouseExists', { houseId = houseId })
@@ -222,7 +229,7 @@ function showManageOpt(x, y, z, houseId, houseContext)
     end
 
     if not houseExists then
-        devPrint("House ID " .. tostring(houseId) .. " no longer exists. Deleting prompt.")
+        DBG:Info("House ID " .. tostring(houseId) .. " no longer exists. Deleting prompt.")
         RemoveManagePrompt(houseId)
         return
     end
@@ -238,7 +245,7 @@ function showManageOpt(x, y, z, houseId, houseContext)
             if IsEntityDead(playerPed) then goto END end
 
             if BreakHandleLoop then
-                devPrint("Breaking handle loop for House ID: " .. tostring(houseId))
+                DBG:Info("Breaking handle loop for House ID: " .. tostring(houseId))
                 break
             end
 
@@ -250,7 +257,7 @@ function showManageOpt(x, y, z, houseId, houseContext)
                     promptData.group:ShowGroup(_U("house"))
 
                     if promptData.prompt:HasCompleted() then
-                        devPrint("Prompt completed. Opening housing management menu for House ID: " .. tostring(houseId))
+                        DBG:Info("Prompt completed. Opening housing management menu for House ID: " .. tostring(houseId))
                         local ctx = promptData.context or GetHouseContext and GetHouseContext(houseId)
                         if ctx then
                             SetActiveHouseContext(ctx)
@@ -282,11 +289,17 @@ end
 
 AddEventHandler("onClientResourceStop", function(resource)
     if resource == GetCurrentResourceName() then
+        SendNUIMessage({ action = "controls:update", controls = {} })
         -- Delete any created furniture
+        DBG:Info(("[ResourceStop] Cleaning up %d created furniture entities"):format(
+            (CreatedFurniture and #CreatedFurniture) or 0))
         if CreatedFurniture and #CreatedFurniture > 0 then
             for _, entity in ipairs(CreatedFurniture) do
                 if DoesEntityExist(entity) then
                     DeleteEntity(entity)
+                    DBG:Info(("[ResourceStop] Deleted entity id %s"):format(tostring(entity)))
+                else
+                    DBG:Info(("[ResourceStop] Entity id %s already removed"):format(tostring(entity)))
                 end
             end
             CreatedFurniture = {}
@@ -326,6 +339,7 @@ AddEventHandler("onClientResourceStop", function(resource)
         end
         
         RemoveManagePrompt()
+        ClearSpawnedFurniture()
         BCCHousingMenu:Close()
         BccUtils.RPC:CallAsync('bcc-housing:ServerSideRssStop', {})
     end
@@ -334,7 +348,7 @@ end)
 -- Receive House Owner Information
 BccUtils.RPC:Register('bcc-housing:receiveHouseOwner', function(params)
     if not params then return end
-    devPrint("Received house owner information via RPC for House ID: " .. tostring(params.houseId))
+    DBG:Info("Received house owner information via RPC for House ID: " .. tostring(params.houseId))
     OpenHousingMainMenu(params.houseId, params.isOwner, params.ownershipStatus)
 end)
 

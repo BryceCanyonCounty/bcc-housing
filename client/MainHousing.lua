@@ -1,7 +1,7 @@
 HouseCoords, HouseRadius, HouseId, Owner, TpHouse, TpHouseInstance, HouseOwnershipStatus, HouseTaxesOverdue = nil, nil, nil, nil, nil, nil, nil, nil
 ActiveHouseId = nil
 OwnedHouseContexts = OwnedHouseContexts or {}
-HouseBlips, HotelBlips, CreatedFurniture = {}, {}, {}
+HouseBlips, HotelBlips = {}, {}
 local AdminAllowed = false
 local OwnedHotels = {}
 local HotelHandlerStarted = false
@@ -91,15 +91,6 @@ AddEventHandler('onClientResourceStart', function(resourceName)
     end)
 end)
 
-if Config.DevMode then
-    function devPrint(message)
-        print("^1[DEV MODE] ^4" .. message .. "^0")
-    end
-else
-    function devPrint(message)
-    end
-end
-
 function ManageHotelBlips()
     for _, hotelCfg in pairs(Hotels) do
         if hotelCfg.blip and hotelCfg.blip.show and not hotelCfg.Blip then
@@ -157,6 +148,8 @@ local function handleOwnsHouseClient(houseTable, owner)
     local ownershipStatus = houseTable.ownershipStatus
     local tpInt = houseTable.tpInt ~= 0 and houseTable.tpInt or nil
     local tpInstance = houseTable.tpInstance
+    local taxesStatus = houseTable.taxes_collected
+    local taxesOverdue = taxesStatus and tostring(taxesStatus) == 'overdue'
 
     local houseContext = {
         coords = vectorCoords,
@@ -175,10 +168,7 @@ local function handleOwnsHouseClient(houseTable, owner)
         SetActiveHouseContext(houseContext)
     end
 
-    local taxesStatus = houseTable.taxes_collected
-    local taxesOverdue = taxesStatus and tostring(taxesStatus) == 'overdue'
-
-    devPrint("House information set for House ID: " .. tostring(houseId))
+    DBG:Info("House information set for House ID: " .. tostring(houseId))
 
     StartFurnCheckHandler()
 
@@ -222,7 +212,7 @@ BccUtils.RPC:Register('bcc-housing:OwnsHouseClientHandler', function(params)
 end)
 
 function MainHotelHandler()
-    devPrint("Initializing main hotel handler")
+    DBG:Info("Initializing main hotel handler")
 
     local buyGroup = BccUtils.Prompts:SetupPromptGroup()
     local buyPrompt = buyGroup:RegisterPrompt(_U("promptBuy"), BccUtils.Keys[Config.keys.buy], 1, 1, true, 'click', nil)
@@ -259,7 +249,7 @@ function MainHotelHandler()
                                 if enterPrompt:HasCompleted() then
                                     BccUtils.RPC:CallAsync('bcc-housing:RegisterHotelInventory', { hotelId = hotelId })
                                     local player = PlayerId()
-                                    devPrint("Entering hotel: " .. tostring(hotelId))
+                                    DBG:Info("Entering hotel: " .. tostring(hotelId))
                                     inHotel = true
                                     hotelInside = hotel
                                     coordsWhenEntered = playerCoords
@@ -284,7 +274,7 @@ function MainHotelHandler()
                     if not isOwned then
                         buyGroup:ShowGroup(hotel.name .. _U("promptGroupName") .. tostring(hotel.cost))
                         if buyPrompt:HasCompleted() then
-                            devPrint("Buying hotel: " .. tostring(hotel.hotelId))
+                            DBG:Info("Buying hotel: " .. tostring(hotel.hotelId))
                             local success, updatedHotels, errorMsg = BccUtils.RPC:CallAsync('bcc-housing:HotelBought', { hotel = hotel })
                             if success and type(updatedHotels) == 'table' then
                                 OwnedHotels = updatedHotels
@@ -303,14 +293,14 @@ function MainHotelHandler()
             if distance < 1 then
                 inventoryGroup:ShowGroup(hotelInside.name)
                 if inventoryPrompt:HasCompleted() then
-                    devPrint("Opening hotel inventory: " .. tostring(hotelInside.hotelId))
+                    DBG:Info("Opening hotel inventory: " .. tostring(hotelInside.hotelId))
                     BccUtils.RPC:CallAsync('bcc-housing:HotelInvOpen', { hotelId = hotelInside.hotelId })
                 end
             else
                 leaveGroup:ShowGroup(hotelInside.name)
                 if leavePrompt:HasCompleted() then
                     if coordsWhenEntered then
-                        devPrint("Leaving hotel: " .. tostring(hotelInside.hotelId))
+                        DBG:Info("Leaving hotel: " .. tostring(hotelInside.hotelId))
                         SetEntityCoords(PlayerPedId(), coordsWhenEntered.x, coordsWhenEntered.y, coordsWhenEntered.z, false, false, false, false)
                         inHotel = false
                         hotelInside = nil

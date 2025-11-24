@@ -35,7 +35,7 @@ end
 local function registerPrivateProperty(coords, radius, houseId)
     local vec = toVector3(coords)
     if not vec then
-        devPrint("Invalid coordinates supplied for private property registration.")
+        DBG:Warning("Invalid coordinates supplied for private property registration.")
         return
     end
 
@@ -51,7 +51,7 @@ local function registerPrivateProperty(coords, radius, houseId)
         spawnState = "cleared",
         devContextCreated = false
     }
-    devPrint(("Registered private property: %s (enter %.2f / exit %.2f)"):format(key, detectionRadius, exitRadius))
+    DBG:Info(("Registered private property: %s (enter %.2f / exit %.2f)"):format(key, detectionRadius, exitRadius))
 end
 local function devModeControlsProperty(entry, distance)
     if not Config.DevMode or not entry or not entry.houseid then
@@ -96,7 +96,7 @@ local function showPropertyUI()
     if not propertyUIVisible then
         SendNUIMessage({ action = "showPropertyUI" })
         propertyUIVisible = true
-        devPrint("Property UI shown")
+        DBG:Info("Property UI shown")
     end
 end
 
@@ -104,7 +104,7 @@ local function hidePropertyUI()
     if propertyUIVisible then
         SendNUIMessage({ action = "hidePropertyUI" })
         propertyUIVisible = false
-        devPrint("Property UI hidden")
+        DBG:Info("Property UI hidden")
     end
 end
 
@@ -172,7 +172,7 @@ CreateThread(function()
                     isInsidePrivateProperty = false
                     currentPropertyKey = nil
                     hidePropertyUI()
-                    devPrint("Private property check disabled; clearing current state.")
+                    DBG:Info("Private property check disabled; clearing current state.")
                 end
             end
         else
@@ -184,7 +184,7 @@ CreateThread(function()
                         currentPropertyKey = nil
                         Notify(_U("leavingPrivate"), "info", 4000)
                         hidePropertyUI()
-                        devPrint("Player has left private property (no properties registered).")
+                        DBG:Info("Player has left private property (no properties registered).")
                     else
                         hidePropertyUI()
                     end
@@ -249,7 +249,7 @@ CreateThread(function()
                         if not propertyUISuppressed then
                             showPropertyUI()
                         end
-                        devPrint("Player has entered private property.")
+                        DBG:Info("Player has entered private property.")
                     elseif not propertyUISuppressed and not propertyUIVisible then
                         showPropertyUI()
                     end
@@ -258,7 +258,7 @@ CreateThread(function()
                     currentPropertyKey = nil
                     Notify(_U("leavingPrivate"), "info", 4000)
                     hidePropertyUI()
-                    devPrint("Player has left private property.")
+                    DBG:Info("Player has left private property.")
                 end
             end
         end
@@ -267,12 +267,12 @@ end)
 
 local function startPrivatePropertyCheck(houseCoords, houseRadius, houseId)
     if not Config.EnablePrivatePropertyCheck then
-        devPrint("Private property check is disabled in the config.")
+        DBG:Info("Private property check is disabled in the config.")
         return
     end
 
     if not houseCoords or not houseRadius then
-        devPrint("Error: Missing houseCoords or houseRadius.")
+        DBG:Error("Error: Missing houseCoords or houseRadius.")
         return
     end
 
@@ -287,7 +287,7 @@ local function stopPrivatePropertyCheck()
     if propertyUIVisible then
         hidePropertyUI()
     end
-    devPrint("Property check has been stopped and all registered properties cleared.")
+    DBG:Info("Property check has been stopped and all registered properties cleared.")
 end
 
 BccUtils.RPC:Register('bcc-housing:PrivatePropertyCheckHandler', function(params)

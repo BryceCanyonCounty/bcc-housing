@@ -125,7 +125,7 @@ end)
 
 
 function OpenCollectMoneyMenu()
-    devPrint("Opening collect money menu")
+    DBG:Error("Opening collect money menu")
 
     if HandlePlayerDeathAndCloseMenu() then
         return
@@ -178,7 +178,7 @@ function OpenCollectMoneyMenu()
     }, function()
         local success, response = BccUtils.RPC:CallAsync('bcc-housing:collectHouseSaleMoneyFromNpc', {})
         if not success then
-            devPrint("Failed to collect house sale money: " .. tostring(response and response.error))
+            DBG:Error("Failed to collect house sale money: " .. tostring(response and response.error))
         end
         BCCHousingMenu:Close()
     end)

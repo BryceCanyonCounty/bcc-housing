@@ -131,7 +131,7 @@ function doorCreationMenu()
             label = _U("doorId") .. door.id, -- Assuming each door has a unique 'id'
             style = {}
         }, function()
-            devPrint("Selected door with ID:", door.id)
+            DBG:Info("Selected door with ID:", door.id)
         end)
     end
 
@@ -282,7 +282,7 @@ function HouseManagementMenu(allHouses)
         if success and houses then
             AdminManagementMenu(houses) -- directly open the admin management menu
         else
-            devPrint("Failed to retrieve admin houses: " .. tostring(houses and houses.error))
+            DBG:Error("Failed to retrieve admin houses: " .. tostring(houses and houses.error))
         end
     end)
 
@@ -309,7 +309,7 @@ function CreateHouseMenu(tp, refresh)
     end
     
     tp = tp or false           -- Default to false if tp isn't provided
-    devPrint("Adjusted tp in CreateHouseMenu:", tp)
+    DBG:Info("Adjusted tp in CreateHouseMenu:", tp)
     -- Close any existing menus, assuming BCCHousingMenu is your FeatherMenu instance
     BCCHousingMenu:Close()
 
@@ -351,7 +351,7 @@ function CreateHouseMenu(tp, refresh)
         style = {}
     }, function()
         globalHouseData.houseCoords = GetEntityCoords(PlayerPedId())
-        devPrint("house coords set to:", globalHouseData.houseCoords)
+        DBG:Info("house coords set to:", globalHouseData.houseCoords)
         Notify(_U("houseCoordsSet"), "success", 4000)
     end)
 
@@ -386,7 +386,7 @@ function CreateHouseMenu(tp, refresh)
         -- This gets triggered whenever the arrow selected value changes
         -- print("arrows ownershipStatus", (data.value), data.value.extra) ---@todo remove
         globalHouseData.ownershipStatus = data.value.extra ---@todo need a test!!!
-        devPrint("house sell type set to:", globalHouseData.ownershipStatus)
+        DBG:Info("house sell type set to:", globalHouseData.ownershipStatus)
     end)
 
     createHouseMenu:RegisterElement('button', {
@@ -481,10 +481,10 @@ function setRadius()
         -- Check the input value for validity
         if data.value and tonumber(data.value) and tonumber(data.value) > 0 then
             globalHouseData.radius = tonumber(data.value) -- Correctly assign to globalHouseData
-            devPrint("Radius set to:", globalHouseData.radius)
+            DBG:Info("Radius set to:", globalHouseData.radius)
         else
             globalHouseData.radius = nil -- Ensure radius is nil if input is invalid
-            devPrint("Invalid input for amount.")
+            DBG:Warning("Invalid input for amount.")
         end
     end)
 
@@ -569,10 +569,10 @@ function setTaxAmount()
         -- Validate the input from the user
         if data.value and tonumber(data.value) and tonumber(data.value) > 0 then
             globalHouseData.taxAmount = tonumber(data.value) -- Correctly update globalHouseData for tax amount
-            devPrint("Tax amount set to:", globalHouseData.taxAmount)
+            DBG:Info("Tax amount set to:", globalHouseData.taxAmount)
         else
             globalHouseData.taxAmount = nil -- Reset if invalid input
-            devPrint("Invalid input for tax amount.")
+            DBG:Warning("Invalid input for tax amount.")
         end
     end)
 
@@ -656,10 +656,10 @@ function setInvLimit(houseId)
         -- Validate the input from the user
         if data.value and tonumber(data.value) and tonumber(data.value) > 0 then
             globalHouseData.invLimit = tonumber(data.value)
-            devPrint("Inventory limit set to:", globalHouseData.invLimit)
+            DBG:Info("Inventory limit set to:", globalHouseData.invLimit)
         else
             globalHouseData.invLimit = nil
-            devPrint("Invalid input for inventory limit.")
+            DBG:Warning("Invalid input for inventory limit.")
         end
     end)
 
@@ -680,12 +680,12 @@ function setInvLimit(houseId)
                 houseId = houseId
             })
             if not success then
-                devPrint("Failed to set inventory limit via RPC: " .. tostring(err and err.error))
+                DBG:Error("Failed to set inventory limit via RPC: " .. tostring(err and err.error))
             end
             CreateHouseMenu(tpHouse) -- Optionally navigate back to the house creation menu
             Notify(_U("invLimitSet"), "success", 4000)
         else
-            devPrint("Error: Inventory limit not set or invalid.")
+            DBG:Error("Error: Inventory limit not set or invalid.")
             Notify(_U("InvalidInput"), "error", 4000)
         end
     end)
@@ -719,11 +719,11 @@ end
 -- Confirm House Creation function
 function confirmCreation(globalHouseData)
     if not globalHouseData then
-        devPrint("Error: Data object is nil")
+        DBG:Error("Error: Data object is nil")
         return
     end
     if not globalHouseData.owner or not globalHouseData.radius or not globalHouseData.doors or not globalHouseData.houseCoords or not globalHouseData.invLimit or not globalHouseData.ownerSource or not globalHouseData.taxAmount then
-        devPrint("Error: One or more required fields are missing in the data object")
+        DBG:Error("Error: One or more required fields are missing in the data object")
         return
     end
     local tpHouse = false
@@ -743,10 +743,10 @@ function confirmCreation(globalHouseData)
         ownershipStatus = globalHouseData.ownershipStatus
     })
     if not success then
-        devPrint("CreationDBInsert RPC failed: " .. tostring(err and err.error))
+        DBG:Info("CreationDBInsert RPC failed: " .. tostring(err and err.error))
     end
     -- Debug to confirm data contents
-    devPrint("Sending data to server:", tpHouse, globalHouseData.owner, globalHouseData.radius, globalHouseData.doors, globalHouseData.houseCoords, globalHouseData.invLimit, globalHouseData.ownerSource, globalHouseData.taxAmount)
+    DBG:Info("Sending data to server:", tpHouse, globalHouseData.owner, globalHouseData.radius, globalHouseData.doors, globalHouseData.houseCoords, globalHouseData.invLimit, globalHouseData.ownerSource, globalHouseData.taxAmount)
 end
 
 BccUtils.RPC:Register('bcc-housing:ClientRecHouseLoad', function()

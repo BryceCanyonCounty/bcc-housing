@@ -1,11 +1,11 @@
 function sellHouseConfirmation(houseId, ownershipStatus)
     if not houseId then
-        devPrint("Error: houseInfo is nil")
+        DBG:Error("Error: houseInfo is nil")
         return
     end
 
     if ownershipStatus ~= "purchased" then
-        devPrint("Error: cannot sold rented house to player")
+        DBG:Error("Error: cannot sold rented house to player")
         return
     end
 
@@ -55,7 +55,7 @@ function sellHouseConfirmation(houseId, ownershipStatus)
         if success then
             RemoveManagePrompt()
         else
-            devPrint("sellHouse RPC failed: " .. tostring(err and err.error))
+            DBG:Info("sellHouse RPC failed: " .. tostring(err and err.error))
         end
         BCCHousingMenu:Close()
     end)
@@ -86,12 +86,12 @@ end
 
 function sellHouseToPlayer(houseId, ownershipStatus)
     if not houseId then
-        devPrint("Error: houseId is nil")
+        DBG:Error("Error: houseId is nil")
         return
     end
 
     if ownershipStatus ~= "purchased" then
-        devPrint("Error: cannot sold rented house to player")
+        DBG:Error("Error: cannot sold rented house to player")
         return
     end
 
@@ -275,7 +275,7 @@ function OpenConfirmSellHouseMenu(houseId, targetPlayerId, targetPlayerName, wit
             if success then
                 RemoveManagePrompt()
             else
-                devPrint("sellHouseToPlayerWithInventory RPC failed: " .. tostring(err and err.error))
+                DBG:Info("sellHouseToPlayerWithInventory RPC failed: " .. tostring(err and err.error))
             end
         else
             local success, err = BccUtils.RPC:CallAsync('bcc-housing:sellHouseToPlayerWithoutInventory', {
@@ -286,7 +286,7 @@ function OpenConfirmSellHouseMenu(houseId, targetPlayerId, targetPlayerName, wit
             if success then
                 RemoveManagePrompt()
             else
-                devPrint("sellHouseToPlayerWithoutInventory RPC failed: " .. tostring(err and err.error))
+                DBG:Info("sellHouseToPlayerWithoutInventory RPC failed: " .. tostring(err and err.error))
             end
         end
     end)
@@ -313,7 +313,7 @@ function GetNearbyPlayers()
             local distance = #(playerCoords - targetCoords)
             if distance < 3.0 then
                 table.insert(nearbyPlayers, { id = GetPlayerServerId(player), distance = distance })
-                devPrint("Found nearby player:", GetPlayerServerId(player))
+                DBG:Info("Found nearby player:", GetPlayerServerId(player))
             end
         end
     end

@@ -156,7 +156,7 @@ function AdminManagementMenuHouseChose(houseInfo)
         if success and houses then
             AdminManagementMenu(houses)
         else
-            devPrint("Failed to refresh admin house list: " .. tostring(houses and houses.error))
+            DBG:Error("Failed to refresh admin house list: " .. tostring(houses and houses.error))
         end
     end)
 
@@ -215,7 +215,7 @@ function deleteHouse(houseInfo)
     }, function()
         local success, err = BccUtils.RPC:CallAsync('bcc-house:AdminManagementDelHouse', { houseId = houseInfo.houseid })
         if not success then
-            devPrint("AdminManagementDelHouse RPC failed: " .. tostring(err and err.error))
+            DBG:Info("AdminManagementDelHouse RPC failed: " .. tostring(err and err.error))
         end
         BCCHousingMenu:Close()
     end)
@@ -298,7 +298,7 @@ function changeHouseRadius(houseInfo)
                 radius = radiusValue
             })
             if not success then
-                devPrint("AdminManagementChangeHouseRadius RPC failed: " .. tostring(err and err.error))
+                DBG:Info("AdminManagementChangeHouseRadius RPC failed: " .. tostring(err and err.error))
             end
             AdminManagementMenuHouseChose(houseInfo)
         else
@@ -385,7 +385,7 @@ function changeHouseTaxes(houseInfo)
                 tax = taxAmount
             })
             if not success then
-                devPrint("AdminManagementChangeTaxAmount RPC failed: " .. tostring(err and err.error))
+                DBG:Info("AdminManagementChangeTaxAmount RPC failed: " .. tostring(err and err.error))
             end
             AdminManagementMenuHouseChose(houseInfo)
         else
@@ -471,7 +471,7 @@ function changeHouseInventory(houseInfo)
                 invLimit = inventoryLimit
             })
             if not success then
-                devPrint("AdminManagementChangeInvLimit RPC failed: " .. tostring(err and err.error))
+                DBG:Info("AdminManagementChangeInvLimit RPC failed: " .. tostring(err and err.error))
             end
             AdminManagementMenuHouseChose(houseInfo)
         else

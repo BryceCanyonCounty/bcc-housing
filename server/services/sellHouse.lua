@@ -1,4 +1,3 @@
-
 -- Event to handle the selling of a house
 local function findHouseConfigByUniqueName(uniqueName)
     for _, config in pairs(Houses) do
@@ -13,45 +12,45 @@ local function handleSellHouse(src, houseIdParam, cb)
     local cbFn = type(cb) == 'function' and cb or nil
     local houseId = tonumber(houseIdParam)
     if not houseId then
-        devPrint('handleSellHouse received invalid houseId: ' .. tostring(houseIdParam))
+        DBG:Info('handleSellHouse received invalid houseId: ' .. tostring(houseIdParam))
         if cbFn then cbFn(false, { error = 'invalid_house' }) end
         return
     end
 
     local user = VORPcore.getUser(src)
     if not user then
-        devPrint('handleSellHouse: no VORP user for source ' .. tostring(src))
+        DBG:Info('handleSellHouse: no VORP user for source ' .. tostring(src))
         if cbFn then cbFn(false, { error = 'no_user' }) end
         return
     end
 
     local character = user.getUsedCharacter
     if not character then
-        devPrint('handleSellHouse: no character for source ' .. tostring(src))
+        DBG:Info('handleSellHouse: no character for source ' .. tostring(src))
         if cbFn then cbFn(false, { error = 'no_character' }) end
         return
     end
 
     local charIdentifier = character.charIdentifier
-    devPrint(('Sell house request for houseId %s by charIdentifier %s'):format(tostring(houseId), tostring(charIdentifier)))
+    DBG:Info(('Sell house request for houseId %s by charIdentifier %s'):format(tostring(houseId), tostring(charIdentifier)))
 
     MySQL.query('SELECT * FROM bcchousing WHERE houseid = ?', { houseId }, function(result)
         if not result or #result == 0 then
-            devPrint('handleSellHouse: house not found for id ' .. tostring(houseId))
+            DBG:Info('handleSellHouse: house not found for id ' .. tostring(houseId))
             if cbFn then cbFn(false, { error = 'house_not_found' }) end
             return
         end
 
         local houseData = result[1]
         if houseData.ownershipStatus ~= 'purchased' then
-            devPrint('handleSellHouse: house is not purchased, cannot be sold')
+            DBG:Info('handleSellHouse: house is not purchased, cannot be sold')
             NotifyClient(src, _U('rentedHouseCannotBeSold'), 4000, 'error')
             if cbFn then cbFn(false, { error = 'not_purchased' }) end
             return
         end
 
         if tostring(houseData.charidentifier) ~= tostring(charIdentifier) then
-            devPrint('handleSellHouse: player does not own house ' .. tostring(houseId))
+            DBG:Info('handleSellHouse: player does not own house ' .. tostring(houseId))
             NotifyClient(src, _U('noHouseOrNotOwner'), 4000, 'error')
             if cbFn then cbFn(false, { error = 'not_owner' }) end
             return
@@ -59,14 +58,14 @@ local function handleSellHouse(src, houseIdParam, cb)
 
         local houseConfig = findHouseConfigByUniqueName(houseData.uniqueName)
         if not houseConfig then
-            devPrint('handleSellHouse: config not found for uniqueName ' .. tostring(houseData.uniqueName))
+            DBG:Info('handleSellHouse: config not found for uniqueName ' .. tostring(houseData.uniqueName))
             NotifyClient(src, _U('houseCannotBeSold'), 4000, 'error')
             if cbFn then cbFn(false, { error = 'config_missing' }) end
             return
         end
 
         if not houseConfig.canSell then
-            devPrint('handleSellHouse: house cannot be sold per config')
+            DBG:Info('handleSellHouse: house cannot be sold per config')
             NotifyClient(src, _U('houseCannotBeSold'), 4000, 'error')
             if cbFn then cbFn(false, { error = 'cannot_sell' }) end
             return
@@ -189,7 +188,7 @@ local function handleSellHouseToPlayerWithInventory(src, houseIdParam, targetPla
         )
 
         if affectedRows == 0 then
-            devPrint('handleSellHouseToPlayerWithInventory: failed to update houseId ' .. tostring(houseId))
+            DBG:Info('handleSellHouseToPlayerWithInventory: failed to update houseId ' .. tostring(houseId))
             if cbFn then cbFn(false, { error = 'update_failed' }) end
             return
         end
@@ -301,7 +300,7 @@ local function handleSellHouseToPlayerWithoutInventory(src, houseIdParam, target
         )
 
         if affectedRows == 0 then
-            devPrint('handleSellHouseToPlayerWithoutInventory: failed to update houseId ' .. tostring(houseId))
+            DBG:Info('handleSellHouseToPlayerWithoutInventory: failed to update houseId ' .. tostring(houseId))
             if cbFn then cbFn(false, { error = 'update_failed' }) end
             return
         end

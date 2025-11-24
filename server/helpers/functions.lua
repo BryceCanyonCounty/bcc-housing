@@ -1,11 +1,16 @@
 ---- Pulling Essentials -----
-VORPcore = exports.vorp_core:GetCore()
+VORPcore    = exports.vorp_core:GetCore()
 DoorLocksAPI = exports['bcc-doorlocks']:getDoorLocksAPI()
-BccUtils = exports['bcc-utils'].initiate()
+BccUtils    = exports['bcc-utils']:initiate()
+
+DBG = BccUtils.Debug:Get("bcc-housing", Config.DevMode)
+if Config.DevMode then DBG:Enable() end
+DBG:Info("Housing debug initialized (server)")
 
 Discord = BccUtils.Discord.setup(Config.WebhookLink, Config.WebhookTitle, Config.WebhookAvatar)
 
 DbUpdated = false -- Use this to stop taxes from running till db has been made
+BCCHousingResourceStopping = false
 
 -- Initialize an empty table to hold player data
 local PlayersTable = {}
@@ -34,7 +39,7 @@ BccUtils.RPC:Register('bcc-housing:GetPlayers', function(params, cb, src)
             end
         end
     else
-        devPrint("No players returned from GetPlayers() or list is empty")
+        DBG:Info("No players returned from GetPlayers() or list is empty")
     end
     if cb then cb(true, data) else return data end
 end)
@@ -55,16 +60,6 @@ function table.contains(table, element)
         end
     end
     return false
-end
-
-if Config.DevMode then
-    -- Helper function for debugging
-    function devPrint(message)
-        print("^1[DEV MODE] ^4" .. message .. "^0")
-    end
-else
-    -- Define devPrint as a no-op function if DevMode is not enabled
-    function devPrint(message) end
 end
 
 function NotifyClient(src, message, durationOrType, maybeDuration)
@@ -99,7 +94,7 @@ function NotifyClient(src, message, durationOrType, maybeDuration)
     elseif Config.Notify == "vorp-core" then
         VORPcore.NotifyRightTip(src, message, duration)
     else
-        print("^1[Notify] Invalid Config.Notify: " .. tostring(Config.Notify))
+        DBG:Warning("^1[Notify] Invalid Config.Notify: " .. tostring(Config.Notify))
     end
 end
 
@@ -111,9 +106,20 @@ BccUtils.RPC:Register('bcc-housing:ServerSideRssStop', function(_, cb, src)
     if cb then cb(true) end
 end)
 
+AddEventHandler('onResourceStop', function(resourceName)
+    if resourceName ~= GetCurrentResourceName() then return end
+    BCCHousingResourceStopping = true
+    DBG:Info("[ResourceStop] Server stopping, clearing spawned furniture state and notifying clients")
+    for _, playerId in ipairs(GetPlayers()) do
+        DelSpawnedFurn(tonumber(playerId))
+    end
+    TriggerClientEvent("bcc-housing:ClearFurnitureEvent", -1)
+    MySQL.update("UPDATE bcchousing SET player_source_spawnedfurn='none'")
+end)
+
 AddEventHandler('playerDropped', function()
     local src = source
     if src then
-        DelSpawnedFurn(src) --This will trigger the function inside furniture.lua
+        DelSpawnedFurn(src)
     end
 end)

@@ -2,6 +2,7 @@ local MoveForwardPrompt, MoveBackwardPrompt, MoveLeftPrompt, MoveRightPrompt, Mo
 local RotateYawPrompt, RotateYawLeftPrompt, RotatePitchPrompt, RotateBackwardPrompt, RotateRightPrompt, RotateLeftPrompt
 local IncreasePrecisionPrompt, DecreasePrecisionPrompt, ConfirmPrompt, CancelPrompt
 local FurnitureGroup = GetRandomIntInRange(0, 0xffffff)
+
 local OwnedFurnitureCache = {}
 ActivePlacementItem, ActivePlacementHouseId = nil, nil
 LastPlacementObject = nil
@@ -10,6 +11,104 @@ local FurnitureMenuOpen = false
 local OpenFurnitureVendorItemMenu
 local VendorPreviewObj = nil
 local vendorCam
+local VendorPreviewBaseHeading = 0.0
+local VendorPreviewRotationIndex = 1
+local VendorPreviewZoomIndex = 1
+local VendorPreviewDefaultZoom = 60.0
+
+local VendorRotationOptions = {}
+for rot = 0, 330, 30 do
+    VendorRotationOptions[#VendorRotationOptions + 1] = {
+        display = (rot == 0 and "0°" or (tostring(rot) .. "°")),
+        rotation = rot
+    }
+end
+for idx, option in ipairs(VendorRotationOptions) do
+    option.optionIndex = idx
+end
+
+local VendorZoomBaseLevels = { 35.0, 45.0, 55.0, 65.0, 75.0, 85.0 }
+local VendorZoomOptions = {}
+
+---------------------------------
+-- Utility helpers
+---------------------------------
+
+local function UpdateVendorPreviewHeading(heading)
+    if not VendorPreviewObj then return end
+    if type(VendorPreviewObj) == "table" then
+        if VendorPreviewObj.SetHeading then
+            VendorPreviewObj:SetHeading(heading)
+            return
+        elseif VendorPreviewObj.GetObj then
+            local obj = VendorPreviewObj:GetObj()
+            if obj and DoesEntityExist(obj) then
+                SetEntityHeading(obj, heading)
+                return
+            end
+        end
+    end
+    if type(VendorPreviewObj) == "number" and DoesEntityExist(VendorPreviewObj) then
+        SetEntityHeading(VendorPreviewObj, heading)
+    end
+end
+
+local function BuildVendorZoomOptions(defaultZoom)
+    local seen = {}
+    local options = {}
+
+    local function insertZoom(value)
+        if not value or seen[value] then return end
+        seen[value] = true
+        options[#options + 1] = {
+            display = string.format("Zoom %.0f", value),
+            zoom = value
+        }
+    end
+
+    for _, level in ipairs(VendorZoomBaseLevels) do
+        insertZoom(level)
+    end
+    if defaultZoom then
+        insertZoom(defaultZoom)
+    end
+
+    table.sort(options, function(a, b)
+        return a.zoom < b.zoom
+    end)
+
+    local startIndex = 1
+    local closestDiff = math.huge
+    for idx, option in ipairs(options) do
+        option.optionIndex = idx
+        if defaultZoom then
+            local diff = math.abs(option.zoom - defaultZoom)
+            if diff < closestDiff then
+                closestDiff = diff
+                startIndex = idx
+            end
+        end
+    end
+
+    return options, startIndex
+end
+
+local function ApplyVendorPreviewRotation(index)
+    local option = VendorRotationOptions[index]
+    if not option then return end
+    VendorPreviewRotationIndex = index
+    local heading = (VendorPreviewBaseHeading + option.rotation) % 360
+    UpdateVendorPreviewHeading(heading)
+end
+
+local function ApplyVendorPreviewZoom(index)
+    if not vendorCam or not DoesCamExist(vendorCam) then return end
+    local option = VendorZoomOptions[index]
+    if not option then return end
+    VendorPreviewZoomIndex = index
+    VendorPreviewDefaultZoom = option.zoom
+    SetCamFov(vendorCam, option.zoom)
+end
 
 local function NormalizeCoords(coords)
     if not coords then return nil end
@@ -89,7 +188,7 @@ end
 
 function ClearVendorPreview()
     if not VendorPreviewObj then return end
-    if VendorPreviewObj.Remove then
+    if type(VendorPreviewObj) == "table" and VendorPreviewObj.Remove then
         VendorPreviewObj:Remove()
     else
         local ent = VendorPreviewObj
@@ -98,6 +197,8 @@ function ClearVendorPreview()
         end
     end
     VendorPreviewObj = nil
+    VendorPreviewBaseHeading = 0.0
+    VendorPreviewRotationIndex = 1
 end
 
 function CreateCamera()
@@ -120,7 +221,11 @@ function CreateCamera()
     SetCamCoord(vendorCam, creation.x, creation.y, creation.z + (creation.zOffset or 0.0))
     if creation.zoom then
         SetCamFov(vendorCam, creation.zoom)
+        VendorPreviewDefaultZoom = creation.zoom
+    else
+        VendorPreviewDefaultZoom = GetCamFov(vendorCam)
     end
+    VendorPreviewZoomIndex = 1
     SetCamActive(vendorCam, true)
 
     local lookAt = cameraCfg.lookAt
@@ -147,37 +252,93 @@ function EndCam()
     RenderScriptCams(false, true, 1000, true, false, 0)
     DestroyCam(vendorCam, false)
     vendorCam = nil
+    VendorPreviewZoomIndex = 1
     DestroyAllCams(true)
     SetFocusEntity(PlayerPedId())
     ActiveFurnitureVendor = nil
 end
 
 local function SpawnVendorItemAtCam(item)
-    if not item then return end
+    DBG:Info("SpawnVendorItemAtCam called")
+
+    if not item then
+        DBG:Error("SpawnVendorItemAtCam: no item provided")
+        return
+    end
+    DBG:Info("SpawnVendorItemAtCam: item provided: " .. tostring(item.name or item.model or "unknown"))
+
     ClearVendorPreview()
+    DBG:Info("SpawnVendorItemAtCam: cleared previous vendor preview")
 
     local vendorCfg = ActiveFurnitureVendor
+    DBG:Info("SpawnVendorItemAtCam: ActiveFurnitureVendor " .. (vendorCfg and "found" or "nil"))
+
     if not vendorCfg and Furniture and Furniture.Vendors and Furniture.Vendors[1] then
         vendorCfg = Furniture.Vendors[1]
+        DBG:Info("SpawnVendorItemAtCam: using Furniture.Vendors[1] as vendorCfg")
     end
+
     if not vendorCfg and Config.FurnitureVendors and Config.FurnitureVendors[1] then
         vendorCfg = Config.FurnitureVendors[1]
+        DBG:Info("SpawnVendorItemAtCam: using Config.FurnitureVendors[1] as vendorCfg")
+    end
+
+    if not vendorCfg then
+        DBG:Error("SpawnVendorItemAtCam: vendorCfg still nil, aborting")
+        return
     end
 
     local cameraCfg = (vendorCfg and vendorCfg.camera) or {}
+    DBG:Info("SpawnVendorItemAtCam: cameraCfg loaded: " .. (cameraCfg and "yes" or "no"))
+
     local cam = cameraCfg.itemPreview or cameraCfg.creation or (Config.CameraCoords and Config.CameraCoords.itemPreview)
     if not cam then
+        DBG:Info("SpawnVendorItemAtCam: no cam from vendor, trying Config.CameraCoords.creation")
         cam = Config.CameraCoords and Config.CameraCoords.creation
     end
-    if not cam then return end
+
+    if not cam then
+        DBG:Error("SpawnVendorItemAtCam: no valid camera coordinates found, aborting")
+        return
+    end
+
+    DBG:Info(string.format("SpawnVendorItemAtCam: camera coords x=%.2f y=%.2f z=%.2f h=%.2f", cam.x, cam.y, cam.z, cam.h or 0.0))
 
     local model = item.propModel or item.model
-    if not model then return end
+    if not model then
+        DBG:Error("SpawnVendorItemAtCam: item has no model/propModel")
+        return
+    end
+    DBG:Info("SpawnVendorItemAtCam: model to spawn: " .. tostring(model))
 
-    local obj = BccUtils.Objects:Create(model, cam.x, cam.y, cam.z, cam.h or 0.0, true, 'standard')
+    DBG:Info("SpawnVendorItemAtCam: attempting object create...")
+    local obj = BccUtils.Objects:Create(
+        model,
+        cam.x, cam.y, cam.z,
+        cam.h or 0.0,
+        false,
+        "no_offset"
+    )
+
+    DBG:Info("SpawnVendorItemAtCam: object created: " .. (obj and "success" or "FAILED"))
+
     obj:PlaceOnGround(true)
+    obj:SetAsMission(true)
+    DBG:Info("SpawnVendorItemAtCam: object placed on ground")
+
     VendorPreviewObj = obj
+    VendorPreviewBaseHeading = cam.h or 0.0
+    VendorPreviewRotationIndex = 1
+
+    DBG:Info("SpawnVendorItemAtCam: updating preview heading to " .. tostring(VendorPreviewBaseHeading))
+    UpdateVendorPreviewHeading(VendorPreviewBaseHeading)
+
+    DBG:Info("SpawnVendorItemAtCam complete")
 end
+
+---------------------------------
+-- Furniture Menu (book) etc.
+---------------------------------
 
 function FurnitureMenu(houseId, ownershipStatus, ownedFurniture)
     houseId = houseId or HouseId
@@ -214,11 +375,20 @@ function FurnitureMenu(houseId, ownershipStatus, ownedFurniture)
     if HandlePlayerDeathAndCloseMenu() then
         return
     end
+    local houseFurnitureCount = 0
+    if ownershipStatus == 'purchased' then
+        local countSuccess, countResult = BccUtils.RPC:CallAsync("bcc-housing:GetHouseFurnitureCount", { houseId = houseId })
+        if countSuccess then
+            houseFurnitureCount = tonumber(countResult) or 0
+        else
+            DBG:Info("Failed to fetch furniture count for house ID " .. tostring(houseId))
+        end
+    end
 
     local furnitureMainMenu = BCCHousingMenu:RegisterPage("bcc-housing-owned-furniture-menu")
 
     furnitureMainMenu:RegisterElement('header', {
-        value = _U("ownedFurnitureHeader"),
+        value = _U("boughtFurnitureHeader"),
         slot = 'header',
         style = {}
     })
@@ -227,6 +397,14 @@ function FurnitureMenu(houseId, ownershipStatus, ownedFurniture)
         slot = "header",
         style = {}
     })
+    
+    if ownershipStatus == 'purchased' then
+        furnitureMainMenu:RegisterElement('textdisplay', {
+            value = _U("furnitureHouseCount", tostring(houseId), tostring(houseFurnitureCount)),
+            slot = 'content',
+            style = {}
+        })
+    end
 
     if not OwnedFurnitureCache or #OwnedFurnitureCache == 0 then
         furnitureMainMenu:RegisterElement('textdisplay', {
@@ -242,11 +420,12 @@ function FurnitureMenu(houseId, ownershipStatus, ownedFurniture)
             return (a.displayName or "") < (b.displayName or "")
         end)
 
-        for _, item in ipairs(OwnedFurnitureCache) do
+        for idx, item in ipairs(OwnedFurnitureCache) do
             local label = item.displayName or item.model
             if item.category and item.category ~= '' then
                 label = label .. " (" .. item.category .. ")"
             end
+            label = string.format("%d. %s", idx, label)
             furnitureMainMenu:RegisterElement('button', {
                 label = label,
                 style = {}
@@ -264,8 +443,14 @@ function FurnitureMenu(houseId, ownershipStatus, ownedFurniture)
         style = {}
     })
 
+    furnitureMainMenu:RegisterElement('line', {
+        slot = "footer",
+        style = {}
+    })
+
     furnitureMainMenu:RegisterElement('button', {
         label = _U("sellOwnerFurn"),
+        slot = "footer",
         style = {}
     }, function()
         local success, furnDataOrMessage, ownershipStatus = BccUtils.RPC:CallAsync("bcc-housing:GetOwnerFurniture",
@@ -280,11 +465,6 @@ function FurnitureMenu(houseId, ownershipStatus, ownedFurniture)
             end
         end
     end)
-
-    furnitureMainMenu:RegisterElement('line', {
-        slot = "footer",
-        style = {}
-    })
 
     furnitureMainMenu:RegisterElement('button', {
         label = _U("closeButton"),
@@ -313,7 +493,7 @@ end
 function OpenFurnitureVendorItemMenu(categoryIndex, itemIndex)
     local furnConfigTable = Furniture[categoryIndex]
     if not furnConfigTable then
-        devPrint("Vendor preview missing category index: " .. tostring(categoryIndex))
+        DBG:Error("Vendor preview missing category index: " .. tostring(categoryIndex))
         return
     end
 
@@ -326,7 +506,9 @@ function OpenFurnitureVendorItemMenu(categoryIndex, itemIndex)
     end
     CreateCamera()
     SpawnVendorItemAtCam(item)
-    local itemPage = BCCHousingMenu:RegisterPage("bcc-housing-furniture-vendor-item-" .. categoryIndex .. "-" .. itemIndex)
+    local itemPage = BCCHousingMenu:RegisterPage("bcc-housing-furniture-vendor-item-" ..
+        categoryIndex .. "-" .. itemIndex)
+
     itemPage:RegisterElement('header', {
         value = furnConfigTable.title,
         slot = 'header',
@@ -373,8 +555,47 @@ function OpenFurnitureVendorItemMenu(categoryIndex, itemIndex)
             slot = 'content',
             style = {}
         })
-
     end
+
+    if VendorPreviewObj then
+        itemPage:RegisterElement('arrows', {
+            label = _U("vendorRotatePreview"),
+            start = VendorPreviewRotationIndex,
+            options = VendorRotationOptions,
+            persist = true
+        }, function(data)
+            if not data or not data.value then return end
+            local index = data.value.optionIndex
+            if not index then return end
+            ApplyVendorPreviewRotation(index)
+        end)
+
+        itemPage:RegisterElement('line', {
+            slot = 'content',
+            style = {}
+        })
+    end
+
+    if vendorCam and DoesCamExist(vendorCam) then
+        VendorZoomOptions, VendorPreviewZoomIndex = BuildVendorZoomOptions(VendorPreviewDefaultZoom)
+        itemPage:RegisterElement('arrows', {
+            label = _U("vendorZoomPreview"),
+            start = VendorPreviewZoomIndex,
+            options = VendorZoomOptions,
+            persist = true
+        }, function(data)
+            if not data or not data.value then return end
+            local index = data.value.optionIndex
+            if not index then return end
+            ApplyVendorPreviewZoom(index)
+        end)
+
+        itemPage:RegisterElement('line', {
+            slot = 'content',
+            style = {}
+        })
+    end
+
     local price = tonumber(item.costToBuy) or 0
     itemPage:RegisterElement('textdisplay', {
         value = "Price : " .. price .. " $",
@@ -405,6 +626,7 @@ function OpenFurnitureVendorItemMenu(categoryIndex, itemIndex)
 
         Notify(_U("furnAddedToBook"), "success", 4000)
     end)
+
     itemPage:RegisterElement('button', {
         label = _U("backButton"),
         slot = 'footer',
@@ -449,7 +671,7 @@ end
 function OpenFurnitureVendorCategoryMenu(categoryIndex)
     local furnConfigTable = Furniture[categoryIndex]
     if not furnConfigTable then
-        devPrint("Invalid furniture category index: " .. tostring(categoryIndex))
+        DBG:Error("Invalid furniture category index: " .. tostring(categoryIndex))
         return
     end
     OpenFurnitureVendorItemMenu(categoryIndex, 1)
@@ -533,9 +755,13 @@ function FurnitureVendorMenu()
     })
 end
 
+---------------------------------
+-- Placement helpers
+---------------------------------
+
 local function HandleFurniturePlaced(placementHouseId, furnObj)
     if not furnObj or not DoesEntityExist(furnObj) then
-        devPrint("Error: Furniture entity does not exist, could not add to CreatedFurniture.")
+        DBG:Error("Furniture entity does not exist, could not add to CreatedFurniture.")
         Notify(_U("furnNotPlaced"), "error", 4000)
         return false
     end
@@ -572,146 +798,134 @@ RegisterNetEvent('bcc-housing:OpenFurnitureVendor', function()
     FurnitureVendorMenu()
 end)
 
+---------------------------------
+-- PROMPTS via PromptsAPI
+---------------------------------
 
+-- Create all prompts for furniture placement using PromptsAPI
 function StartFurniturePlacementPrompts()
-    -- Debug: Check if BccUtils is loaded
-    if BccUtils then
-        devPrint("BccUtils initialized successfully")
-    else
-        devPrint("Error: BccUtils not initialized")
-    end
-    if BccUtils and BccUtils.Keys then
-        devPrint("Keys table exists")
-    else
-        devPrint("Error: Keys table not found in BccUtils")
-    end
+    MoveForwardPrompt = UiPromptRegisterBegin()
+    UiPromptSetControlAction(MoveForwardPrompt, BccUtils.Keys['R'])
+    UiPromptSetText(MoveForwardPrompt, CreateVarString(10, 'LITERAL_STRING', _U("forward")))
+    UiPromptSetStandardMode(MoveForwardPrompt, true)
+    UiPromptSetGroup(MoveForwardPrompt, FurnitureGroup, 0)
+    UiPromptRegisterEnd(MoveForwardPrompt)
 
-    if BccUtils and BccUtils.Keys and BccUtils.Keys['R'] then
-        PromptSetControlAction(MoveForwardPrompt, BccUtils.Keys['R'])
-    else
-        devPrint("Error: Key 'R' not found in Keys table")
-    end
-    -- Register movement prompts
-    MoveForwardPrompt = PromptRegisterBegin()
-    PromptSetControlAction(MoveForwardPrompt, BccUtils.Keys['R'])
-    PromptSetText(MoveForwardPrompt, CreateVarString(10, 'LITERAL_STRING', _U("forward")))
-    PromptSetStandardMode(MoveForwardPrompt, true)
-    PromptSetGroup(MoveForwardPrompt, FurnitureGroup, 0)
-    PromptRegisterEnd(MoveForwardPrompt)
+    MoveBackwardPrompt = UiPromptRegisterBegin()
+    UiPromptSetControlAction(MoveBackwardPrompt, BccUtils.Keys['E'])
+    UiPromptSetText(MoveBackwardPrompt, CreateVarString(10, 'LITERAL_STRING', _U("backward")))
+    UiPromptSetStandardMode(MoveBackwardPrompt, true)
+    UiPromptSetGroup(MoveBackwardPrompt, FurnitureGroup, 0)
+    UiPromptRegisterEnd(MoveBackwardPrompt)
 
-    MoveBackwardPrompt = PromptRegisterBegin()
-    PromptSetControlAction(MoveBackwardPrompt, BccUtils.Keys['E'])
-    PromptSetText(MoveBackwardPrompt, CreateVarString(10, 'LITERAL_STRING', _U("backward")))
-    PromptSetStandardMode(MoveBackwardPrompt, true)
-    PromptSetGroup(MoveBackwardPrompt, FurnitureGroup, 0)
-    PromptRegisterEnd(MoveBackwardPrompt)
+    MoveLeftPrompt = UiPromptRegisterBegin()
+    UiPromptSetControlAction(MoveLeftPrompt, BccUtils.Keys['LEFT'])
+    UiPromptSetText(MoveLeftPrompt, CreateVarString(10, 'LITERAL_STRING', _U("left")))
+    UiPromptSetStandardMode(MoveLeftPrompt, true)
+    UiPromptSetGroup(MoveLeftPrompt, FurnitureGroup, 0)
+    UiPromptRegisterEnd(MoveLeftPrompt)
 
-    MoveLeftPrompt = PromptRegisterBegin()
-    PromptSetControlAction(MoveLeftPrompt, BccUtils.Keys['LEFT'])
-    PromptSetText(MoveLeftPrompt, CreateVarString(10, 'LITERAL_STRING', _U("left")))
-    PromptSetStandardMode(MoveLeftPrompt, true)
-    PromptSetGroup(MoveLeftPrompt, FurnitureGroup, 0)
-    PromptRegisterEnd(MoveLeftPrompt)
+    MoveRightPrompt = UiPromptRegisterBegin()
+    UiPromptSetControlAction(MoveRightPrompt, BccUtils.Keys['RIGHT'])
+    UiPromptSetText(MoveRightPrompt, CreateVarString(10, 'LITERAL_STRING', _U("right")))
+    UiPromptSetStandardMode(MoveRightPrompt, true)
+    UiPromptSetGroup(MoveRightPrompt, FurnitureGroup, 0)
+    UiPromptRegisterEnd(MoveRightPrompt)
 
-    MoveRightPrompt = PromptRegisterBegin()
-    PromptSetControlAction(MoveRightPrompt, BccUtils.Keys['RIGHT'])
-    PromptSetText(MoveRightPrompt, CreateVarString(10, 'LITERAL_STRING', _U("right")))
-    PromptSetStandardMode(MoveRightPrompt, true)
-    PromptSetGroup(MoveRightPrompt, FurnitureGroup, 0)
-    PromptRegisterEnd(MoveRightPrompt)
+    MoveUpPrompt = UiPromptRegisterBegin()
+    UiPromptSetControlAction(MoveUpPrompt, BccUtils.Keys['UP'])
+    UiPromptSetText(MoveUpPrompt, CreateVarString(10, 'LITERAL_STRING', _U("up")))
+    UiPromptSetStandardMode(MoveUpPrompt, true)
+    UiPromptSetGroup(MoveUpPrompt, FurnitureGroup, 0)
+    UiPromptRegisterEnd(MoveUpPrompt)
 
-    MoveUpPrompt = PromptRegisterBegin()
-    PromptSetControlAction(MoveUpPrompt, BccUtils.Keys['UP'])
-    PromptSetText(MoveUpPrompt, CreateVarString(10, 'LITERAL_STRING', _U("up")))
-    PromptSetStandardMode(MoveUpPrompt, true)
-    PromptSetGroup(MoveUpPrompt, FurnitureGroup, 0)
-    PromptRegisterEnd(MoveUpPrompt)
+    MoveDownPrompt = UiPromptRegisterBegin()
+    UiPromptSetControlAction(MoveDownPrompt, BccUtils.Keys['DOWN'])
+    UiPromptSetText(MoveDownPrompt, CreateVarString(10, 'LITERAL_STRING', _U("down")))
+    UiPromptSetStandardMode(MoveDownPrompt, true)
+    UiPromptSetGroup(MoveDownPrompt, FurnitureGroup, 0)
+    UiPromptRegisterEnd(MoveDownPrompt)
 
-    MoveDownPrompt = PromptRegisterBegin()
-    PromptSetControlAction(MoveDownPrompt, BccUtils.Keys['DOWN'])
-    PromptSetText(MoveDownPrompt, CreateVarString(10, 'LITERAL_STRING', _U("down")))
-    PromptSetStandardMode(MoveDownPrompt, true)
-    PromptSetGroup(MoveDownPrompt, FurnitureGroup, 0)
-    PromptRegisterEnd(MoveDownPrompt)
+    RotateYawPrompt = UiPromptRegisterBegin()
+    UiPromptSetControlAction(RotateYawPrompt, BccUtils.Keys['UP'])
+    UiPromptSetText(RotateYawPrompt, CreateVarString(10, 'LITERAL_STRING', _U("rotateYaw")))
+    UiPromptSetStandardMode(RotateYawPrompt, true)
+    UiPromptSetGroup(RotateYawPrompt, FurnitureGroup, 1)
+    UiPromptRegisterEnd(RotateYawPrompt)
 
-    -- Register rotation prompts
-    RotateYawPrompt = PromptRegisterBegin()
-    PromptSetControlAction(RotateYawPrompt, BccUtils.Keys['UP'])
-    PromptSetText(RotateYawPrompt, CreateVarString(10, 'LITERAL_STRING', _U("rotateYaw")))
-    PromptSetStandardMode(RotateYawPrompt, true)
-    PromptSetGroup(RotateYawPrompt, FurnitureGroup, 1)
-    PromptRegisterEnd(RotateYawPrompt)
+    RotateYawLeftPrompt = UiPromptRegisterBegin()
+    UiPromptSetControlAction(RotateYawLeftPrompt, BccUtils.Keys['DOWN'])
+    UiPromptSetText(RotateYawLeftPrompt, CreateVarString(10, 'LITERAL_STRING', _U("rotateYawLeft")))
+    UiPromptSetStandardMode(RotateYawLeftPrompt, true)
+    UiPromptSetGroup(RotateYawLeftPrompt, FurnitureGroup, 1)
+    UiPromptRegisterEnd(RotateYawLeftPrompt)
 
-    RotateYawLeftPrompt = PromptRegisterBegin()
-    PromptSetControlAction(RotateYawLeftPrompt, BccUtils.Keys['DOWN'])
-    PromptSetText(RotateYawLeftPrompt, CreateVarString(10, 'LITERAL_STRING', _U("rotateYawLeft")))
-    PromptSetStandardMode(RotateYawLeftPrompt, true)
-    PromptSetGroup(RotateYawLeftPrompt, FurnitureGroup, 1)
-    PromptRegisterEnd(RotateYawLeftPrompt)
+    RotatePitchPrompt = UiPromptRegisterBegin()
+    UiPromptSetControlAction(RotatePitchPrompt, BccUtils.Keys['E'])
+    UiPromptSetText(RotatePitchPrompt, CreateVarString(10, 'LITERAL_STRING', _U("rotatepitch")))
+    UiPromptSetStandardMode(RotatePitchPrompt, true)
+    UiPromptSetGroup(RotatePitchPrompt, FurnitureGroup, 1)
+    UiPromptRegisterEnd(RotatePitchPrompt)
 
-    RotatePitchPrompt = PromptRegisterBegin()
-    PromptSetControlAction(RotatePitchPrompt, BccUtils.Keys['E'])
-    PromptSetText(RotatePitchPrompt, CreateVarString(10, 'LITERAL_STRING', _U("rotatepitch")))
-    PromptSetStandardMode(RotatePitchPrompt, true)
-    PromptSetGroup(RotatePitchPrompt, FurnitureGroup, 1)
-    PromptRegisterEnd(RotatePitchPrompt)
+    RotateBackwardPrompt = UiPromptRegisterBegin()
+    UiPromptSetControlAction(RotateBackwardPrompt, BccUtils.Keys['R'])
+    UiPromptSetText(RotateBackwardPrompt, CreateVarString(10, 'LITERAL_STRING', _U("rotatebackward")))
+    UiPromptSetStandardMode(RotateBackwardPrompt, true)
+    UiPromptSetGroup(RotateBackwardPrompt, FurnitureGroup, 1)
+    UiPromptRegisterEnd(RotateBackwardPrompt)
 
-    RotateBackwardPrompt = PromptRegisterBegin()
-    PromptSetControlAction(RotateBackwardPrompt, BccUtils.Keys['R'])
-    PromptSetText(RotateBackwardPrompt, CreateVarString(10, 'LITERAL_STRING', _U("rotatebackward")))
-    PromptSetStandardMode(RotateBackwardPrompt, true)
-    PromptSetGroup(RotateBackwardPrompt, FurnitureGroup, 1)
-    PromptRegisterEnd(RotateBackwardPrompt)
+    RotateRightPrompt = UiPromptRegisterBegin()
+    UiPromptSetControlAction(RotateRightPrompt, BccUtils.Keys['RIGHT'])
+    UiPromptSetText(RotateRightPrompt, CreateVarString(10, 'LITERAL_STRING', _U("rotateright")))
+    UiPromptSetStandardMode(RotateRightPrompt, true)
+    UiPromptSetGroup(RotateRightPrompt, FurnitureGroup, 1)
+    UiPromptRegisterEnd(RotateRightPrompt)
 
-    RotateRightPrompt = PromptRegisterBegin()
-    PromptSetControlAction(RotateRightPrompt, BccUtils.Keys['RIGHT'])
-    PromptSetText(RotateRightPrompt, CreateVarString(10, 'LITERAL_STRING', _U("rotateright")))
-    PromptSetStandardMode(RotateRightPrompt, true)
-    PromptSetGroup(RotateRightPrompt, FurnitureGroup, 1)
-    PromptRegisterEnd(RotateRightPrompt)
+    RotateLeftPrompt = UiPromptRegisterBegin()
+    UiPromptSetControlAction(RotateLeftPrompt, BccUtils.Keys['LEFT'])
+    UiPromptSetText(RotateLeftPrompt, CreateVarString(10, 'LITERAL_STRING', _U("rotateleft")))
+    UiPromptSetStandardMode(RotateLeftPrompt, true)
+    UiPromptSetGroup(RotateLeftPrompt, FurnitureGroup, 1)
+    UiPromptRegisterEnd(RotateLeftPrompt)
 
-    RotateLeftPrompt = PromptRegisterBegin()
-    PromptSetControlAction(RotateLeftPrompt, BccUtils.Keys['LEFT'])
-    PromptSetText(RotateLeftPrompt, CreateVarString(10, 'LITERAL_STRING', _U("rotateleft")))
-    PromptSetStandardMode(RotateLeftPrompt, true)
-    PromptSetGroup(RotateLeftPrompt, FurnitureGroup, 1)
-    PromptRegisterEnd(RotateLeftPrompt)
+    IncreasePrecisionPrompt = UiPromptRegisterBegin()
+    UiPromptSetControlAction(IncreasePrecisionPrompt, BccUtils.Keys['UP'])
+    UiPromptSetText(IncreasePrecisionPrompt, CreateVarString(10, 'LITERAL_STRING', _U("increasePrecision")))
+    UiPromptSetStandardMode(IncreasePrecisionPrompt, true)
+    UiPromptSetGroup(IncreasePrecisionPrompt, FurnitureGroup, 2)
+    UiPromptRegisterEnd(IncreasePrecisionPrompt)
 
-    IncreasePrecisionPrompt = PromptRegisterBegin()
-    PromptSetControlAction(IncreasePrecisionPrompt, BccUtils.Keys['UP'])
-    PromptSetText(IncreasePrecisionPrompt, CreateVarString(10, 'LITERAL_STRING', _U("increasePrecision")))
-    PromptSetStandardMode(IncreasePrecisionPrompt, true)
-    PromptSetGroup(IncreasePrecisionPrompt, FurnitureGroup, 2)
-    PromptRegisterEnd(IncreasePrecisionPrompt)
+    DecreasePrecisionPrompt = UiPromptRegisterBegin()
+    UiPromptSetControlAction(DecreasePrecisionPrompt, BccUtils.Keys['DOWN'])
+    UiPromptSetText(DecreasePrecisionPrompt, CreateVarString(10, 'LITERAL_STRING', _U("decreasePrecision")))
+    UiPromptSetStandardMode(DecreasePrecisionPrompt, true)
+    UiPromptSetGroup(DecreasePrecisionPrompt, FurnitureGroup, 2)
+    UiPromptRegisterEnd(DecreasePrecisionPrompt)
 
-    DecreasePrecisionPrompt = PromptRegisterBegin()
-    PromptSetControlAction(DecreasePrecisionPrompt, BccUtils.Keys['DOWN'])
-    PromptSetText(DecreasePrecisionPrompt, CreateVarString(10, 'LITERAL_STRING', _U("decreasePrecision")))
-    PromptSetStandardMode(DecreasePrecisionPrompt, true)
-    PromptSetGroup(DecreasePrecisionPrompt, FurnitureGroup, 2)
-    PromptRegisterEnd(DecreasePrecisionPrompt)
+    ConfirmPrompt = UiPromptRegisterBegin()
+    UiPromptSetControlAction(ConfirmPrompt, BccUtils.Keys['SPACEBAR'])
+    UiPromptSetText(ConfirmPrompt, CreateVarString(10, 'LITERAL_STRING', _U("confirmPlacement")))
+    UiPromptSetStandardMode(ConfirmPrompt, true)
+    UiPromptSetGroup(ConfirmPrompt, FurnitureGroup, 3)
+    UiPromptRegisterEnd(ConfirmPrompt)
 
-    -- Register confirmation and cancel prompts
-    ConfirmPrompt = PromptRegisterBegin()
-    PromptSetControlAction(ConfirmPrompt, BccUtils.Keys['SPACEBAR'])
-    PromptSetText(ConfirmPrompt, CreateVarString(10, 'LITERAL_STRING', _U("confirmPlacement")))
-    PromptSetStandardMode(ConfirmPrompt, true)
-    PromptSetGroup(ConfirmPrompt, FurnitureGroup, 3)
-    PromptRegisterEnd(ConfirmPrompt)
-
-    CancelPrompt = PromptRegisterBegin()
-    PromptSetControlAction(CancelPrompt, BccUtils.Keys['BACKSPACE'])
-    PromptSetText(CancelPrompt, CreateVarString(10, 'LITERAL_STRING', _U("cancelPlacement")))
-    PromptSetStandardMode(CancelPrompt, true)
-    PromptSetGroup(CancelPrompt, FurnitureGroup, 3)
-    PromptRegisterEnd(CancelPrompt)
+    CancelPrompt = UiPromptRegisterBegin()
+    UiPromptSetControlAction(CancelPrompt, BccUtils.Keys['BACKSPACE'])
+    UiPromptSetText(CancelPrompt, CreateVarString(10, 'LITERAL_STRING', _U("cancelPlacement")))
+    UiPromptSetStandardMode(CancelPrompt, true)
+    UiPromptSetGroup(CancelPrompt, FurnitureGroup, 3)
+    UiPromptRegisterEnd(CancelPrompt)
 end
+---------------------------------
+-- Placement logic using prompts
+---------------------------------
 
 function PlaceFurnitureIntoWorldPrompt(itemData)
     if not itemData or not itemData.model then
-        devPrint("Invalid furniture item passed to placement prompt.")
+        DBG:Error("Invalid furniture item passed to placement prompt.")
         return
     end
+
     local model = itemData.model
     local displayName = itemData.displayName or itemData.model
     local sellPrice = itemData.sellprice or 0
@@ -721,15 +935,39 @@ function PlaceFurnitureIntoWorldPrompt(itemData)
     local placementCoords = GetEntityCoords(playerPed)
     local modelHash, err = LoadFurnitureModel(model)
     if not modelHash then
-        devPrint(("Failed to load furniture model %s: %s"):format(tostring(model), tostring(err)))
+        DBG:Error(("Failed to load furniture model %s: %s"):format(tostring(model), tostring(err)))
         Notify(_U("furnNotPlaced"), "error", 4000)
         return
     end
 
-    local createdObject = CreateObject(modelHash, placementCoords.x, placementCoords.y + 1, placementCoords.z, true, true,
-        true)
-    if createdObject == 0 then
-        devPrint("Failed to create furniture object for model: " .. tostring(model))
+    -- Use BccUtils Objects wrapper, but resolve actual entity for native calls
+    local createdWrapper = BccUtils.Objects:Create(
+        model,
+        placementCoords.x,
+        placementCoords.y + 1,
+        placementCoords.z,
+        false,
+        "no_offset"
+    )
+
+    DBG:Info("PlaceFurnitureIntoWorldPrompt: object created: " .. (createdWrapper and "success" or "FAILED"))
+
+    if not createdWrapper then
+        DBG:Error("Failed to create furniture object wrapper for model: " .. tostring(model))
+        Notify(_U("furnNotPlaced"), "error", 4000)
+        return
+    end
+
+    createdWrapper:PlaceOnGround(true)
+    createdWrapper:SetAsMission(true)
+
+    local createdObject = createdWrapper
+    if type(createdWrapper) == "table" and createdWrapper.GetObj then
+        createdObject = createdWrapper:GetObj()
+    end
+
+    if not createdObject or createdObject == 0 or not DoesEntityExist(createdObject) then
+        DBG:Error("Failed to resolve entity from furniture object for model: " .. tostring(model))
         Notify(_U("furnNotPlaced"), "error", 4000)
         return
     end
@@ -744,106 +982,174 @@ function PlaceFurnitureIntoWorldPrompt(itemData)
     -- Notify player of controls
     Notify(_U('furnitureControls'), 5000)
 
-    -- Main loop for handling prompt inputs
     Citizen.CreateThread(function()
         StartFurniturePlacementPrompts()
-        while true do
-            local playerPed = PlayerPedId()
-            if IsEntityDead(playerPed) then goto END end
-            Citizen.Wait(0)
-            PromptSetEnabled(ConfirmPrompt, true)
-            PromptSetEnabled(CancelPrompt, true)
-            -- Set active group for this frame
-            PromptSetActiveGroupThisFrame(FurnitureGroup, CreateVarString(10, 'LITERAL_STRING', _U("movementControls")),
-                4, 0, 0, 0)
-            PromptSetEnabled(MoveForwardPrompt, true)
-            PromptSetEnabled(MoveBackwardPrompt, true)
-            PromptSetEnabled(MoveLeftPrompt, true)
-            PromptSetEnabled(MoveRightPrompt, true)
-            PromptSetEnabled(MoveUpPrompt, true)
-            PromptSetEnabled(MoveDownPrompt, true)
-            PromptSetEnabled(RotateYawPrompt, true)
-            PromptSetEnabled(RotateYawLeftPrompt, true)
-            PromptSetEnabled(RotatePitchPrompt, true)    -- Added
-            PromptSetEnabled(RotateBackwardPrompt, true) -- Added
-            PromptSetEnabled(RotateRightPrompt, true)    -- Added
-            PromptSetEnabled(RotateLeftPrompt, true)     -- Added
-            PromptSetEnabled(IncreasePrecisionPrompt, true)
-            PromptSetEnabled(DecreasePrecisionPrompt, true)
 
+        local followPlayer = true
+        
+        while true do
+            local ped = PlayerPedId()
+            if IsEntityDead(ped) then goto END end
+
+            Citizen.Wait(0)
+            UiPromptSetEnabled(ConfirmPrompt, true)
+            UiPromptSetEnabled(CancelPrompt, true)
+            UiPromptSetActiveGroupThisFrame(FurnitureGroup, CreateVarString(10, 'LITERAL_STRING', _U("movementControls")), 4, 0, 0, 0)
+            UiPromptSetEnabled(MoveForwardPrompt, true)
+            UiPromptSetEnabled(MoveBackwardPrompt, true)
+            UiPromptSetEnabled(MoveLeftPrompt, true)
+            UiPromptSetEnabled(MoveRightPrompt, true)
+            UiPromptSetEnabled(MoveUpPrompt, true)
+            UiPromptSetEnabled(MoveDownPrompt, true)
+            UiPromptSetEnabled(RotateYawPrompt, true)
+            UiPromptSetEnabled(RotateYawLeftPrompt, true)
+            UiPromptSetEnabled(RotatePitchPrompt, true)
+            UiPromptSetEnabled(RotateBackwardPrompt, true)
+            UiPromptSetEnabled(RotateRightPrompt, true)
+            UiPromptSetEnabled(RotateLeftPrompt, true)
+            UiPromptSetEnabled(IncreasePrecisionPrompt, true)
+            UiPromptSetEnabled(DecreasePrecisionPrompt, true)
+
+            ------------------------------------------------
+            -- TEMPORARY FOLLOW: object in front of player
+            ------------------------------------------------
+            if followPlayer and createdObject and DoesEntityExist(createdObject) then
+                local pedCoords  = GetEntityCoords(ped)
+                local pedForward = GetEntityForwardVector(ped)
+                local offset     = 1.5 -- distance in front of player
+
+                local newX = pedCoords.x + pedForward.x * offset
+                local newY = pedCoords.y + pedForward.y * offset
+
+                -- keep same Z as player (no expensive ground probes)
+                SetEntityCoordsNoOffset(createdObject, newX, newY, pedCoords.z, false, false, false)
+                SetEntityHeading(createdObject, GetEntityHeading(ped))
+            end
+
+            ------------------------------------------------
+            -- MOVEMENT (TAB 0) – first use breaks follow
+            ------------------------------------------------
             local step = amountToMove * 0.1
-            if Citizen.InvokeNative(0xC92AC953F0A982AE, MoveForwardPrompt) then
+
+            if UiPromptHasStandardModeCompleted(MoveForwardPrompt, 0) then
+                followPlayer = false
                 MoveFurniture(createdObject, "forward", step)
-            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, MoveBackwardPrompt) then
+
+            elseif UiPromptHasStandardModeCompleted(MoveBackwardPrompt, 0) then
+                followPlayer = false
                 MoveFurniture(createdObject, "backward", step)
-            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, MoveLeftPrompt) then
+
+            elseif UiPromptHasStandardModeCompleted(MoveLeftPrompt, 0) then
+                followPlayer = false
                 MoveFurniture(createdObject, "left", step)
-            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, MoveRightPrompt) then
+
+            elseif UiPromptHasStandardModeCompleted(MoveRightPrompt, 0) then
+                followPlayer = false
                 MoveFurniture(createdObject, "right", step)
-            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, MoveUpPrompt) then
+
+            elseif UiPromptHasStandardModeCompleted(MoveUpPrompt, 0) then
+                followPlayer = false
                 MoveFurniture(createdObject, "up", step)
-            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, MoveDownPrompt) then
+
+            elseif UiPromptHasStandardModeCompleted(MoveDownPrompt, 0) then
+                followPlayer = false
                 MoveFurniture(createdObject, "down", step)
             end
 
+            ------------------------------------------------
+            -- ROTATION (TAB 1) – also breaks follow
+            ------------------------------------------------
             step = amountToMove * 5
-            -- Handle rotation prompts
-            if Citizen.InvokeNative(0xC92AC953F0A982AE, RotateYawPrompt) then
+
+            if UiPromptHasStandardModeCompleted(RotateYawPrompt, 0) then
+                followPlayer = false
                 MoveFurniture(createdObject, "rotateYaw", step)
-            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, RotateYawLeftPrompt) then
+
+            elseif UiPromptHasStandardModeCompleted(RotateYawLeftPrompt, 0) then
+                followPlayer = false
                 MoveFurniture(createdObject, "rotateYawLeft", step)
-            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, RotatePitchPrompt) then
+
+            elseif UiPromptHasStandardModeCompleted(RotatePitchPrompt, 0) then
+                followPlayer = false
                 MoveFurniture(createdObject, "rotatepitch", step)
-            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, RotateBackwardPrompt) then
+
+            elseif UiPromptHasStandardModeCompleted(RotateBackwardPrompt, 0) then
+                followPlayer = false
                 MoveFurniture(createdObject, "rotatebackward", step)
-            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, RotateRightPrompt) then
+
+            elseif UiPromptHasStandardModeCompleted(RotateRightPrompt, 0) then
+                followPlayer = false
                 MoveFurniture(createdObject, "rotateright", step)
-            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, RotateLeftPrompt) then
+
+            elseif UiPromptHasStandardModeCompleted(RotateLeftPrompt, 0) then
+                followPlayer = false
                 MoveFurniture(createdObject, "rotateleft", step)
             end
 
-            -- Adjust precision
-            if Citizen.InvokeNative(0xC92AC953F0A982AE, IncreasePrecisionPrompt) then
+            ------------------------------------------------
+            -- PRECISION (TAB 2) – optional but also breaks follow
+            ------------------------------------------------
+            if UiPromptHasStandardModeCompleted(IncreasePrecisionPrompt, 0) then
+                followPlayer = false
                 amountToMove = amountToMove + 0.1
                 Notify(_U("movementIncreased") .. amountToMove, 1000)
-            elseif Citizen.InvokeNative(0xC92AC953F0A982AE, DecreasePrecisionPrompt) then
+
+            elseif UiPromptHasStandardModeCompleted(DecreasePrecisionPrompt, 0) then
+                followPlayer = false
                 amountToMove = amountToMove - 0.1
                 Notify(_U("movementDecreased") .. amountToMove, 1000)
             end
 
-            -- Confirm placement
-            if Citizen.InvokeNative(0xC92AC953F0A982AE, ConfirmPrompt) then
+            ------------------------------------------------
+            -- CONFIRM (TAB 3)
+            ------------------------------------------------
+            if UiPromptHasStandardModeCompleted(ConfirmPrompt, 0) then
                 SetEntityCollision(createdObject, true, true)
                 if ConfirmFurniturePlacement(createdObject, {
-                        model = model,
-                        displayName = displayName,
-                        sellprice = sellPrice,
-                        ownedId = ownedId
-                    }) then
+                    model       = model,
+                    displayName = displayName,
+                    sellprice   = sellPrice,
+                    ownedId     = ownedId
+                }) then
                     FreezeEntityPosition(createdObject, true)
                     ActivePlacementItem = nil
                     LastPlacementObject = nil
                 else
-                    DeleteObject(createdObject)
+                    if createdWrapper and type(createdWrapper) == "table" and createdWrapper.Remove then
+                        createdWrapper:Remove()
+                    elseif type(createdObject) == "table" and createdObject.Remove then
+                        createdObject:Remove()
+                    elseif createdObject and createdObject ~= 0 and DoesEntityExist(createdObject) then
+                        DeleteObject(createdObject)
+                    end
                     ActivePlacementItem = nil
                     LastPlacementObject = nil
                 end
-                break -- Exit loop
+                break
             end
 
-            -- Cancel placement
-            if Citizen.InvokeNative(0xC92AC953F0A982AE, CancelPrompt) then
-                DeleteObject(createdObject)
+            ------------------------------------------------
+            -- CANCEL (TAB 3)
+            ------------------------------------------------
+             if UiPromptHasStandardModeCompleted(CancelPrompt, 0) then
+                if createdWrapper and type(createdWrapper) == "table" and createdWrapper.Remove then
+                    createdWrapper:Remove()
+                elseif type(createdObject) == "table" and createdObject.Remove then
+                    createdObject:Remove()
+                elseif createdObject and createdObject ~= 0 and DoesEntityExist(createdObject) then
+                    DeleteObject(createdObject)
+                end
                 Notify(_U("placementCanceled"), 4000)
                 ActivePlacementItem = nil
                 LastPlacementObject = nil
-                break -- Exit loop
+                break
             end
-            :: END ::
+
+            ::END::
         end
 
         -- Cleanup prompts after loop ends
-        PromptDelete(MoveForwardPrompt)
+        UiPromptDelete(MoveForwardPrompt)
         PromptDelete(MoveBackwardPrompt)
         PromptDelete(MoveLeftPrompt)
         PromptDelete(MoveRightPrompt)
@@ -851,10 +1157,10 @@ function PlaceFurnitureIntoWorldPrompt(itemData)
         PromptDelete(MoveDownPrompt)
         PromptDelete(RotateYawPrompt)
         PromptDelete(RotateYawLeftPrompt)
-        PromptDelete(RotatePitchPrompt)    -- Added
-        PromptDelete(RotateBackwardPrompt) -- Added
-        PromptDelete(RotateRightPrompt)    -- Added
-        PromptDelete(RotateLeftPrompt)     -- Added
+        PromptDelete(RotatePitchPrompt)
+        PromptDelete(RotateBackwardPrompt)
+        PromptDelete(RotateRightPrompt)
+        PromptDelete(RotateLeftPrompt)
         PromptDelete(IncreasePrecisionPrompt)
         PromptDelete(DecreasePrecisionPrompt)
         PromptDelete(ConfirmPrompt)
@@ -863,33 +1169,42 @@ function PlaceFurnitureIntoWorldPrompt(itemData)
 end
 
 function MoveFurniture(obj, direction, moveAmount)
-    local coords = GetEntityCoords(obj)
-    local rot = GetEntityRotation(obj, 2) -- Get rotation in degrees.
+    if not obj then return end
+
+    -- handle wrapper or raw entity
+    local entity = obj
+    if type(obj) == "table" and obj.GetObj then
+        entity = obj:GetObj()
+    end
+    if not entity or entity == 0 or not DoesEntityExist(entity) then return end
+
+    local coords = GetEntityCoords(entity)
+    local rot = GetEntityRotation(entity, 2) -- Get rotation in degrees.
 
     if direction == "forward" then
-        SetEntityCoords(obj, coords.x, coords.y + moveAmount, coords.z)
+        SetEntityCoords(entity, coords.x, coords.y + moveAmount, coords.z)
     elseif direction == "backward" then
-        SetEntityCoords(obj, coords.x, coords.y - moveAmount, coords.z)
+        SetEntityCoords(entity, coords.x, coords.y - moveAmount, coords.z)
     elseif direction == "left" then
-        SetEntityCoords(obj, coords.x - moveAmount, coords.y, coords.z)
+        SetEntityCoords(entity, coords.x - moveAmount, coords.y, coords.z)
     elseif direction == "right" then
-        SetEntityCoords(obj, coords.x + moveAmount, coords.y, coords.z)
+        SetEntityCoords(entity, coords.x + moveAmount, coords.y, coords.z)
     elseif direction == "up" then
-        SetEntityCoords(obj, coords.x, coords.y, coords.z + moveAmount)
+        SetEntityCoords(entity, coords.x, coords.y, coords.z + moveAmount)
     elseif direction == "down" then
-        SetEntityCoords(obj, coords.x, coords.y, coords.z - moveAmount)
+        SetEntityCoords(entity, coords.x, coords.y, coords.z - moveAmount)
     elseif direction == "rotatepitch" then
-        SetEntityRotation(obj, rot.x + moveAmount, rot.y, rot.z, 2, true)
+        SetEntityRotation(entity, rot.x + moveAmount, rot.y, rot.z, 2, true)
     elseif direction == "rotatebackward" then
-        SetEntityRotation(obj, rot.x - moveAmount, rot.y, rot.z, 2, true)
+        SetEntityRotation(entity, rot.x - moveAmount, rot.y, rot.z, 2, true)
     elseif direction == "rotateright" then
-        SetEntityRotation(obj, rot.x, rot.y + moveAmount, rot.z, 2, true)
+        SetEntityRotation(entity, rot.x, rot.y + moveAmount, rot.z, 2, true)
     elseif direction == "rotateleft" then
-        SetEntityRotation(obj, rot.x, rot.y - moveAmount, rot.z, 2, true)
+        SetEntityRotation(entity, rot.x, rot.y - moveAmount, rot.z, 2, true)
     elseif direction == "rotateYaw" then
-        SetEntityRotation(obj, rot.x, rot.y, rot.z + moveAmount, 2, true)
+        SetEntityRotation(entity, rot.x, rot.y, rot.z + moveAmount, 2, true)
     elseif direction == "rotateYawLeft" then
-        SetEntityRotation(obj, rot.x, rot.y, rot.z - moveAmount, 2, true)
+        SetEntityRotation(entity, rot.x, rot.y, rot.z - moveAmount, 2, true)
     end
 end
 
@@ -950,8 +1265,11 @@ function closeToHouse(object)
             radius = Config.TpInteriors.Interior2.furnRadius
         end
     end
-    if GetDistanceBetweenCoords(tonumber(coords.x), tonumber(coords.y), tonumber(coords.z), tonumber(compCoords.x),
-            tonumber(compCoords.y), tonumber(compCoords.z), false) <= radius then
+    if GetDistanceBetweenCoords(
+        tonumber(coords.x), tonumber(coords.y), tonumber(coords.z),
+        tonumber(compCoords.x), tonumber(compCoords.y), tonumber(compCoords.z),
+        false
+    ) <= radius then
         return true
     else
         return false
@@ -960,44 +1278,41 @@ end
 
 -- Helper function to handle the sale of furniture (implement as needed)
 function SellFurniture(furniture)
-    devPrint("Selling furniture:", furniture.model)
-    -- You can add server logic here to handle the backend sale process
+    DBG:Info("Selling furniture: " .. tostring(furniture.model))
     BccUtils.RPC:CallAsync('bcc-housing:SellFurniture', { furniture = furniture })
 end
 
 function SellOwnedFurnitureMenu(houseId, furnTable, ownershipStatus)
-    devPrint("Opening SellOwnedFurnitureMenu with houseId: " .. tostring(houseId))
+    DBG:Info("Opening SellOwnedFurnitureMenu with houseId: " .. tostring(houseId))
     BCCHousingMenu:Close() -- Close any previously opened menus
 
     if HandlePlayerDeathAndCloseMenu() then
         return
     end
 
-    -- Initialize the sell furniture menu page
     local sellFurnMenu = BCCHousingMenu:RegisterPage("bcc-housing-sell-furniture-menu")
 
-    -- Add a header for clarity
     sellFurnMenu:RegisterElement('header', {
         value = _U("sellOwnerFurn"),
         slot = 'header',
         style = {}
     })
 
-    -- Check if the furniture table is not nil and has items
     if furnTable and #furnTable > 0 then
         for k, v in pairs(furnTable) do
             sellFurnMenu:RegisterElement('button', {
                 label = v.displayName .. " - " .. _U("sellFor") .. tostring(v.sellprice),
                 style = {}
             }, function()
-                -- Logic to handle selling furniture
                 local sold = false
                 local attempted = false
                 for idx, entity in ipairs(CreatedFurniture) do
                     local storedFurnCoord = GetEntityCoords(entity)
-                    local dist = Vdist(storedFurnCoord.x, storedFurnCoord.y, storedFurnCoord.z, v.coords.x, v.coords.y,
-                        v.coords.z)
-                    if dist < 1.0 then -- Check if the distance is less than 1 meter
+                    local dist = Vdist(
+                        storedFurnCoord.x, storedFurnCoord.y, storedFurnCoord.z,
+                        v.coords.x, v.coords.y, v.coords.z
+                    )
+                    if dist < 1.0 then
                         attempted = true
                         local ok = BccUtils.RPC:CallAsync('bcc-housing:FurnSoldRemoveFromTable', {
                             furnTable = v,
@@ -1035,7 +1350,6 @@ function SellOwnedFurnitureMenu(houseId, furnTable, ownershipStatus)
         style = {}
     })
 
-    -- Add a back button to return to the main furniture menu
     sellFurnMenu:RegisterElement('button', {
         label = _U("backButton"),
         slot = "footer",
@@ -1055,7 +1369,6 @@ function SellOwnedFurnitureMenu(houseId, furnTable, ownershipStatus)
         style = {}
     })
 
-    -- Open the menu with the configured page
     BCCHousingMenu:Open({
         startupPage = sellFurnMenu,
         sound = {
@@ -1066,7 +1379,7 @@ function SellOwnedFurnitureMenu(houseId, furnTable, ownershipStatus)
 end
 
 function GetOwnedFurniture(houseId)
-    devPrint("Requesting furniture for house ID: " .. tostring(houseId))
+    DBG:Info("Requesting furniture for house ID: " .. tostring(houseId))
     local success, furnDataOrMessage, ownershipStatus = BccUtils.RPC:CallAsync("bcc-housing:GetOwnerFurniture",
         { houseId = houseId })
     if success then
@@ -1085,10 +1398,10 @@ BccUtils.RPC:Register("bcc-housing:SellOwnedFurnMenu", function(params)
     local houseId = params.houseId
     local furnTable = params.furniture
     local ownershipStatus = params.ownershipStatus
-    devPrint("Opening Sell Owned Furniture Menu for House ID: " .. tostring(houseId))
+    DBG:Info("Opening Sell Owned Furniture Menu for House ID: " .. tostring(houseId))
     if type(furnTable) == "table" then
         SellOwnedFurnitureMenu(houseId, furnTable, ownershipStatus)
     else
-        devPrint("Error: furnTable is not a table")
+        DBG:Error("SellOwnedFurnMenu: furnTable is not a table")
     end
 end)
