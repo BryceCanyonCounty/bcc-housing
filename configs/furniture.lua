@@ -1,4 +1,5 @@
 Furniture = {
+    SpawnDespawn = 200.0,
     MenuItem = 'furniture_book', -- Inventory item that opens the owned furniture list
     Vendors = {
         {

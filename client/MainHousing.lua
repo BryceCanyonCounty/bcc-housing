@@ -321,9 +321,11 @@ local function clearHouseBlips(houseId)
         HouseBlips[houseId] = nil
     end
 
-    if #HouseBlips > 0 then
-        for k, v in pairs(HouseBlips) do
-            BccUtils.Blips:RemoveBlip(v.rawblip)
+    if HouseBlips and next(HouseBlips) then
+        for _, blipData in pairs(HouseBlips) do
+            if blipData and blipData.rawblip then
+                BccUtils.Blips:RemoveBlip(blipData.rawblip)
+            end
         end
         HouseBlips = {}
     end

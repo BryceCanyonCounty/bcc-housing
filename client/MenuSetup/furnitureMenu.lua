@@ -774,6 +774,157 @@ local function HandleFurniturePlaced(placementHouseId, furnObj)
     return true
 end
 
+local function GetNearestPlacedFurnitureEntity()
+    if not CreatedFurniture or #CreatedFurniture == 0 then return nil end
+    local pedCoords = GetEntityCoords(PlayerPedId())
+    local nearestEntity, nearestDist
+    for _, entity in ipairs(CreatedFurniture) do
+        if entity and entity ~= 0 and DoesEntityExist(entity) then
+            local dist = #(GetEntityCoords(entity) - pedCoords)
+            if not nearestDist or dist < nearestDist then
+                nearestDist = dist
+                nearestEntity = entity
+            end
+        end
+    end
+    return nearestEntity, nearestDist
+end
+
+local function EditPlacedFurniture(entity, houseId, entryIndex, entryData)
+    if not entity or entity == 0 or not DoesEntityExist(entity) then
+        Notify(_U("editFurnitureNoNearby"), "error", 4000)
+        return
+    end
+
+    local startCoords = GetEntityCoords(entity)
+    local startRot = GetEntityRotation(entity, 2)
+    local editRadius = (Furniture and Furniture.EditRadius) or 3.0
+
+    if #(GetEntityCoords(PlayerPedId()) - startCoords) > editRadius then
+        Notify(_U("editFurnitureNoNearby"), "error", 4000)
+        return
+    end
+
+    StartFurniturePlacementPrompts()
+    Notify(_U("editFurnitureStart"), 4000)
+    SetEntityCollision(entity, false, true)
+    FreezeEntityPosition(entity, false)
+
+    local amountToMove = 1.0
+
+    Citizen.CreateThread(function()
+        while true do
+            Citizen.Wait(0)
+            UiPromptSetEnabled(ConfirmPrompt, true)
+            UiPromptSetEnabled(CancelPrompt, true)
+            UiPromptSetActiveGroupThisFrame(FurnitureGroup, CreateVarString(10, 'LITERAL_STRING', _U("movementControls")), 4, 0, 0, 0)
+            UiPromptSetEnabled(MoveForwardPrompt, true)
+            UiPromptSetEnabled(MoveBackwardPrompt, true)
+            UiPromptSetEnabled(MoveLeftPrompt, true)
+            UiPromptSetEnabled(MoveRightPrompt, true)
+            UiPromptSetEnabled(MoveUpPrompt, true)
+            UiPromptSetEnabled(MoveDownPrompt, true)
+            UiPromptSetEnabled(RotateYawPrompt, true)
+            UiPromptSetEnabled(RotateYawLeftPrompt, true)
+            UiPromptSetEnabled(RotatePitchPrompt, true)
+            UiPromptSetEnabled(RotateBackwardPrompt, true)
+            UiPromptSetEnabled(RotateRightPrompt, true)
+            UiPromptSetEnabled(RotateLeftPrompt, true)
+            UiPromptSetEnabled(IncreasePrecisionPrompt, true)
+            UiPromptSetEnabled(DecreasePrecisionPrompt, true)
+
+            local step = amountToMove * 0.1
+
+            if UiPromptHasStandardModeCompleted(MoveForwardPrompt, 0) then
+                MoveFurniture(entity, "forward", step)
+            elseif UiPromptHasStandardModeCompleted(MoveBackwardPrompt, 0) then
+                MoveFurniture(entity, "backward", step)
+            elseif UiPromptHasStandardModeCompleted(MoveLeftPrompt, 0) then
+                MoveFurniture(entity, "left", step)
+            elseif UiPromptHasStandardModeCompleted(MoveRightPrompt, 0) then
+                MoveFurniture(entity, "right", step)
+            elseif UiPromptHasStandardModeCompleted(MoveUpPrompt, 0) then
+                MoveFurniture(entity, "up", step)
+            elseif UiPromptHasStandardModeCompleted(MoveDownPrompt, 0) then
+                MoveFurniture(entity, "down", step)
+            end
+
+            step = amountToMove * 5
+
+            if UiPromptHasStandardModeCompleted(RotateYawPrompt, 0) then
+                MoveFurniture(entity, "rotateYaw", step)
+            elseif UiPromptHasStandardModeCompleted(RotateYawLeftPrompt, 0) then
+                MoveFurniture(entity, "rotateYawLeft", step)
+            elseif UiPromptHasStandardModeCompleted(RotatePitchPrompt, 0) then
+                MoveFurniture(entity, "rotatepitch", step)
+            elseif UiPromptHasStandardModeCompleted(RotateBackwardPrompt, 0) then
+                MoveFurniture(entity, "rotatebackward", step)
+            elseif UiPromptHasStandardModeCompleted(RotateRightPrompt, 0) then
+                MoveFurniture(entity, "rotateright", step)
+            elseif UiPromptHasStandardModeCompleted(RotateLeftPrompt, 0) then
+                MoveFurniture(entity, "rotateleft", step)
+            end
+
+            if UiPromptHasStandardModeCompleted(IncreasePrecisionPrompt, 0) then
+                amountToMove = amountToMove + 0.1
+                Notify(_U("movementIncreased") .. amountToMove, 1000)
+            elseif UiPromptHasStandardModeCompleted(DecreasePrecisionPrompt, 0) then
+                amountToMove = amountToMove - 0.1
+                Notify(_U("movementDecreased") .. amountToMove, 1000)
+            end
+
+            if UiPromptHasStandardModeCompleted(ConfirmPrompt, 0) then
+                SetEntityCollision(entity, true, true)
+                FreezeEntityPosition(entity, true)
+                local finalCoords = GetEntityCoords(entity)
+                local finalRot = GetEntityRotation(entity, 2)
+
+                local ok = BccUtils.RPC:CallAsync("bcc-housing:UpdatePlacedFurniture", {
+                    houseId = houseId,
+                    index = entryIndex,
+                    coords = { x = finalCoords.x, y = finalCoords.y, z = finalCoords.z },
+                    rotation = { x = finalRot.x, y = finalRot.y, z = finalRot.z },
+                    model = entryData and entryData.model
+                })
+
+                if ok then
+                    Notify(_U("editFurnitureSaved"), "success", 4000)
+                else
+                    SetEntityCoords(entity, startCoords.x, startCoords.y, startCoords.z, false, false, false)
+                    SetEntityRotation(entity, startRot.x, startRot.y, startRot.z, 2, true)
+                    Notify(_U("editFurnitureFailed"), "error", 4000)
+                end
+                break
+            end
+
+            if UiPromptHasStandardModeCompleted(CancelPrompt, 0) then
+                SetEntityCoords(entity, startCoords.x, startCoords.y, startCoords.z, false, false, false)
+                SetEntityRotation(entity, startRot.x, startRot.y, startRot.z, 2, true)
+                FreezeEntityPosition(entity, true)
+                Notify(_U("editFurnitureCanceled"), "info", 4000)
+                break
+            end
+        end
+
+        UiPromptDelete(MoveForwardPrompt)
+        PromptDelete(MoveBackwardPrompt)
+        PromptDelete(MoveLeftPrompt)
+        PromptDelete(MoveRightPrompt)
+        PromptDelete(MoveUpPrompt)
+        PromptDelete(MoveDownPrompt)
+        PromptDelete(RotateYawPrompt)
+        PromptDelete(RotateYawLeftPrompt)
+        PromptDelete(RotatePitchPrompt)
+        PromptDelete(RotateBackwardPrompt)
+        PromptDelete(RotateRightPrompt)
+        PromptDelete(RotateLeftPrompt)
+        PromptDelete(IncreasePrecisionPrompt)
+        PromptDelete(DecreasePrecisionPrompt)
+        PromptDelete(ConfirmPrompt)
+        PromptDelete(CancelPrompt)
+    end)
+end
+
 BccUtils.RPC:Register('bcc-housing:OpenFurnitureBook', function(params)
     local ownedFurniture = params and params.ownedFurniture or {}
     OwnedFurnitureCache = ownedFurniture
@@ -797,6 +948,55 @@ RegisterNetEvent('bcc-housing:OpenFurnitureVendor', function()
     ClearVendorPreview()
     FurnitureVendorMenu()
 end)
+
+RegisterCommand(Config.EditFurnitureCommand, function()
+    if not HouseId then
+        Notify(_U("noHouseFound"), "error", 4000)
+        return
+    end
+
+    local ownerOk, ownerData = BccUtils.RPC:CallAsync('bcc-housing:getHouseOwner', { houseId = HouseId })
+    if not ownerOk or not ownerData or ownerData.isOwner ~= true then
+        Notify(_U("editFurnitureNotOwner"), "error", 4000)
+        return
+    end
+
+    local nearestEntity, distToEntity = GetNearestPlacedFurnitureEntity()
+    local maxEditDistance = (Furniture and Furniture.EditRadius) or 3.0
+    if not nearestEntity or not distToEntity or distToEntity > maxEditDistance then
+        Notify(_U("editFurnitureNoNearby"), "error", 4000)
+        return
+    end
+
+    local listOk, furnList = BccUtils.RPC:CallAsync("bcc-housing:GetPlacedFurnitureList", { houseId = HouseId })
+    if not listOk or type(furnList) ~= "table" then
+        Notify(_U("editFurnitureLoadFailed"), "error", 4000)
+        return
+    end
+
+    local entityCoords = GetEntityCoords(nearestEntity)
+    local closestEntry, closestIndex, closestDist
+
+    for idx, entry in ipairs(furnList) do
+        local coords = entry.coords
+        if coords and coords.x and coords.y and coords.z then
+            local dist = Vdist(entityCoords.x, entityCoords.y, entityCoords.z,
+                tonumber(coords.x), tonumber(coords.y), tonumber(coords.z))
+            if not closestDist or dist < closestDist then
+                closestDist = dist
+                closestEntry = entry
+                closestIndex = idx
+            end
+        end
+    end
+
+    if not closestEntry or not closestIndex or closestDist > 2.0 then
+        Notify(_U("editFurnitureNoNearby"), "error", 4000)
+        return
+    end
+
+    EditPlacedFurniture(nearestEntity, HouseId, closestIndex, closestEntry)
+end, false)
 
 ---------------------------------
 -- PROMPTS via PromptsAPI

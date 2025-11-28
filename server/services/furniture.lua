@@ -204,6 +204,110 @@ BccUtils.RPC:Register("bcc-housing:GetOwnerFurniture", function(params, cb, src)
     return cb(true, furniture, houseData.ownershipStatus)
 end)
 
+BccUtils.RPC:Register("bcc-housing:GetPlacedFurnitureList", function(params, cb, src)
+    local houseId = params and params.houseId
+    if not houseId then
+        return cb(false, "invalidHouseId")
+    end
+
+    local character = getCharacter(src)
+    if not character then
+        return cb(false, "noCharacter")
+    end
+
+    local result = MySQL.query.await("SELECT furniture, charidentifier FROM bcchousing WHERE houseid=@houseid",
+        { ['houseid'] = houseId })
+    if not result or not result[1] then
+        return cb(false, "houseNotFound")
+    end
+
+    if tostring(result[1].charidentifier) ~= tostring(character.charIdentifier) then
+        return cb(false, "notOwner")
+    end
+
+    local furnitureData = result[1].furniture
+    if furnitureData == nil or furnitureData == '' or furnitureData == 'none' then
+        return cb(true, {})
+    end
+
+    local decodeOk, furniture = pcall(json.decode, furnitureData)
+    if not decodeOk or type(furniture) ~= "table" then
+        DBG:Error("GetPlacedFurnitureList decode failed for house " .. tostring(houseId) .. ": " .. tostring(furniture))
+        return cb(false, "decodeError")
+    end
+
+    return cb(true, furniture)
+end)
+
+BccUtils.RPC:Register("bcc-housing:UpdatePlacedFurniture", function(params, cb, src)
+    local houseId = params and params.houseId
+    local entryIndex = params and tonumber(params.index)
+    local coords = params and params.coords
+    local rotation = params and params.rotation
+    local model = params and params.model
+
+    if not houseId or not entryIndex or not coords or not rotation then
+        DBG:Info("UpdatePlacedFurniture missing params from src " .. tostring(src))
+        return cb(false, "invalidParams")
+    end
+
+    local character = getCharacter(src)
+    if not character then
+        return cb(false, "noCharacter")
+    end
+
+    local result = MySQL.query.await("SELECT furniture, charidentifier FROM bcchousing WHERE houseid=@houseid",
+        { ['houseid'] = houseId })
+    if not result or not result[1] then
+        return cb(false, "houseNotFound")
+    end
+
+    if tostring(result[1].charidentifier) ~= tostring(character.charIdentifier) then
+        return cb(false, "notOwner")
+    end
+
+    local furnitureData = result[1].furniture
+    if furnitureData == nil or furnitureData == '' or furnitureData == 'none' then
+        return cb(false, "noFurniture")
+    end
+
+    local decodeOk, furniture = pcall(json.decode, furnitureData)
+    if not decodeOk or type(furniture) ~= "table" then
+        DBG:Error("UpdatePlacedFurniture decode failed for house " ..
+            tostring(houseId) .. ": " .. tostring(furniture))
+        return cb(false, "decodeError")
+    end
+
+    local entry = furniture[entryIndex]
+    if not entry then
+        return cb(false, "invalidEntry")
+    end
+
+    if model and entry.model and tostring(model) ~= tostring(entry.model) then
+        return cb(false, "modelMismatch")
+    end
+
+    entry.coords = {
+        x = tonumber(coords.x or coords[1]) or entry.coords and tonumber(entry.coords.x),
+        y = tonumber(coords.y or coords[2]) or entry.coords and tonumber(entry.coords.y),
+        z = tonumber(coords.z or coords[3]) or entry.coords and tonumber(entry.coords.z)
+    }
+
+    entry.rotation = {
+        x = tonumber(rotation.x or rotation[1]) or 0.0,
+        y = tonumber(rotation.y or rotation[2]) or 0.0,
+        z = tonumber(rotation.z or rotation[3]) or 0.0
+    }
+
+    MySQL.update("UPDATE bcchousing SET furniture=@furn WHERE houseid=@houseid",
+        {
+            ['furn'] = json.encode(furniture),
+            ['houseid'] = houseId
+        })
+
+    cb(true)
+end)
+
 BccUtils.RPC:Register('bcc-housing:FurnSoldRemoveFromTable', function(params, cb, src)
     local furnTable = params and params.furnTable
     local houseId = params and params.houseId
@@ -269,7 +373,7 @@ BccUtils.RPC:Register('bcc-housing:FurnSoldRemoveFromTable', function(params, cb
     if cb then cb(true) end
 end)
 
-local function getCharacter(source)
+function getCharacter(source)
     local user = VORPcore.getUser(source)
     if not user then return nil end
     return user.getUsedCharacter

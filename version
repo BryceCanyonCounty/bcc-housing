@@ -1,3 +1,8 @@
+<2.4.0>
+- Fixed issue where blips would not clear on resource restart  
+- Added a command to edit furniture when standing near it  
+- Improved Discord webhook message with more detailed tax collection information  
+
 <2.3.0>
 - Replaced `devPrint` with `DBG.utils` (requires **bcc-utils v1.4.0**)
 - Added `onClientRestartResource` to clear all furniture
