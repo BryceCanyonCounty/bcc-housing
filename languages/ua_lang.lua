@@ -140,6 +140,10 @@ Locales["ua_lang"] = {
     houseIdWebhook = "ID будинку: ",
     taxPaidWebhook = "Податок сплачено!",
     taxPaidFailedWebhook = "Недостатньо грошей для сплати податку, будинок позначено як неоплачений!",
+    taxAmountWebhook = "Сума податку: ",
+    ledgerBeforeWebhook = "Баланс реєстру до: ",
+    ledgerAfterWebhook = "Баланс реєстру після: ",
+    taxShortfallWebhook = "Нестача: ",
     taxesOverdue = "Податок за будинок не сплачено. Доступ призупинено до оплати.",
 
     ---- WebHooks ----
@@ -186,6 +190,13 @@ Locales["ua_lang"] = {
     backButton = "Назад",
     closeButton = "Закрити",
     placeFurniture = "Розмістити меблі",
+    editFurnitureStart = "Режим редагування меблів: перемістіть, потім підтвердіть або скасуйте.",
+    editFurnitureSaved = "Позицію меблів збережено.",
+    editFurnitureFailed = "Не вдалося зберегти позицію меблів.",
+    editFurnitureCanceled = "Редагування меблів скасовано.",
+    editFurnitureNoNearby = "Немає розміщених меблів поблизу.",
+    editFurnitureNotOwner = "Потрібно бути власником будинку, щоб редагувати меблі.",
+    editFurnitureLoadFailed = "Не вдалося завантажити меблі для редагування.",
     noHouseFound = "Будинок не знайдено",
     sellHouse = "Продати будинок державі",
     sellHouseDesc = [[  Продати цей будинок? <br> Оберіть варіант: <br><br> 

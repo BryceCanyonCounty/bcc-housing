@@ -161,6 +161,10 @@ Locales["de_lang"] = {
     houseIdWebhook = 'Haus ID: ',
     taxPaidWebhook = 'Steuern bezahlt!',
     taxPaidFailedWebhook = 'Nicht genug Geld für Steuern, Haus als unbezahlt markiert!',
+    taxAmountWebhook = 'Steuerbetrag: ',
+    ledgerBeforeWebhook = 'Kontostand vor Abzug: ',
+    ledgerAfterWebhook = 'Kontostand nach Abzug: ',
+    taxShortfallWebhook = 'Fehlbetrag: ',
     taxesOverdue = 'Haussteuern sind überfällig. Zugriff gesperrt, bis sie bezahlt sind.',
 
     ---- WebHooks ----
@@ -207,6 +211,13 @@ Locales["de_lang"] = {
     backButton = 'Back',
     closeButton = 'Close',
     placeFurniture = 'Place Furniture',
+    editFurnitureStart = 'Furniture edit mode: move then confirm or cancel.',
+    editFurnitureSaved = 'Furniture position saved.',
+    editFurnitureFailed = 'Failed to save furniture position.',
+    editFurnitureCanceled = 'Furniture edit canceled.',
+    editFurnitureNoNearby = 'No placed furniture nearby.',
+    editFurnitureNotOwner = 'You must own this house to edit furniture.',
+    editFurnitureLoadFailed = 'Could not load furniture for editing.',
     noHouseFound = 'No House Found',
     sellHouse = 'Sell House',
     sellHouseDesc = "Sell this house to a player? Please choose one option", -- NEW
