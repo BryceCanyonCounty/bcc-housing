@@ -4,6 +4,18 @@ ActiveFurnitureVendor    = nil
 
 local furnitureVendors = (Furniture and Furniture.Vendors) or Config.FurnitureVendors or {}
 
+local function isNpcEnabled(npcCfg)
+    if npcCfg.active ~= nil then
+        return npcCfg.active
+    end
+
+    if npcCfg.show ~= nil then
+        return npcCfg.show
+    end
+
+    return true
+end
+
 local function removeExistingVendorPed(coords, model)
     if not coords then return end
     local modelHash = nil
@@ -132,7 +144,7 @@ CreateThread(function()
         end
 
         for i, coord in ipairs(coordsList) do
-            if vendor.npc and (vendor.npc.show == nil or vendor.npc.show) then
+            if vendor.npc and isNpcEnabled(vendor.npc) then
                 removeExistingVendorPed(coord, vendor.npc.model)
                 local pedWrapper = BccUtils.Ped:Create(
                     vendor.npc.model,
@@ -156,6 +168,7 @@ CreateThread(function()
     end
 
     while true do
+        local sleep = 500
         ::CONTINUE::
         local playerPed = PlayerPedId()
         if IsEntityDead(playerPed) then
@@ -185,17 +198,19 @@ CreateThread(function()
             for _, coord in ipairs(coordsArray) do
                 local distance = #(playerCoords - coord)
                 if distance <= (vendor.radius or 2.0) then
+                    sleep = 0
                     ActiveFurnitureVendor = vendor
                     vendorPromptGroup:ShowGroup(vendor.name or _U('furnitureVendorTitle'))
                     if vendorPrompt:HasCompleted() then
                         DBG:Info("Furniture vendor prompt completed")
                         FurnitureVendorMenu()
+                        Wait(500)
                     end
                 end
             end
         end
 
-        Wait(5)
+        Wait(sleep)
     end
 end)
 

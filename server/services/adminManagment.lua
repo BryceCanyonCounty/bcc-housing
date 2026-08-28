@@ -1,3 +1,20 @@
+local function formatPurchasedAt(value)
+    if not value or value == '' then
+        return nil
+    end
+
+    local timestamp = tonumber(value)
+    if timestamp then
+        if timestamp > 9999999999 then
+            timestamp = math.floor(timestamp / 1000)
+        end
+
+        return os.date("%Y-%m-%d %H:%M", timestamp)
+    end
+
+    return tostring(value):sub(1, 16)
+end
+
 local function collectAdminHouseData()
     local result = MySQL.query.await('SELECT * FROM bcchousing')
     if not result then
@@ -10,6 +27,7 @@ local function collectAdminHouseData()
 
     for _, houseInfo in ipairs(result) do
         local houseCharIdentifier = houseInfo.charidentifier
+        houseInfo.purchased_at_formatted = formatPurchasedAt(houseInfo.purchased_at)
         DBG:Info('Processing house with ID:', houseInfo.houseid, 'and character identifier:', houseCharIdentifier)
 
         if houseCharIdentifier then
@@ -42,6 +60,12 @@ local function pushAdminHouseData(src, houses)
 end
 
 BccUtils.RPC:Register('bcc-housing:AdminGetAllHouses', function(_, cb, src)
+    if not IsHousingAdmin(src) then
+        NotifyClient(src, _U('noAccessToHouse'), 4000, 'error')
+        if cb then cb(false) end
+        return
+    end
+
     DBG:Info('AdminGetAllHouses RPC triggered by source:', src)
     local houses = collectAdminHouseData()
     pushAdminHouseData(src, houses)
@@ -49,6 +73,12 @@ BccUtils.RPC:Register('bcc-housing:AdminGetAllHouses', function(_, cb, src)
 end)
 
 BccUtils.RPC:Register('bcc-house:AdminManagementDelHouse', function(params, cb, src)
+    if not IsHousingAdmin(src) then
+        NotifyClient(src, _U('noAccessToHouse'), 4000, 'error')
+        if cb then cb(false) end
+        return
+    end
+
     local houseId = params and params.houseId
     if not houseId then
         if cb then cb(false, { error = 'invalid_house' }) end
@@ -63,12 +93,18 @@ BccUtils.RPC:Register('bcc-house:AdminManagementDelHouse', function(params, cb, 
             if cb then cb(true) end
         else
             NotifyClient(src, _U('failedDeleteHouse'), 5000, "error")
-            if cb then cb(false, { error = 'delete_failed' }) end
+            if cb then cb(false) end
         end
     end)
 end)
 
 BccUtils.RPC:Register('bcc-house:AdminManagementChangeHouseRadius', function(params, cb, src)
+    if not IsHousingAdmin(src) then
+        NotifyClient(src, _U('noAccessToHouse'), 4000, 'error')
+        if cb then cb(false) end
+        return
+    end
+
     local houseId = params and params.houseId
     local radius = params and params.radius
     if not houseId or not radius then
@@ -85,12 +121,18 @@ BccUtils.RPC:Register('bcc-house:AdminManagementChangeHouseRadius', function(par
                 if cb then cb(true) end
             else
                 NotifyClient(src, _U('radiusUpdatedFailed'), 5000, "error")
-                if cb then cb(false, { error = 'update_failed' }) end
+                if cb then cb(false) end
             end
         end)
 end)
 
 BccUtils.RPC:Register('bcc-house:AdminManagementChangeInvLimit', function(params, cb, src)
+    if not IsHousingAdmin(src) then
+        NotifyClient(src, _U('noAccessToHouse'), 4000, 'error')
+        if cb then cb(false) end
+        return
+    end
+
     local houseId = params and params.houseId
     local invLimit = params and params.invLimit
     if not houseId or not invLimit then
@@ -106,12 +148,18 @@ BccUtils.RPC:Register('bcc-house:AdminManagementChangeInvLimit', function(params
             if cb then cb(true) end
         else
             NotifyClient(src, _U('invUpdatedFailed'), 5000, "error")
-            if cb then cb(false, { error = 'update_failed' }) end
+            if cb then cb(false) end
         end
     end)
 end)
 
 BccUtils.RPC:Register('bcc-house:AdminManagementChangeTaxAmount', function(params, cb, src)
+    if not IsHousingAdmin(src) then
+        NotifyClient(src, _U('noAccessToHouse'), 4000, 'error')
+        if cb then cb(false) end
+        return
+    end
+
     local houseId = params and params.houseId
     local tax = params and params.tax
     if not houseId or not tax then
@@ -128,7 +176,35 @@ BccUtils.RPC:Register('bcc-house:AdminManagementChangeTaxAmount', function(param
             if cb then cb(true) end
         else
             NotifyClient(src, _U('taxUpdatedFailed'), 5000, "error")
-            if cb then cb(false, { error = 'update_failed' }) end
+            if cb then cb(false) end
         end
         end)
+end)
+
+BccUtils.RPC:Register('bcc-house:AdminReleaseHouseTaxPayment', function(params, cb, src)
+    if not IsHousingAdmin(src) then
+        NotifyClient(src, _U('noAccessToHouse'), 4000, 'error')
+        if cb then cb(false) end
+        return
+    end
+
+    local houseId = params and params.houseId
+    if not houseId then
+        if cb then cb(false, { error = 'invalid_house' }) end
+        return
+    end
+
+    local affectedRows = MySQL.update.await(
+        "UPDATE bcchousing SET taxes_collected = 'released' WHERE houseid = ? AND taxes_collected = 'overdue'",
+        { houseId }
+    )
+
+    if affectedRows and affectedRows > 0 then
+        NotifyClient(src, _U('taxPaymentReleasedAdmin'), 5000, 'success')
+        if cb then cb(true) end
+        return
+    end
+
+    NotifyClient(src, _U('taxPaymentReleaseFailed'), 5000, 'error')
+    if cb then cb(false) end
 end)

@@ -14,6 +14,7 @@ Furniture = {
                 scale = 0.2
             },
             npc = {
+                active = false, -- Set false to hide this vendor NPC
                 model = 'u_m_m_strwelcomecenter_01',
                 heading = 45.0,
                 scenario = 'WORLD_HUMAN_WRITE_NOTEBOOK'
@@ -35,6 +36,7 @@ Furniture = {
                 scale = 0.2
             },
             npc = {
+                active = false, -- Set false to hide this vendor NPC
                 model = 'u_m_m_strwelcomecenter_01',
                 heading = 211.98,
                 scenario = 'WORLD_HUMAN_WRITE_NOTEBOOK'
@@ -46,6 +48,13 @@ Furniture = {
             }
         }
     },
+    -----------------------------------------------------
+    ---
+    --- Furniture Items for sale by category
+    --- Each category can have multiple items
+    --- Each item must have a propModel (furniture object model name)
+    --- https://redlookup.com/objects/?p=1
+    -----------------------------------------------------
     {
         name = 'Chairs',
         title = 'Chairs', -- Menu title

@@ -1,5 +1,72 @@
 local pendingInventoryLimits = {}
 
+local function encodePolyPoints(points)
+    if type(points) ~= 'table' or #points < 3 then
+        return nil
+    end
+
+    local normalized = {}
+    for _, point in ipairs(points) do
+        local x = point.x or point[1]
+        local y = point.y or point[2]
+        if x and y then
+            local z = point.z or point[3]
+            local normalizedPoint = {
+                x = tonumber(x) or 0.0,
+                y = tonumber(y) or 0.0
+            }
+            if z then
+                normalizedPoint.z = tonumber(z) or 0.0
+            end
+            normalized[#normalized + 1] = normalizedPoint
+        end
+    end
+
+    if #normalized < 3 then
+        return nil
+    end
+
+    return json.encode(normalized)
+end
+
+local function decodePolyPoints(payload)
+    if not payload or payload == '' or payload == 'null' then
+        return nil
+    end
+
+    local decoded = payload
+    if type(payload) == 'string' then
+        decoded = json.decode(payload)
+    end
+
+    if type(decoded) ~= 'table' or #decoded < 3 then
+        return nil
+    end
+
+    local normalized = {}
+    for _, point in ipairs(decoded) do
+        local x = point.x or point[1]
+        local y = point.y or point[2]
+        if x and y then
+            local z = point.z or point[3]
+            local normalizedPoint = {
+                x = tonumber(x) or 0.0,
+                y = tonumber(y) or 0.0
+            }
+            if z then
+                normalizedPoint.z = tonumber(z) or 0.0
+            end
+            normalized[#normalized + 1] = normalizedPoint
+        end
+    end
+
+    if #normalized < 3 then
+        return nil
+    end
+
+    return normalized
+end
+
 local function getHouseInventoryId(houseId, ownershipStatus)
     local suffix = ownershipStatus == 'rented' and '_bcc-houseinv_rent' or '_bcc-houseinv'
     return 'Player_' .. tostring(houseId) .. suffix
@@ -49,6 +116,23 @@ local function calculateFinalInventoryLimit(invLimit, ownershipStatus, stage)
     return baseLimit + bonus, baseLimit, bonus
 end
 
+local function formatPurchasedAt(value)
+    if not value or value == '' then
+        return nil
+    end
+
+    local timestamp = tonumber(value)
+    if timestamp then
+        if timestamp > 9999999999 then
+            timestamp = math.floor(timestamp / 1000)
+        end
+
+        return os.date("%Y-%m-%d %H:%M", timestamp)
+    end
+
+    return tostring(value):sub(1, 16)
+end
+
 local function ensureHouseInventoryRegistered(houseId, houseData, forcedLimit)
     if not houseData then return end
 
@@ -81,8 +165,14 @@ local function ensureHouseInventoryRegistered(houseId, houseData, forcedLimit)
 end
 
 -- Event to insert a house into the database when it is created
-local function handleCreationDBInsert(src, tpHouse, owner, radius, doors, houseCoords, invLimit, ownerSource, taxAmount, ownershipStatus, cb)
+local function handleCreationDBInsert(src, tpHouse, owner, radius, doors, houseCoords, invLimit, ownerSource, taxAmount, ownershipStatus, polyPoints, polyMinZ, polyMaxZ, purchaseCurrencyType, cb)
     local cbFn = type(cb) == 'function' and cb or nil
+    if not IsHousingAdmin(src) then
+        NotifyClient(src, _U('noAccessToHouse'), 4000, 'error')
+        if cbFn then cbFn(false) end
+        return
+    end
+
     local taxesValue = tonumber(taxAmount)
     local taxes = (taxesValue and taxesValue > 0) and taxesValue or 0
 
@@ -104,10 +194,12 @@ local function handleCreationDBInsert(src, tpHouse, owner, radius, doors, houseC
     end
 
     local param
+    local numericRadius = tonumber(radius) or 0
+    local encodedPolyPoints = encodePolyPoints(polyPoints)
     if not tpHouse then
         param = {
             ['charidentifier'] = owner,
-            ['radius'] = radius,
+            ['radius'] = numericRadius,
             ['doors'] = json.encode(doors),
             ['houseCoords'] = json.encode(houseCoords),
             ['invlimit'] = limitValue,
@@ -116,11 +208,15 @@ local function handleCreationDBInsert(src, tpHouse, owner, radius, doors, houseC
             ['tpInstance'] = 0,
             ['uniqueName'] = 'none',
             ['ownershipStatus'] = ownershipStatus,
+            ['purchaseCurrencyType'] = tonumber(purchaseCurrencyType) or 0,
+            ['polyPoints'] = encodedPolyPoints,
+            ['polyMinZ'] = tonumber(polyMinZ),
+            ['polyMaxZ'] = tonumber(polyMaxZ),
         }
     else
         param = {
             ['charidentifier'] = owner,
-            ['radius'] = radius,
+            ['radius'] = numericRadius,
             ['doors'] = 'none',
             ['houseCoords'] = json.encode(houseCoords),
             ['invlimit'] = limitValue,
@@ -129,13 +225,17 @@ local function handleCreationDBInsert(src, tpHouse, owner, radius, doors, houseC
             ['tpInstance'] = 52324 + src,
             ['uniqueName'] = 'none',
             ['ownershipStatus'] = ownershipStatus,
+            ['purchaseCurrencyType'] = tonumber(purchaseCurrencyType) or 0,
+            ['polyPoints'] = encodedPolyPoints,
+            ['polyMinZ'] = tonumber(polyMinZ),
+            ['polyMaxZ'] = tonumber(polyMaxZ),
         }
     end
 
     local result = MySQL.query.await('SELECT * FROM bcchousing WHERE charidentifier=@charidentifier', param)
     if #result < Config.Setup.MaxHousePerChar then
         MySQL.insert(
-            'INSERT INTO bcchousing ( `charidentifier`,`house_radius_limit`,`doors`,`house_coords`,`invlimit`,`tax_amount`,`tpInt`,`tpInstance`, `uniqueName`, `ownershipStatus`) VALUES ( @charidentifier,@radius,@doors,@houseCoords,@invlimit,@taxes,@tpInt,@tpInstance, @uniqueName, @ownershipStatus )',
+            'INSERT INTO bcchousing ( `charidentifier`,`house_radius_limit`,`doors`,`house_coords`,`invlimit`,`tax_amount`,`tpInt`,`tpInstance`, `uniqueName`, `ownershipStatus`, `purchaseCurrencyType`, `poly_points`, `poly_min_z`, `poly_max_z`, `purchased_at`) VALUES ( @charidentifier,@radius,@doors,@houseCoords,@invlimit,@taxes,@tpInt,@tpInstance, @uniqueName, @ownershipStatus, @purchaseCurrencyType, @polyPoints, @polyMinZ, @polyMaxZ, NOW() )',
             param
         )
 
@@ -154,7 +254,7 @@ local function handleCreationDBInsert(src, tpHouse, owner, radius, doors, houseC
     else
         NotifyClient(src, _U('maxHousesReached'), 4000, 'error')
         pendingInventoryLimits[src] = nil
-        if cbFn then cbFn(false, { error = 'max_houses' }) end
+        if cbFn then cbFn(false) end
     end
 end
 
@@ -170,8 +270,68 @@ BccUtils.RPC:Register('bcc-housing:CreationDBInsert', function(params, cb, src)
         params and params.ownerSource,
         params and params.taxAmount,
         params and params.ownershipStatus,
+        params and params.polyPoints,
+        params and params.polyMinZ,
+        params and params.polyMaxZ,
+        params and params.purchaseCurrencyType,
         cb
     )
+end)
+
+BccUtils.RPC:Register('bcc-housing:SaveExistingHousePolyZone', function(params, cb, src)
+    local houseId = tonumber(params and params.houseId)
+    local polyPoints = params and params.polyPoints
+    local polyMinZ = tonumber(params and params.polyMinZ)
+    local polyMaxZ = tonumber(params and params.polyMaxZ)
+
+    if not houseId then
+        if cb then cb(false, { error = 'invalid_house' }) end
+        return
+    end
+
+    local user = VORPcore.getUser(src)
+    local character = user and user.getUsedCharacter
+    local allowed = character and character.group == Config.adminGroup
+
+    if not allowed then
+        for _, jobCfg in ipairs(Config.ALlowedJobs or {}) do
+            if character and character.job == jobCfg.jobname then
+                allowed = true
+                break
+            end
+        end
+    end
+
+    if not allowed then
+        NotifyClient(src, _U('noAccessToHouse'), 4000, 'error')
+        if cb then cb(false) end
+        return
+    end
+
+    local encodedPolyPoints = encodePolyPoints(polyPoints)
+    if not encodedPolyPoints then
+        if cb then cb(false, { error = 'invalid_poly' }) end
+        return
+    end
+
+    local affectedRows = MySQL.update.await(
+        'UPDATE bcchousing SET poly_points = ?, poly_min_z = ?, poly_max_z = ? WHERE houseid = ?',
+        { encodedPolyPoints, polyMinZ, polyMaxZ, houseId }
+    )
+
+    if not affectedRows or affectedRows <= 0 then
+        if cb then cb(false, { error = 'update_failed' }) end
+        return
+    end
+
+    if cb then
+        cb(true, {
+            houseId = houseId,
+            polyPoints = decodePolyPoints(encodedPolyPoints),
+            polyMinZ = polyMinZ,
+            polyMaxZ = polyMaxZ
+        })
+    end
 end)
 
 local function handleSetInventoryLimit(src, invLimitParam, houseIdParam, cb)
@@ -188,6 +348,12 @@ local function handleSetInventoryLimit(src, invLimitParam, houseIdParam, cb)
 end
 
 BccUtils.RPC:Register('bcc-housing:SetInventoryLimit', function(params, cb, src)
+    if not IsHousingAdmin(src) then
+        NotifyClient(src, _U('noAccessToHouse'), 4000, 'error')
+        if cb then cb(false) end
+        return
+    end
+
     handleSetInventoryLimit(src, params and params.invLimit, params and params.houseId, cb)
 end)
 
@@ -215,19 +381,37 @@ local function refreshPlayerHouses(targetSource)
 
     if result and #result > 0 then
         for _, v in ipairs(result) do
+            v.purchased_at_formatted = formatPurchasedAt(v.purchased_at)
             local decodedCoords = json.decode(v.house_coords)
+            local ownerIdString = tostring(v.charidentifier)
+            local ownerIdNumber = tonumber(v.charidentifier)
+            local hasAccessToProperty = (charIdentifierNumber and ownerIdNumber and charIdentifierNumber == ownerIdNumber) or ownerIdString == charIdentifierString
+
+            if not hasAccessToProperty then
+                local allowedIdsTable = (v.allowed_ids ~= nil and v.allowed_ids ~= 'none') and json.decode(v.allowed_ids) or nil
+                if allowedIdsTable then
+                    for _, allowedId in ipairs(allowedIdsTable) do
+                        if tostring(allowedId) == charIdentifierString then
+                            hasAccessToProperty = true
+                            break
+                        end
+                    end
+                end
+            end
+
             BccUtils.RPC:Notify('bcc-housing:PrivatePropertyCheckHandler', {
                 coords = decodedCoords,
                 radius = v.house_radius_limit,
-                houseid = v.houseid
+                houseid = v.houseid,
+                polyPoints = decodePolyPoints(v.poly_points),
+                polyMinZ = tonumber(v.poly_min_z),
+                polyMaxZ = tonumber(v.poly_max_z),
+                hasAccess = hasAccessToProperty
             }, targetSource)
 
             local currentStage = tonumber(v.inventory_current_stage) or 0
             local finalLimit = select(1, calculateFinalInventoryLimit(v.invlimit, v.ownershipStatus, currentStage))
             ensureHouseInventoryRegistered(v.houseid, v, finalLimit)
-
-            local ownerIdString = tostring(v.charidentifier)
-            local ownerIdNumber = tonumber(v.charidentifier)
 
             if (charIdentifierNumber and ownerIdNumber and charIdentifierNumber == ownerIdNumber) or ownerIdString == charIdentifierString then
                 table.insert(accessibleHouses, v.houseid)
@@ -237,15 +421,9 @@ local function refreshPlayerHouses(targetSource)
                 BccUtils.RPC:Notify('bcc-housing:ShowMessage', { message = "You own house ID: " .. tostring(v.houseid) }, targetSource)
                 DBG:Info("Player " .. charIdentifierString .. " owns house ID: " .. tostring(v.houseid))
             else
-                local allowedIdsTable = (v.allowed_ids ~= nil and v.allowed_ids ~= 'none') and json.decode(v.allowed_ids) or nil
-                if allowedIdsTable then
-                    for _, allowedId in ipairs(allowedIdsTable) do
-                        if tostring(allowedId) == charIdentifierString then
-                            table.insert(accessibleHouses, v.houseid)
-                            BccUtils.RPC:Notify('bcc-housing:OwnsHouseClientHandler', { house = v, isOwner = false }, targetSource)
-                            break
-                        end
-                    end
+                if hasAccessToProperty then
+                    table.insert(accessibleHouses, v.houseid)
+                    BccUtils.RPC:Notify('bcc-housing:OwnsHouseClientHandler', { house = v, isOwner = false }, targetSource)
                 end
             end
         end
@@ -310,6 +488,12 @@ BccUtils.RPC:Register('bcc-house:OpenHouseInv', function(params, cb, src)
     end
 
     local houseData = result[1]
+    local taxStatus = tostring(houseData.taxes_collected)
+    if taxStatus == 'overdue' or taxStatus == 'released' then
+        NotifyClient(src, _U("taxesOverdue"), 5000, 'error')
+        if cb then cb(false, { error = _U("taxesOverdue"), taxesOverdue = taxStatus == 'overdue', taxPaymentReleased = taxStatus == 'released' }) end
+        return
+    end
 
     local finalLimit = select(1, calculateFinalInventoryLimit(houseData.invlimit, houseData.ownershipStatus, houseData.inventory_current_stage))
     local inventoryId = ensureHouseInventoryRegistered(houseId, houseData, finalLimit)
@@ -336,7 +520,34 @@ BccUtils.RPC:Register('bcc-house:OpenHouseInv', function(params, cb, src)
 
     DBG:Info("Player does not have access to house inventory: " .. tostring(houseId))
     NotifyClient(src, _U('noAccessToHouse'), 4000, 'error')
-    if cb then cb(false, { error = _U('noAccessToHouse') }) end
+    if cb then cb(false) end
+end)
+
+BccUtils.RPC:Register('bcc-house:AdminOpenHouseInv', function(params, cb, src)
+    local houseId = params and params.houseId
+    if not houseId then
+        if cb then cb(false, { error = _U('noHouseFound') }) end
+        return
+    end
+
+    if not IsHousingAdmin(src) then
+        NotifyClient(src, _U('noAccessToHouse'), 4000, 'error')
+        if cb then cb(false) end
+        return
+    end
+
+    local result = MySQL.query.await("SELECT * FROM bcchousing WHERE houseid = ?", { houseId })
+    if not result or #result == 0 then
+        if cb then cb(false, { error = _U('noHouseFound') }) end
+        return
+    end
+
+    local houseData = result[1]
+    local finalLimit = select(1, calculateFinalInventoryLimit(houseData.invlimit, houseData.ownershipStatus, houseData.inventory_current_stage))
+    local inventoryId = ensureHouseInventoryRegistered(houseId, houseData, finalLimit)
+    exports.vorp_inventory:openInventory(src, inventoryId)
+
+    if cb then cb(true) end
 end)
 
 BccUtils.RPC:Register('bcc-housing:GetInventoryStages', function(params, cb, src)
@@ -346,7 +557,7 @@ BccUtils.RPC:Register('bcc-housing:GetInventoryStages', function(params, cb, src
         return
     end
 
-    local result = MySQL.query.await("SELECT invlimit, ownershipStatus, charidentifier, inventory_current_stage FROM bcchousing WHERE houseid = ?", { houseId })
+    local result = MySQL.query.await("SELECT invlimit, ownershipStatus, taxes_collected, charidentifier, inventory_current_stage FROM bcchousing WHERE houseid = ?", { houseId })
     if not result or #result == 0 then
         if cb then cb(false, { error = _U('noHouseFound') }) end
         return
@@ -357,6 +568,12 @@ BccUtils.RPC:Register('bcc-housing:GetInventoryStages', function(params, cb, src
     local charIdentifier = character and character.charIdentifier
 
     local row = result[1]
+    local taxStatus = tostring(row.taxes_collected)
+    if taxStatus == 'overdue' or taxStatus == 'released' then
+        if cb then cb(false, { error = _U("taxesOverdue"), taxesOverdue = taxStatus == 'overdue', taxPaymentReleased = taxStatus == 'released' }) end
+        return
+    end
+
     local currentStage = tonumber(row.inventory_current_stage) or 0
     local finalLimit, baseLimit, bonus = calculateFinalInventoryLimit(row.invlimit, row.ownershipStatus, currentStage)
     local nextStage = getNextInventoryStage(currentStage)
@@ -400,7 +617,8 @@ BccUtils.RPC:Register('bcc-housing:UpgradeInventory', function(params, cb, src)
 
     local row = result[1]
     if tostring(row.charidentifier) ~= tostring(character.charIdentifier) then
-        if cb then cb(false, { error = 'not_owner' }) end
+        NotifyClient(src, _U('noAccessToHouse'), 4000, 'error')
+        if cb then cb(false) end
         return
     end
 
@@ -461,9 +679,14 @@ function updateDoorAccess(doorId, newId)
 end
 
 BccUtils.RPC:Register("bcc-housing:GetDoorsByHouseId", function(params, cb, recSource)
-    local houseId = params.houseId
+    local houseId = params and params.houseId
     if not houseId then
         cb(nil) -- Return nil to indicate an invalid house ID
+        return
+    end
+    if not IsHouseOwner(recSource, houseId) and not IsHousingAdmin(recSource) then
+        NotifyClient(recSource, _U('noAccessToHouse'), 4000, 'error')
+        cb(nil)
         return
     end
 
@@ -492,10 +715,15 @@ BccUtils.RPC:Register("bcc-housing:GetDoorsByHouseId", function(params, cb, recS
 end)
 
 BccUtils.RPC:Register("bcc-housing:GetAllowedIdsForHouse", function(params, cb, recSource)
-    local houseId = params.houseId
+    local houseId = params and params.houseId
 
     if not houseId then
         cb(nil) -- Invalid parameters
+        return
+    end
+    if not IsHouseOwner(recSource, houseId) and not IsHousingAdmin(recSource) then
+        NotifyClient(recSource, _U('noAccessToHouse'), 4000, 'error')
+        cb(nil)
         return
     end
 
@@ -512,11 +740,17 @@ end)
 
 -- Register the RPC for adding a door to a house
 BccUtils.RPC:Register("bcc-housing:AddDoorToHouse", function(params, cb, recSource)
-    local houseId = params.houseId
-    local newDoor = params.newDoor
+    local houseId = params and params.houseId
+    local newDoor = params and params.newDoor
 
     if not houseId or not newDoor then
         cb(false) -- Invalid parameters
+        return
+    end
+
+    if not IsHouseOwner(recSource, houseId) and not IsHousingAdmin(recSource) then
+        NotifyClient(recSource, _U('noAccessToHouse'), 4000, 'error')
+        cb(false)
         return
     end
 
@@ -544,14 +778,19 @@ BccUtils.RPC:Register("bcc-housing:AddDoorToHouse", function(params, cb, recSour
     end
 end)
 
-BccUtils.RPC:Register("bcc-housing:GiveAccessToDoor", function(params, cb)
-    local doorId = params.doorId
-    local userId = params.userId
+BccUtils.RPC:Register("bcc-housing:GiveAccessToDoor", function(params, cb, src)
+    local doorId = params and params.doorId
+    local userId = params and params.userId
 
     DBG:Info("DEBUG: Received doorId: " .. tostring(doorId) .. ", userId: " .. tostring(userId))
 
     if not doorId or not userId then
         DBG:Warning("Invalid parameters for GiveAccessToDoor: Door ID or User ID is missing.")
+        cb(false)
+        return
+    end
+    if not IsDoorOwnedByCharacter(src, doorId) and not IsHousingAdmin(src) then
+        NotifyClient(src, _U('noAccessToHouse'), 4000, 'error')
         cb(false)
         return
     end
@@ -582,11 +821,16 @@ BccUtils.RPC:Register("bcc-housing:GiveAccessToDoor", function(params, cb)
 end)
 
 BccUtils.RPC:Register("bcc-housing:RemoveAccessFromDoor", function(params, cb, recSource)
-    local doorId = params.doorId
-    local userId = params.userId
+    local doorId = params and params.doorId
+    local userId = params and params.userId
 
     if not doorId or not userId then
         DBG:Warning("Invalid parameters for RemoveAccessFromDoor: Door ID or User ID is missing.")
+        cb(false)
+        return
+    end
+    if not IsDoorOwnedByCharacter(recSource, doorId) and not IsHousingAdmin(recSource) then
+        NotifyClient(recSource, _U('noAccessToHouse'), 4000, 'error')
         cb(false)
         return
     end
@@ -622,10 +866,15 @@ BccUtils.RPC:Register("bcc-housing:RemoveAccessFromDoor", function(params, cb, r
 end)
 
 BccUtils.RPC:Register("bcc-housing:DeleteDoor", function(params, cb, recSource)
-    local doorId = params.doorId
+    local doorId = params and params.doorId
 
     if not doorId then
         DBG:Warning("Invalid door ID received for deletion.")
+        cb(false)
+        return
+    end
+    if not IsDoorOwnedByCharacter(recSource, doorId) and not IsHousingAdmin(recSource) then
+        NotifyClient(recSource, _U('noAccessToHouse'), 4000, 'error')
         cb(false)
         return
     end
@@ -650,7 +899,7 @@ local function handleLedgerHandling(src, amountParam, houseIdParam, isAdding, cb
     local amountNumber = tonumber(amountParam)
     local houseIdNumber = tonumber(houseIdParam)
 
-    if not amountNumber or not houseIdNumber then
+    if not amountNumber or amountNumber <= 0 or not houseIdNumber then
         if cbFn then cbFn(false, { error = 'invalid_params' }) end
         return
     end
@@ -667,23 +916,23 @@ local function handleLedgerHandling(src, amountParam, houseIdParam, isAdding, cb
         return
     end
 
-    local queryResult = MySQL.query.await('SELECT ledger, tax_amount, ownershipStatus, uniqueName FROM bcchousing WHERE houseid = ?', { houseIdNumber })
+    local queryResult = MySQL.query.await('SELECT ledger, tax_amount, taxes_collected, ownershipStatus, uniqueName, charidentifier, purchaseCurrencyType FROM bcchousing WHERE houseid = ?', { houseIdNumber })
     if not queryResult or #queryResult == 0 then
         NotifyClient(src, _U('noHouseFound'), 5000, 'error')
-        if cbFn then cbFn(false, { error = 'house_not_found' }) end
+        if cbFn then cbFn(false) end
         return
     end
 
     local row = queryResult[1]
+    if tostring(row.charidentifier) ~= tostring(character.charIdentifier) then
+        NotifyClient(src, _U('noAccessToHouse'), 4000, 'error')
+        if cbFn then cbFn(false) end
+        return
+    end
     local ledger = tonumber(row.ledger) or 0
     local taxAmount = tonumber(row.tax_amount) or 0
     local ownershipStatus = row.ownershipStatus
-    local currency = 0
-    local rentalCurrency = Config.Setup.DefaultRentalCurrency
-    rentalCurrency = tonumber(rentalCurrency) or 1
-    if rentalCurrency ~= 0 then
-        rentalCurrency = 1
-    end
+    local currency = tonumber(row.purchaseCurrencyType) or 0
     local uniqueName = row.uniqueName
 
     if ownershipStatus ~= 'purchased' and ownershipStatus ~= 'rented' then
@@ -692,89 +941,140 @@ local function handleLedgerHandling(src, amountParam, houseIdParam, isAdding, cb
         return
     end
 
-    if ownershipStatus == 'rented' then
-        if uniqueName then
-            for _, house in pairs(Houses) do
-                if house.uniqueName == uniqueName then
-                    local houseCurrency = house.currencyType
-                    if houseCurrency == nil then
-                        houseCurrency = Config.Setup.DefaultRentalCurrency
-                    end
-                    houseCurrency = tonumber(houseCurrency) or 1
-                    if houseCurrency ~= 0 then
+    if uniqueName then
+        for _, house in pairs(Houses) do
+            if house.uniqueName == uniqueName then
+                local houseCurrency = tonumber(house.currencyType)
+                if houseCurrency ~= 0 and houseCurrency ~= 1 and houseCurrency ~= 2 then
+                    houseCurrency = nil
+                end
+
+                if ownershipStatus == 'rented' then
+                    houseCurrency = houseCurrency or tonumber(Config.Setup.DefaultRentalCurrency) or 1
+                    if houseCurrency ~= 0 and houseCurrency ~= 1 and houseCurrency ~= 2 then
                         houseCurrency = 1
                     end
-                    rentalCurrency = houseCurrency
-                    break
+                else
+                    houseCurrency = houseCurrency or 0
                 end
+
+                if row.purchaseCurrencyType == nil then
+                    currency = houseCurrency
+                end
+                break
             end
         end
-        if rentalCurrency ~= 0 then
-            rentalCurrency = 1
+    end
+
+    if ownershipStatus == 'rented' and currency == 0 and (not uniqueName or uniqueName == 'none') then
+        local defaultRentalCurrency = tonumber(Config.Setup.DefaultRentalCurrency) or 1
+        if defaultRentalCurrency ~= 0 and defaultRentalCurrency ~= 1 and defaultRentalCurrency ~= 2 then
+            defaultRentalCurrency = 1
         end
-        currency = rentalCurrency
+        currency = defaultRentalCurrency
     end
 
     if isAdding then
+        local taxStatus = tostring(row.taxes_collected)
+        local isReleasedForPayment = taxStatus == 'released'
+
+        if taxStatus == 'overdue' then
+            NotifyClient(src, _U('overdueDiscordContact'), 7000, 'error')
+            if cbFn then cbFn(false) end
+            return
+        end
+
         local maxInsertAmount = taxAmount - ledger
         if maxInsertAmount <= 0 then
             NotifyClient(src, _U('maxAmountStored'), 5000, 'info')
-            if cbFn then cbFn(false, { error = 'ledger_full' }) end
+            if cbFn then cbFn(false) end
             return
         end
 
         local insertionAmount = math.min(amountNumber, maxInsertAmount)
         if insertionAmount <= 0 then
             NotifyClient(src, _U('maxAmountStored'), 5000, 'info')
-            if cbFn then cbFn(false, { error = 'ledger_full' }) end
+            if cbFn then cbFn(false) end
             return
         end
 
         if currency == 0 and character.money < insertionAmount then
             NotifyClient(src, _U('noMoney'), 5000, 'error')
-            if cbFn then cbFn(false, { error = 'no_money' }) end
+            if cbFn then cbFn(false) end
             return
         elseif currency == 1 and character.gold < insertionAmount then
             NotifyClient(src, _U('noGold'), 5000, 'error')
-            if cbFn then cbFn(false, { error = 'no_gold' }) end
+            if cbFn then cbFn(false) end
+            return
+        elseif currency == 2 and (tonumber(character.rol) or 0) < insertionAmount then
+            NotifyClient(src, _U('noRol'), 5000, 'error')
+            if cbFn then cbFn(false) end
             return
         end
 
         character.removeCurrency(currency, insertionAmount)
-        local affectedRows = MySQL.update.await('UPDATE bcchousing SET ledger = ledger + ? WHERE houseid = ?', { insertionAmount, houseIdNumber })
+
+        local affectedRows
+        local taxesPaid = false
+        if isReleasedForPayment and (ledger + insertionAmount) >= taxAmount then
+            local remainingLedger = math.max((ledger + insertionAmount) - taxAmount, 0)
+            affectedRows = MySQL.update.await(
+                'UPDATE bcchousing SET ledger = ?, taxes_collected = ? WHERE houseid = ? AND charidentifier = ?',
+                { remainingLedger, 'true', houseIdNumber, character.charIdentifier }
+            )
+            taxesPaid = true
+        else
+            affectedRows = MySQL.update.await(
+                'UPDATE bcchousing SET ledger = ledger + ? WHERE houseid = ? AND charidentifier = ? AND ledger + ? <= tax_amount',
+                { insertionAmount, houseIdNumber, character.charIdentifier, insertionAmount }
+            )
+        end
+
         if affectedRows and affectedRows > 0 then
             if currency == 0 then
                 NotifyClient(src, _U('ledgerAmountInserted') .. ' $' .. insertionAmount, 5000, 'success')
-            else
+            elseif currency == 1 then
                 NotifyClient(src, _U('ledgerGoldAmountInserted') .. insertionAmount, 5000, 'success')
+            else
+                NotifyClient(src, _U('ledgerRolAmountInserted') .. insertionAmount, 5000, 'success')
             end
-            if cbFn then cbFn(true, { ledgerChange = insertionAmount, action = 'add' }) end
+            if cbFn then cbFn(true, {
+                ledgerChange = insertionAmount,
+                action = 'add',
+                taxesPaid = taxesPaid
+            }) end
             return
         else
+            character.addCurrency(currency, insertionAmount)
             NotifyClient(src, _U('ledgerUpdateFailed'), 5000, 'error')
-            if cbFn then cbFn(false, { error = 'update_failed' }) end
+            if cbFn then cbFn(false) end
             return
         end
     else
         if ledger < amountNumber then
             NotifyClient(src, _U('notEnoughFunds'), 5000, 'error')
-            if cbFn then cbFn(false, { error = 'insufficient_ledger' }) end
+            if cbFn then cbFn(false) end
             return
         end
 
-        character.addCurrency(currency, amountNumber)
-        local affectedRows = MySQL.update.await('UPDATE bcchousing SET ledger = ledger - ? WHERE houseid = ?', { amountNumber, houseIdNumber })
+        local affectedRows = MySQL.update.await(
+            'UPDATE bcchousing SET ledger = ledger - ? WHERE houseid = ? AND charidentifier = ? AND ledger >= ?',
+            { amountNumber, houseIdNumber, character.charIdentifier, amountNumber }
+        )
         if affectedRows and affectedRows > 0 then
+            character.addCurrency(currency, amountNumber)
             if currency == 0 then
                 NotifyClient(src, _U('ledgerAmountRemoved') .. ' $' .. amountNumber, 5000, 'success')
-            else
+            elseif currency == 1 then
                 NotifyClient(src, _U('ledgerGoldAmountRemoved') .. amountNumber, 5000, 'success')
+            else
+                NotifyClient(src, _U('ledgerRolAmountRemoved') .. amountNumber, 5000, 'success')
             end
             if cbFn then cbFn(true, { ledgerChange = amountNumber, action = 'remove' }) end
             return
         else
             NotifyClient(src, _U('ledgerUpdateFailed'), 5000, 'error')
-            if cbFn then cbFn(false, { error = 'update_failed' }) end
+            if cbFn then cbFn(false) end
             return
         end
     end
@@ -870,12 +1170,14 @@ BccUtils.RPC:Register('bcc-housing:getHouseId', function(params, cb, src)
 
     if not hasAccess then
         DBG:Info("Player does not have access to the house ID: " .. tostring(houseId))
-        if cb then cb(false, { error = _U('noAccessToHouse') }) end
+        NotifyClient(src, _U('noAccessToHouse'), 4000, 'error')
+        if cb then cb(false) end
         return
     end
 
     if (context == 'access' or context == 'removeAccess') and not isOwner then
-        if cb then cb(false, { error = _U('noAccessToHouse') }) end
+        NotifyClient(src, _U('noAccessToHouse'), 4000, 'error')
+        if cb then cb(false) end
         return
     end
 
@@ -920,12 +1222,17 @@ BccUtils.RPC:Register('bcc-housing:getHouseOwner', function(params, cb, src)
 
     local houseData = result[1]
     local isOwner = tostring(houseData.charidentifier) == tostring(charIdentifier)
+    local taxStatus = tostring(houseData.taxes_collected)
+    local taxesOverdue = taxStatus == 'overdue'
+    local taxPaymentReleased = taxStatus == 'released'
 
     if cb then
         cb(true, {
             houseId = houseId,
             isOwner = isOwner,
-            ownershipStatus = houseData.ownershipStatus
+            ownershipStatus = houseData.ownershipStatus,
+            taxesOverdue = taxesOverdue,
+            taxPaymentReleased = taxPaymentReleased
         })
     end
 end)
@@ -951,7 +1258,7 @@ BccUtils.RPC:Register('bcc-housing:GetHouseContext', function(params, cb, src)
 
     local charIdentifier = tostring(character.charIdentifier)
     local result = MySQL.query.await(
-        "SELECT house_coords, house_radius_limit, tpInt, tpInstance, ownershipStatus, charidentifier, allowed_ids FROM bcchousing WHERE houseid = ?",
+        "SELECT house_coords, house_radius_limit, tpInt, tpInstance, ownershipStatus, taxes_collected, purchased_at, charidentifier, allowed_ids, poly_points, poly_min_z, poly_max_z FROM bcchousing WHERE houseid = ?",
         { houseId })
 
     if not result or #result == 0 then
@@ -960,6 +1267,12 @@ BccUtils.RPC:Register('bcc-housing:GetHouseContext', function(params, cb, src)
     end
 
     local row = result[1]
+    local taxStatus = tostring(row.taxes_collected)
+    if taxStatus == 'overdue' or taxStatus == 'released' then
+        if cb then cb(false, { error = _U("taxesOverdue"), taxesOverdue = taxStatus == 'overdue', taxPaymentReleased = taxStatus == 'released' }) end
+        return
+    end
+
     local ownerIdentifier = tostring(row.charidentifier or '')
     local hasAccess = ownerIdentifier == charIdentifier
 
@@ -981,7 +1294,8 @@ BccUtils.RPC:Register('bcc-housing:GetHouseContext', function(params, cb, src)
     end
 
     if not hasAccess then
-        if cb then cb(false, { error = _U('noAccessToHouse') }) end
+        NotifyClient(src, _U('noAccessToHouse'), 4000, 'error')
+        if cb then cb(false) end
         return
     end
 
@@ -994,8 +1308,13 @@ BccUtils.RPC:Register('bcc-housing:GetHouseContext', function(params, cb, src)
     local context = {
         coords = coords,
         radius = tonumber(row.house_radius_limit),
+        polyPoints = decodePolyPoints(row.poly_points),
+        polyMinZ = tonumber(row.poly_min_z),
+        polyMaxZ = tonumber(row.poly_max_z),
         houseId = tonumber(houseId),
         ownershipStatus = row.ownershipStatus,
+        purchasedAt = row.purchased_at,
+        purchasedAtFormatted = formatPurchasedAt(row.purchased_at),
         tpInt = row.tpInt ~= 0 and row.tpInt or nil,
         tpInstance = row.tpInstance
     }

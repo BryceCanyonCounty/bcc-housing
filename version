@@ -1,3 +1,40 @@
+<2.5.0>
+## Property Areas and Purchase Experience
+- Added PolyZone property boundaries as an alternative to radius-based property areas: https://github.com/mkafrin/PolyZone/
+- Added admin and realtor tools to capture, edit, export, save, and preview property PolyZones.
+- Added property-area previews for players before purchasing or renting a configured house.
+- Added property-area previews and configured-house teleport options to the admin menu.
+
+## Property Ownership and Payments
+- Added metadata-backed property deed items for purchased and rented properties.
+- Added property deed reissuing through configured real-estate agents.
+- Added automatic deed replacement when a property is transferred to another player.
+- Added cash, gold, and Rol Token support for purchases, rentals, and ledger payments.
+- Added per-house rental controls and an option for tenants to end rentals early.
+
+## Taxes and Rent
+- New purchases, rentals, and admin-created houses now save their actual purchase date.
+- Taxes and rent are collected monthly on each property's purchase-date anniversary.
+- Existing properties without a purchase date receive a legacy fallback based on `Config.TaxDay`.
+- Added `last_tax_processed_at` tracking to prevent duplicate monthly charges.
+- Added overdue-property restrictions and an admin workflow to release properties for ledger payment.
+
+## Administration, Security, and Reliability
+- Expanded admin property details, overdue filtering, boundary previews, and inventory access.
+- Added server-side ownership and permission validation for house, door, ledger, furniture, hotel, and admin operations.
+- Added protection against simultaneous purchases of the same configured house.
+- Improved property boundary detection and reduced enter/leave notification flicker.
+- Improved furniture selling and placement validation.
+- Replaced the housing-local debug shim with the `BccUtils.Debug` API.
+
+## Furniture Vendors and Localization
+- Added support for both `npc.active` and legacy `npc.show` furniture-vendor settings.
+- Improved furniture-vendor client performance with adaptive interaction checks.
+- Restored the real-estate agent's two-second hold interaction using `BccUtils.Prompts`.
+- Localized property-document menu labels and status text.
+- Restored and updated the Polish locale for all current housing features.
+- Expanded README documentation for the new features and configuration.
+
 <2.4.0>
 - Fixed issue where blips would not clear on resource restart  
 - Added a command to edit furniture when standing near it  

@@ -453,17 +453,21 @@ function FurnitureMenu(houseId, ownershipStatus, ownedFurniture)
         slot = "footer",
         style = {}
     }, function()
-        local success, furnDataOrMessage, ownershipStatus = BccUtils.RPC:CallAsync("bcc-housing:GetOwnerFurniture",
+        local success, furniture, ownershipStatus = BccUtils.RPC:CallAsync("bcc-housing:GetOwnerFurniture",
             { houseId = houseId })
         if success then
-            SellOwnedFurnitureMenu(houseId, furnDataOrMessage or {}, ownershipStatus)
-        else
-            if furnDataOrMessage then
-                Notify(furnDataOrMessage, "error", 4000)
-            else
-                Notify(_U("noFurn"), "info", 4000)
-            end
+            SellOwnedFurnitureMenu(houseId, furniture or {}, ownershipStatus)
         end
+    end)
+
+    furnitureMainMenu:RegisterElement('button', {
+        label = _U("editFurniture"),
+        slot = "footer",
+        style = {}
+    }, function()
+        FurnitureMenuOpen = false
+        BCCHousingMenu:Close()
+        StartEditNearestFurniture()
     end)
 
     furnitureMainMenu:RegisterElement('button', {
@@ -925,31 +929,7 @@ local function EditPlacedFurniture(entity, houseId, entryIndex, entryData)
     end)
 end
 
-BccUtils.RPC:Register('bcc-housing:OpenFurnitureBook', function(params)
-    local ownedFurniture = params and params.ownedFurniture or {}
-    OwnedFurnitureCache = ownedFurniture
-    FurnitureMenu(HouseId, HouseOwnershipStatus, OwnedFurnitureCache)
-end)
-
-BccUtils.RPC:Register("bcc-housing:OwnedFurnitureSync", function(params)
-    OwnedFurnitureCache = params.ownedItems or {}
-    if FurnitureMenuOpen then
-        FurnitureMenu(HouseId, HouseOwnershipStatus, OwnedFurnitureCache)
-    end
-end)
-
-RegisterNetEvent('bcc-housing:OpenFurnitureVendor', function()
-    if Furniture and Furniture.Vendors and Furniture.Vendors[1] then
-        ActiveFurnitureVendor = Furniture.Vendors[1]
-    elseif Config.FurnitureVendors and Config.FurnitureVendors[1] then
-        ActiveFurnitureVendor = Config.FurnitureVendors[1]
-    end
-    CreateCamera()
-    ClearVendorPreview()
-    FurnitureVendorMenu()
-end)
-
-RegisterCommand(Config.EditFurnitureCommand, function()
+function StartEditNearestFurniture()
     if not HouseId then
         Notify(_U("noHouseFound"), "error", 4000)
         return
@@ -996,6 +976,34 @@ RegisterCommand(Config.EditFurnitureCommand, function()
     end
 
     EditPlacedFurniture(nearestEntity, HouseId, closestIndex, closestEntry)
+end
+
+BccUtils.RPC:Register('bcc-housing:OpenFurnitureBook', function(params)
+    local ownedFurniture = params and params.ownedFurniture or {}
+    OwnedFurnitureCache = ownedFurniture
+    FurnitureMenu(HouseId, HouseOwnershipStatus, OwnedFurnitureCache)
+end)
+
+BccUtils.RPC:Register("bcc-housing:OwnedFurnitureSync", function(params)
+    OwnedFurnitureCache = params.ownedItems or {}
+    if FurnitureMenuOpen then
+        FurnitureMenu(HouseId, HouseOwnershipStatus, OwnedFurnitureCache)
+    end
+end)
+
+RegisterNetEvent('bcc-housing:OpenFurnitureVendor', function()
+    if Furniture and Furniture.Vendors and Furniture.Vendors[1] then
+        ActiveFurnitureVendor = Furniture.Vendors[1]
+    elseif Config.FurnitureVendors and Config.FurnitureVendors[1] then
+        ActiveFurnitureVendor = Config.FurnitureVendors[1]
+    end
+    CreateCamera()
+    ClearVendorPreview()
+    FurnitureVendorMenu()
+end)
+
+RegisterCommand(Config.EditFurnitureCommand, function(_, args)
+    StartEditNearestFurniture()
 end, false)
 
 ---------------------------------
@@ -1454,9 +1462,10 @@ end
 
 function closeToHouse(object)
     local coords = GetEntityCoords(object)
-    local compCoords = HouseCoords
-    local radius = tonumber(HouseRadius)
+
     if CurrentTpHouse ~= nil and InTpHouse then
+        local compCoords = HouseCoords
+        local radius = tonumber(HouseRadius)
         if CurrentTpHouse == 1 then
             compCoords = Config.TpInteriors.Interior1.exitCoords
             radius = Config.TpInteriors.Interior1.furnRadius
@@ -1464,16 +1473,35 @@ function closeToHouse(object)
             compCoords = Config.TpInteriors.Interior2.exitCoords
             radius = Config.TpInteriors.Interior2.furnRadius
         end
+        return GetDistanceBetweenCoords(
+            tonumber(coords.x), tonumber(coords.y), tonumber(coords.z),
+            tonumber(compCoords.x), tonumber(compCoords.y), tonumber(compCoords.z),
+            false
+        ) <= radius
     end
-    if GetDistanceBetweenCoords(
+
+    local placementHouseId = HouseId or ActivePlacementHouseId or ActiveHouseId
+    local houseContext = placementHouseId and GetHouseContext and GetHouseContext(placementHouseId) or nil
+
+    if not houseContext and placementHouseId then
+        houseContext = RequestHouseContext(placementHouseId)
+    end
+
+    if houseContext and IsPointInsideHousingArea(houseContext, coords) then
+        return true
+    end
+
+    local compCoords = HouseCoords
+    local radius = tonumber(HouseRadius)
+    if not compCoords or not radius then
+        return false
+    end
+
+    return GetDistanceBetweenCoords(
         tonumber(coords.x), tonumber(coords.y), tonumber(coords.z),
         tonumber(compCoords.x), tonumber(compCoords.y), tonumber(compCoords.z),
         false
-    ) <= radius then
-        return true
-    else
-        return false
-    end
+    ) <= radius
 end
 
 -- Helper function to handle the sale of furniture (implement as needed)
@@ -1580,16 +1608,10 @@ end
 
 function GetOwnedFurniture(houseId)
     DBG:Info("Requesting furniture for house ID: " .. tostring(houseId))
-    local success, furnDataOrMessage, ownershipStatus = BccUtils.RPC:CallAsync("bcc-housing:GetOwnerFurniture",
+    local success, furniture, ownershipStatus = BccUtils.RPC:CallAsync("bcc-housing:GetOwnerFurniture",
         { houseId = houseId })
     if success then
-        SellOwnedFurnitureMenu(houseId, furnDataOrMessage or {}, ownershipStatus)
-    else
-        if furnDataOrMessage then
-            Notify(furnDataOrMessage, "error", 4000)
-        else
-            Notify(_U("noFurn"), "info", 4000)
-        end
+        SellOwnedFurnitureMenu(houseId, furniture or {}, ownershipStatus)
     end
 end
 

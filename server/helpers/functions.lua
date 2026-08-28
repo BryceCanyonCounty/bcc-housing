@@ -1,16 +1,64 @@
 ---- Pulling Essentials -----
 VORPcore    = exports.vorp_core:GetCore()
 DoorLocksAPI = exports['bcc-doorlocks']:getDoorLocksAPI()
-BccUtils    = exports['bcc-utils']:initiate()
-
-DBG = BccUtils.Debug:Get("bcc-housing", Config.DevMode)
-if Config.DevMode then DBG:Enable() end
-DBG:Info("Housing debug initialized (server)")
 
 Discord = BccUtils.Discord.setup(Config.WebhookLink, Config.WebhookTitle, Config.WebhookAvatar)
 
 DbUpdated = false -- Use this to stop taxes from running till db has been made
 BCCHousingResourceStopping = false
+
+function GetHousingCharacter(src)
+    local user = VORPcore.getUser(src)
+    return user and user.getUsedCharacter or nil
+end
+
+function IsHousingAdmin(src)
+    local character = GetHousingCharacter(src)
+    if not character then return false end
+
+    if character.group == Config.adminGroup then
+        return true
+    end
+
+    for _, jobCfg in ipairs(Config.ALlowedJobs or {}) do
+        if character.job == jobCfg.jobname then
+            return true
+        end
+    end
+
+    return false
+end
+
+function IsHouseOwner(src, houseId)
+    local character = GetHousingCharacter(src)
+    local numericHouseId = tonumber(houseId)
+    if not character or not numericHouseId then return false end
+
+    local owner = MySQL.scalar.await('SELECT charidentifier FROM bcchousing WHERE houseid = ?', { numericHouseId })
+    return owner ~= nil and tostring(owner) == tostring(character.charIdentifier)
+end
+
+function IsDoorOwnedByCharacter(src, doorId)
+    local character = GetHousingCharacter(src)
+    local numericDoorId = tonumber(doorId)
+    if not character or not numericDoorId then return false end
+
+    local houses = MySQL.query.await('SELECT charidentifier, doors FROM bcchousing WHERE doors IS NOT NULL AND doors != ?', { 'none' }) or {}
+    for _, house in ipairs(houses) do
+        if tostring(house.charidentifier) == tostring(character.charIdentifier) then
+            local ok, doors = pcall(json.decode, house.doors)
+            if ok and type(doors) == 'table' then
+                for _, houseDoorId in ipairs(doors) do
+                    if tonumber(houseDoorId) == numericDoorId then
+                        return true
+                    end
+                end
+            end
+        end
+    end
+
+    return false
+end
 
 -- Initialize an empty table to hold player data
 local PlayersTable = {}

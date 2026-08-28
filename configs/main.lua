@@ -11,6 +11,7 @@ Config = {
         manage = 'G',  -- [G] Manage House
         collect = 'G', -- [G] Collect money from selling house
         buy = 'G',     -- [B] Buy house
+        cancel = 'BACKSPACE',
     },
     -----------------------------------------------------
 
@@ -20,6 +21,13 @@ Config = {
         autoClose = 4000,
         position = "bottom-center",
         transition = "slide"
+    },
+    -----------------------------------------------------
+
+    PropertyDocuments = {
+        enabled = true,
+        houseItem = "property_deed",
+        removePreviousDeedOnTransfer = true,
     },
     -----------------------------------------------------
 
@@ -37,20 +45,65 @@ Config = {
     AdminManagementMenuCommand = 'HousingManager', --the name of the command for admins to manage all houses
     OpenHousingMenuCommand = 'HouseMenu',          --command players can use to open their housing menu
     EditFurnitureCommand = 'editfurniture',        --command players can use to edit their placed furniture
+    HidePropertyUICommand = 'hidePropertyUI',      --command players can use to hide the private-property UI
+    HousingPolyZoneCommand = 'housingpoly',        --admin/realtor command for standalone polyzone capture
+    -- PolyZone command examples using the default command name:
+    -- /housingpoly start       Start capturing a PolyZone for a new house
+    -- /housingpoly edit 12     Edit and save the PolyZone for database house ID 12
+    -- /housingpoly status      Show the current point count, floor, and ceiling
+    -- /housingpoly export      Print the captured PolyZone coordinates to the F8/client console
+    -- /housingpoly stop        Stop capturing and clear the current PolyZone
+    HousingPolyPointPromptKey = 'R',
+    HousingPolyUndoPromptKey = 'BACKSPACE',
+    HousingPolySavePromptKey = 'ENTER',
+    HousingPolyCancelPromptKey = 'X',
+    HousingPolyFloorPromptKey = 'PGDN',
+    HousingPolyCeilingPromptKey = 'PGUP',
+    CommandSuggestions = {
+        {
+            commandConfig = 'AdminManagementMenuCommand',
+            help = 'Open the housing administration menu',
+            params = {}
+        },
+        {
+            commandConfig = 'OpenHousingMenuCommand',
+            help = 'Open the management menu for your current house',
+            params = {}
+        },
+        {
+            commandConfig = 'EditFurnitureCommand',
+            help = 'Edit the nearest placed furniture in your current house',
+            params = {}
+        },
+        {
+            commandConfig = 'HidePropertyUICommand',
+            help = 'Hide the private-property notification UI',
+            params = {}
+        },
+        {
+            commandConfig = 'HousingPolyZoneCommand',
+            help = 'Capture, edit, inspect, or export a housing PolyZone',
+            params = {
+                { name = 'action', help = 'start | edit | stop | status | export' },
+                { name = 'houseId', help = 'Database house ID, required only for the edit action' }
+            }
+        }
+    },
     -----------------------------------------------------
 
     --Maximum allowed houses per character
     Setup = {
         MaxHousePerChar = 1,
-        DefaultRentalCurrency = 0, -- 0 cash, 1 gold
+        DefaultRentalCurrency = 0, -- 0 cash, 1 gold, 2 Rol Tokens
         RentedInventoryLimitMultiplier = 0.5, -- 50% of base limit
     },
     -----------------------------------------------------
 
     collectTaxes = false,
-    -- Tax Day for checking the ledger and collect
-    TaxDay = 26,      --This is the number day of each month that taxes will be collected on
-    TaxResetDay = 27, --This MUST be the day after TaxDay set above!!! (do not change either of these dates if the current date is one of the 2 for ex if its the 22 or 23rd day do not change these dates it will break the code)
+    -- New properties are billed monthly on their purchased_at anniversary day.
+    -- TaxDay is only used to assign a fallback purchased_at date to legacy database rows.
+    TaxDay = 26,
+    TaxResetDay = 27, -- Deprecated compatibility setting; anniversary billing does not use this value.
     -----------------------------------------------------
 
     -- Discord Webhooks

@@ -1,4 +1,4 @@
-HouseCoords, HouseRadius, HouseId, Owner, TpHouse, TpHouseInstance, HouseOwnershipStatus, HouseTaxesOverdue = nil, nil, nil, nil, nil, nil, nil, nil
+HouseCoords, HouseRadius, HouseId, Owner, TpHouse, TpHouseInstance, HouseOwnershipStatus, HouseTaxesOverdue, HouseTaxPaymentReleased, HousePurchasedAt = nil, nil, nil, nil, nil, nil, nil, nil, nil, nil
 ActiveHouseId = nil
 OwnedHouseContexts = OwnedHouseContexts or {}
 HouseBlips, HotelBlips = {}, {}
@@ -20,9 +20,19 @@ function SetActiveHouseContext(houseData)
     ActiveHouseId = HouseId
     Owner = houseData.owner or Owner
     HouseOwnershipStatus = houseData.ownershipStatus or HouseOwnershipStatus
-    HouseTaxesOverdue = houseData.taxesOverdue or HouseTaxesOverdue
+    if houseData.taxesOverdue ~= nil then
+        HouseTaxesOverdue = houseData.taxesOverdue
+    end
+    if houseData.taxPaymentReleased ~= nil then
+        HouseTaxPaymentReleased = houseData.taxPaymentReleased
+    end
+    HousePurchasedAt = houseData.purchasedAtFormatted or houseData.purchasedAt or HousePurchasedAt
     TpHouse = houseData.tpInt or houseData.tpHouse or TpHouse
     TpHouseInstance = houseData.tpInstance or TpHouseInstance
+    ActiveHousePolyPoints = houseData.polyPoints
+    ActiveHousePolyMinZ = houseData.polyMinZ
+    ActiveHousePolyMaxZ = houseData.polyMaxZ
+    ActiveHouseZone = houseData.zone
 end
 
 function GetHouseContext(houseId)
@@ -36,7 +46,17 @@ local function checkIfAdmin()
     return AdminAllowed
 end
 
-RegisterCommand(Config.AdminManagementMenuCommand, function()
+CreateThread(function()
+    Wait(1000)
+    for _, suggestion in ipairs(Config.CommandSuggestions or {}) do
+        local commandName = Config[suggestion.commandConfig]
+        if commandName and commandName ~= '' then
+            TriggerEvent('chat:addSuggestion', '/' .. commandName, suggestion.help, suggestion.params or {})
+        end
+    end
+end)
+
+RegisterCommand(Config.AdminManagementMenuCommand, function(_, args)
     if not AdminAllowed then
         checkIfAdmin()
     end
@@ -47,7 +67,7 @@ RegisterCommand(Config.AdminManagementMenuCommand, function()
 end, false)
 
 if Config.OpenHousingMenuCommand and Config.OpenHousingMenuCommand ~= '' then
-    RegisterCommand(Config.OpenHousingMenuCommand, function()
+    RegisterCommand(Config.OpenHousingMenuCommand, function(_, args)
         if not HouseId then
             Notify(_U("noHouseFound"), 'error', 4000)
             return
@@ -60,18 +80,25 @@ if Config.OpenHousingMenuCommand and Config.OpenHousingMenuCommand ~= '' then
 
         local playerPed = PlayerPedId()
         local playerCoords = GetEntityCoords(playerPed)
-        local allowedRadius = tonumber(HouseRadius) or tonumber(Config.DefaultMenuManageRadius) or 2.0
-        local dist = GetDistanceBetweenCoords(playerCoords.x, playerCoords.y, playerCoords.z,
-            HouseCoords.x, HouseCoords.y, HouseCoords.z, true)
+        local accessContext = {
+            coords = HouseCoords,
+            radius = tonumber(HouseRadius) or tonumber(Config.DefaultMenuManageRadius) or 2.0,
+            zone = ActiveHouseZone
+        }
 
-        if dist > allowedRadius then
+        if not IsPointInsideHousingArea(accessContext, playerCoords) then
             Notify(_U("needToBeNearHouse"), 'error', 4000)
             return
         end
 
         local successOwner, ownerData = BccUtils.RPC:CallAsync('bcc-housing:getHouseOwner', { houseId = HouseId })
         if successOwner and ownerData then
-            OpenHousingMainMenu(HouseId, ownerData.isOwner, ownerData.ownershipStatus)
+            if ownerData.taxesOverdue then
+                Notify(_U("taxesOverdue"), 'error', 5000)
+                return
+            end
+
+            OpenHousingMainMenu(HouseId, ownerData.isOwner, ownerData.ownershipStatus, ownerData.taxPaymentReleased)
             return
         end
 
@@ -150,17 +177,33 @@ local function handleOwnsHouseClient(houseTable, owner)
     local tpInstance = houseTable.tpInstance
     local taxesStatus = houseTable.taxes_collected
     local taxesOverdue = taxesStatus and tostring(taxesStatus) == 'overdue'
+    local taxPaymentReleased = taxesStatus and tostring(taxesStatus) == 'released'
 
     local houseContext = {
         coords = vectorCoords,
         radius = radius,
+        polyPoints = houseTable.poly_points and json.decode(houseTable.poly_points) or nil,
+        polyMinZ = tonumber(houseTable.poly_min_z),
+        polyMaxZ = tonumber(houseTable.poly_max_z),
         houseId = houseId,
+        uniqueName = houseTable.uniqueName,
         owner = owner,
         ownershipStatus = ownershipStatus,
         taxesOverdue = taxesOverdue,
+        taxPaymentReleased = taxPaymentReleased,
+        purchasedAt = houseTable.purchased_at_formatted or houseTable.purchased_at,
         tpInt = tpInt,
         tpInstance = tpInstance
     }
+
+    houseContext.polyPoints = NormalizeHousingPolyPoints(houseContext.polyPoints)
+    houseContext.zone = CreateHousingPolyZone(
+        ('bcc-housing-owned-%s'):format(tostring(houseId)),
+        houseContext.polyPoints,
+        houseContext.polyMinZ,
+        houseContext.polyMaxZ,
+        Config.DevMode == true
+    )
 
     OwnedHouseContexts[houseId] = houseContext
 
@@ -197,9 +240,11 @@ local function handleOwnsHouseClient(houseTable, owner)
 
     if taxesOverdue then
         Notify(_U("taxesOverdue"), 'error', 5000)
-    else
-        showManageOpt(vectorCoords.x, vectorCoords.y, vectorCoords.z, houseId, houseContext)
+    elseif taxPaymentReleased then
+        Notify(_U("taxPaymentReleasedPlayer"), 'info', 7000)
     end
+
+    showManageOpt(vectorCoords.x, vectorCoords.y, vectorCoords.z, houseId, houseContext)
 end
 
 BccUtils.RPC:Register('bcc-housing:OwnsHouseClientHandler', function(params)
@@ -275,11 +320,9 @@ function MainHotelHandler()
                         buyGroup:ShowGroup(hotel.name .. _U("promptGroupName") .. tostring(hotel.cost))
                         if buyPrompt:HasCompleted() then
                             DBG:Info("Buying hotel: " .. tostring(hotel.hotelId))
-                            local success, updatedHotels, errorMsg = BccUtils.RPC:CallAsync('bcc-housing:HotelBought', { hotel = hotel })
+                            local success, updatedHotels = BccUtils.RPC:CallAsync('bcc-housing:HotelBought', { hotel = hotel })
                             if success and type(updatedHotels) == 'table' then
                                 OwnedHotels = updatedHotels
-                            elseif errorMsg then
-                                Notify(errorMsg, 'error', 4000)
                             end
                         end
                     end

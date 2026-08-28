@@ -19,6 +19,37 @@ local function InsertFurnitureIntoDB(furnTable, houseId)
     end
 end
 
+local function decodeFurniture(payload)
+    if not payload or payload == '' or payload == 'none' then
+        return {}
+    end
+
+    local ok, furniture = pcall(json.decode, payload)
+    if not ok or type(furniture) ~= 'table' then
+        return nil
+    end
+
+    return furniture
+end
+
+local function characterHasHouseAccess(character, houseData)
+    if not character or not houseData then return false end
+    if tostring(houseData.charidentifier) == tostring(character.charIdentifier) then
+        return true
+    end
+
+    local allowedIds = decodeFurniture(houseData.allowed_ids)
+    if not allowedIds then return false end
+
+    for _, allowedId in ipairs(allowedIds) do
+        if tostring(allowedId) == tostring(character.charIdentifier) then
+            return true
+        end
+    end
+
+    return false
+end
+
 local spawnedFurnitureByPlayer = {}
 
 local function markHouseSpawnState(source, houseid, state)
@@ -162,7 +193,7 @@ BccUtils.RPC:Register("bcc-housing:GetOwnerFurniture", function(params, cb, src)
     if not houseId then
         local message = _U("invalidHouseId") or "Invalid house"
         NotifyClient(src, message, 4000, "error")
-        return cb(false, message)
+        return cb(false)
     end
 
     local result = MySQL.query.await("SELECT * FROM bcchousing WHERE houseid=@houseid", { ['houseid'] = houseId })
@@ -170,7 +201,7 @@ BccUtils.RPC:Register("bcc-housing:GetOwnerFurniture", function(params, cb, src)
     if not result or not result[1] then
         NotifyClient(src, _U("noFurn"), 4000, "info")
         DBG:Info("No house data found for house ID: " .. tostring(houseId))
-        return cb(false, _U("noFurn"))
+        return cb(false)
     end
 
     local houseData = result[1]
@@ -179,20 +210,20 @@ BccUtils.RPC:Register("bcc-housing:GetOwnerFurniture", function(params, cb, src)
     if furnitureData == "none" or furnitureData == nil or furnitureData == "" then
         NotifyClient(src, _U("noFurn"), 4000, "info")
         DBG:Info("No furniture found for house ID: " .. tostring(houseId))
-        return cb(false, _U("noFurn"))
+        return cb(false)
     end
 
     local furniture, decodeErr = json.decode(furnitureData)
     if not furniture then
         DBG:Error("Error decoding furniture data: " .. tostring(decodeErr) .. ". Raw data: " .. tostring(furnitureData))
         NotifyClient(src, "Error loading furniture data.", 4000, "error")
-        return cb(false, "Error loading furniture data.")
+        return cb(false)
     end
 
     if #furniture == 0 then
         NotifyClient(src, _U("noFurn"), 4000, "info")
         DBG:Info("No furniture found for house ID: " .. tostring(houseId))
-        return cb(false, _U("noFurn"))
+        return cb(false)
     end
 
     for i, item in ipairs(furniture) do
@@ -309,65 +340,65 @@ BccUtils.RPC:Register("bcc-housing:UpdatePlacedFurniture", function(params, cb, 
 end)
 
 BccUtils.RPC:Register('bcc-housing:FurnSoldRemoveFromTable', function(params, cb, src)
-    local furnTable = params and params.furnTable
-    local houseId = params and params.houseId
-    local wholeFurnTable = params and params.wholeFurnTable
-    local wholeFurnTableKey = params and params.wholeFurnTableKey
-    local ownershipStatus = params and params.ownershipStatus
-    local user = VORPcore.getUser(src)
-    if not user then
-        if cb then cb(false) end
-        return
-    end
-    local character = user.getUsedCharacter
+    local houseId = tonumber(params and params.houseId)
+    local furnitureIndex = tonumber(params and params.wholeFurnTableKey)
+    local character = GetHousingCharacter(src)
 
     DBG:Info("Furniture sold, removing from table for house ID: " .. tostring(houseId))
 
-    if not furnTable or not houseId or wholeFurnTable == nil or wholeFurnTableKey == nil then
+    if not character or not houseId or not furnitureIndex then
         if cb then cb(false) end
         return
     end
 
-    if ownershipStatus ~= 'purchased' then
-        DBG:Info("ownershipStatus must be 'purchased' to allow selling.")
+    local result = MySQL.query.await(
+        "SELECT furniture, charidentifier, ownershipStatus FROM bcchousing WHERE houseid = ?",
+        { houseId }
+    )
+    local houseData = result and result[1]
+    if not houseData or tostring(houseData.charidentifier) ~= tostring(character.charIdentifier) then
+        NotifyClient(src, _U("noAccessToHouse"), 4000, "error")
         if cb then cb(false) end
         return
     end
 
-    if wholeFurnTable and tonumber(wholeFurnTableKey) and wholeFurnTable[tonumber(wholeFurnTableKey)] then
-        table.remove(wholeFurnTable, tonumber(wholeFurnTableKey))
-        local newDbTable = 'none'
-        if #wholeFurnTable > 0 then
-            newDbTable = json.encode(wholeFurnTable)
-        end
+    if houseData.ownershipStatus ~= 'purchased' then
+        if cb then cb(false) end
+        return
+    end
 
-        local updateParams = {
-            ['houseid'] = houseId,
-            ['newFurnTable'] = newDbTable
-        }
-        MySQL.update("UPDATE bcchousing SET furniture=@newFurnTable WHERE houseid=@houseid", updateParams,
-            function(affectedRows)
-                if affectedRows > 0 then
-                    NotifyClient(src, _U("furnSold"), 4000, "success")
-                    character.addCurrency(0, tonumber(furnTable.sellprice))
-                    Discord:sendMessage(_U("furnWebHookSold") ..
-                    character.charIdentifier ..
-                    _U("furnWebHookSoldModel") ..
-                    tostring(furnTable.model) .. _U("furnWebHookSoldPrice") .. tostring(furnTable.sellprice))
-                else
-                    NotifyClient(src, _U("furnNotSold"), 4000, "error")
-                end
-            end)
-    else
+    local furniture = decodeFurniture(houseData.furniture)
+    local soldFurniture = furniture and furniture[furnitureIndex]
+    local sellPrice = soldFurniture and tonumber(soldFurniture.sellprice)
+    if not soldFurniture or not sellPrice or sellPrice < 0 then
         NotifyClient(src, _U("furnNotSoldInvalid"), 4000, "error")
         if cb then cb(false) end
         return
     end
 
+    table.remove(furniture, furnitureIndex)
+    local updatedFurniture = #furniture > 0 and json.encode(furniture) or 'none'
+    local affectedRows = MySQL.update.await(
+        "UPDATE bcchousing SET furniture = ? WHERE houseid = ? AND charidentifier = ? AND furniture = ?",
+        { updatedFurniture, houseId, character.charIdentifier, houseData.furniture }
+    )
+    if not affectedRows or affectedRows <= 0 then
+        NotifyClient(src, _U("furnNotSold"), 4000, "error")
+        if cb then cb(false) end
+        return
+    end
+
+    character.addCurrency(0, sellPrice)
+    NotifyClient(src, _U("furnSold"), 4000, "success")
+    Discord:sendMessage(_U("furnWebHookSold") ..
+        character.charIdentifier ..
+        _U("furnWebHookSoldModel") ..
+        tostring(soldFurniture.model) .. _U("furnWebHookSoldPrice") .. tostring(sellPrice))
+
     BccUtils.RPC:Notify("bcc-housing:SellOwnedFurnMenu", {
         houseId = houseId,
-        furniture = wholeFurnTable,
-        ownershipStatus = ownershipStatus
+        furniture = furniture,
+        ownershipStatus = houseData.ownershipStatus
     }, src)
 
     if cb then cb(true) end
@@ -553,6 +584,22 @@ BccUtils.RPC:Register("bcc-housing:PlaceOwnedFurniture", function(params, cb, sr
         return cb(false)
     end
 
+    local houseResult = MySQL.query.await(
+        "SELECT charidentifier, allowed_ids, taxes_collected FROM bcchousing WHERE houseid = ?",
+        { houseId }
+    )
+    local houseData = houseResult and houseResult[1]
+    if not characterHasHouseAccess(character, houseData) then
+        NotifyClient(src, _U("noAccessToHouse"), 4000, "error")
+        return cb(false)
+    end
+
+    local taxStatus = tostring(houseData.taxes_collected)
+    if taxStatus == 'overdue' or taxStatus == 'released' then
+        NotifyClient(src, _U("taxesOverdue"), 4000, "error")
+        return cb(false)
+    end
+
     local ownedItems = loadOwnedFurniture(character.charIdentifier)
     local ownedIndex, ownedEntry = nil, nil
     for idx, entry in ipairs(ownedItems) do
@@ -578,8 +625,8 @@ BccUtils.RPC:Register("bcc-housing:PlaceOwnedFurniture", function(params, cb, sr
     table.remove(ownedItems, ownedIndex)
     saveOwnedFurniture(character.charIdentifier, ownedItems)
 
-    placementData.displayName = placementData.displayName or ownedEntry.displayName
-    placementData.sellprice   = placementData.sellprice or ownedEntry.sellprice
+    placementData.displayName = ownedEntry.displayName
+    placementData.sellprice   = ownedEntry.sellprice
 
     InsertFurnitureIntoDB(placementData, houseId)
 
@@ -598,5 +645,5 @@ end)
 BccUtils.RPC:Register('bcc-housing:SellFurniture', function(params, cb, src)
     DBG:Info("SellFurniture RPC invoked but not implemented; returning failure.")
     NotifyClient(src, _U('furnNotSold'), 4000, 'error')
-    if cb then cb(false, { error = 'not_implemented' }) end
+    if cb then cb(false) end
 end)

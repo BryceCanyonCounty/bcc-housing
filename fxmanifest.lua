@@ -10,21 +10,30 @@ description 'Advanced Housing Script: A comprehensive and customizable system fo
 shared_scripts {
     'configs/*.lua',
     'locale.lua',
-    'languages/*.lua'
+    'languages/*.lua',
+    'shared/init.lua'
 }
 
 client_scripts {
+    '@PolyZone/client.lua',
     'client/functions.lua',
     'client/MainHousing.lua',
     'client/propertyCheck.lua',
     'client/furnitureSpawning.lua',
     'client/furnitureVendor.lua',
-    'client/MenuSetup/*.lua',
+    'client/MenuSetup/adminManagementMenu.lua',
+    'client/MenuSetup/buyHouse.lua',
+    'client/MenuSetup/createHouseMenu.lua',
+    'client/MenuSetup/furnitureMenu.lua',
+    'client/MenuSetup/manageHouseMenu.lua',
+    'client/MenuSetup/npcAgents.lua',
+    'client/MenuSetup/sellHouse.lua',
 }
 
 server_scripts {
     '@oxmysql/lib/MySQL.lua',
     'server/helpers/functions.lua',
+    'server/helpers/propertyDocuments.lua',
     'server/services/*.lua',
     'server/main.lua'
 }
@@ -45,7 +54,8 @@ dependency {
     'vorp_character',
     'bcc-utils',
     'bcc-doorlocks',
-    'feather-menu'
+    'feather-menu',
+    'PolyZone'
 }
 
-version '2.4.0'
+version '2.5.0'

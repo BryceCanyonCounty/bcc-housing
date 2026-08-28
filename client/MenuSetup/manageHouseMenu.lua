@@ -11,6 +11,32 @@ local function notifyNoAccess(message)
     Notify(message or _U('noAccessToHouse'), 'error', 4000)
 end
 
+local function taxesAreOverdue(houseId)
+    local context = GetHouseContext and GetHouseContext(houseId)
+    if context and context.taxesOverdue ~= nil then
+        return context.taxesOverdue == true
+    end
+
+    if HouseId and tonumber(houseId) == tonumber(HouseId) then
+        return HouseTaxesOverdue == true
+    end
+
+    return false
+end
+
+local function taxPaymentIsReleased(houseId)
+    local context = GetHouseContext and GetHouseContext(houseId)
+    if context and context.taxPaymentReleased ~= nil then
+        return context.taxPaymentReleased == true
+    end
+
+    if HouseId and tonumber(houseId) == tonumber(HouseId) then
+        return HouseTaxPaymentReleased == true
+    end
+
+    return false
+end
+
 local function afterGivingAccess(houseId, playerId, playerServerId, completion)
     if houseId and playerId and playerServerId then
         local success = BccUtils.RPC:CallAsync('bcc-housing:NewPlayerGivenAccess', {
@@ -42,9 +68,165 @@ local function afterRemoveAccess(houseId, playerId)
     end
 end
 
+local function getHouseConfigForMenu(houseId)
+    local context = GetHouseContext and GetHouseContext(houseId)
+    local uniqueName = context and context.uniqueName
+    if not uniqueName or uniqueName == 'none' then
+        return nil
+    end
+
+    for _, house in pairs(Houses) do
+        if house.uniqueName == uniqueName then
+            return house
+        end
+    end
+
+    return nil
+end
+
+local function getLedgerMenuLabels(houseId)
+    local houseConfig = getHouseConfigForMenu(houseId)
+    local currencyType = tonumber(houseConfig and houseConfig.currencyType) or 0
+
+    if currencyType == 1 then
+        return _U("ledgerGold"), _U("ledgerInsertGold")
+    elseif currencyType == 2 then
+        return _U("ledgerRol"), _U("ledgerInsertRol")
+    end
+
+    return _U("ledger"), _U("ledgerInsert")
+end
+
+local function getHousePreviewData(houseId)
+    local context = GetHouseContext and GetHouseContext(houseId)
+    local houseConfig = getHouseConfigForMenu(houseId)
+
+    local coords = (context and context.coords) or (houseConfig and houseConfig.houseCoords)
+    if not coords and HouseId and tonumber(houseId) == tonumber(HouseId) then
+        coords = HouseCoords
+    end
+
+    local radius = (context and context.radius) or (houseConfig and houseConfig.houseRadiusLimit)
+    if not radius and HouseId and tonumber(houseId) == tonumber(HouseId) then
+        radius = HouseRadius
+    end
+
+    local polyPoints = (context and context.polyPoints) or (houseConfig and houseConfig.polyPoints)
+    local polyMinZ = (context and context.polyMinZ) or (houseConfig and houseConfig.polyMinZ)
+    local polyMaxZ = (context and context.polyMaxZ) or (houseConfig and houseConfig.polyMaxZ)
+
+    if (type(polyPoints) ~= "table" or #polyPoints < 3) and HouseId and tonumber(houseId) == tonumber(HouseId) then
+        polyPoints = ActiveHousePolyPoints
+        polyMinZ = ActiveHousePolyMinZ
+        polyMaxZ = ActiveHousePolyMaxZ
+    end
+
+    if not coords and not houseConfig then
+        return nil
+    end
+
+    return {
+        uniqueName = (context and context.uniqueName) or (houseConfig and houseConfig.uniqueName),
+        houseCoords = coords,
+        menuCoords = (houseConfig and houseConfig.menuCoords) or coords,
+        houseRadiusLimit = tonumber(radius) or tonumber(Config.DefaultMenuManageRadius) or 2.0,
+        polyPoints = polyPoints,
+        polyMinZ = tonumber(polyMinZ),
+        polyMaxZ = tonumber(polyMaxZ)
+    }
+end
+
+local function openLedgerMenu(houseId, isOwner, ownershipStatus, parentRoute, paymentOnly)
+    local ledgerTitle, ledgerInsertLabel = getLedgerMenuLabels(houseId)
+    local ledgerPage = BCCHousingMenu:RegisterPage('bcc-housing:ledger:page')
+
+    ledgerPage:RegisterElement('header', {
+        value = ledgerTitle,
+        slot = "header",
+        style = {}
+    })
+
+    ledgerPage:RegisterElement('button', {
+        label = _U("checkledger"),
+        style = {}
+    }, function()
+        local success, err = BccUtils.RPC:CallAsync('bcc-housing:CheckLedger', { houseid = houseId })
+        if not success then
+            DBG:Info("CheckLedger RPC failed: " .. tostring(err and err.error))
+        end
+    end)
+
+    ledgerPage:RegisterElement('button', {
+        label = ledgerInsertLabel,
+        style = {}
+    }, function()
+        if houseId then
+            TriggerEvent('bcc-housing:addLedger', houseId, isOwner)
+        else
+            DBG:Error("Error: HouseId is undefined or invalid.")
+        end
+    end)
+
+    if ownershipStatus == "purchased" and not paymentOnly then
+        ledgerPage:RegisterElement('button', {
+            label = _U('removeFromLedger'),
+            style = {}
+        }, function()
+            if houseId then
+                TriggerEvent('bcc-housing:removeLedger', houseId, isOwner)
+            else
+                DBG:Error("Error: HouseId is undefined or invalid.")
+            end
+        end)
+    end
+
+    ledgerPage:RegisterElement('line', { slot = "footer", style = {} })
+    ledgerPage:RegisterElement('button', {
+        label = _U("backButton"),
+        slot = "footer",
+        style = {}
+    }, function()
+        if parentRoute then
+            parentRoute()
+        else
+            OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
+        end
+    end)
+    ledgerPage:RegisterElement('bottomline', { style = {}, slot = "footer" })
+
+    BCCHousingMenu:Open({ startupPage = ledgerPage })
+end
+
+local function formatPurchasedAt(value)
+    if not value or value == '' then
+        return nil
+    end
+
+    return tostring(value):sub(1, 16)
+end
+
+local function getPurchasedAtForMenu(houseId)
+    local context = GetHouseContext and GetHouseContext(houseId)
+    if context and context.purchasedAt and context.purchasedAt ~= '' then
+        return formatPurchasedAt(context.purchasedAt)
+    end
+
+    if HouseId and tonumber(houseId) == tonumber(HouseId) and HousePurchasedAt then
+        return formatPurchasedAt(HousePurchasedAt)
+    end
+
+    return nil
+end
+
 local function openHousingInventoryPage(houseId, isOwner, parentMenu)
     if not houseId then
         notifyNoAccess()
+        return
+    end
+
+    if taxesAreOverdue(houseId) then
+        Notify(_U("taxesOverdue"), 'error', 5000)
+        BCCHousingMenu.Close()
         return
     end
 
@@ -331,13 +513,19 @@ function PlayerListMenuForRemoveAccess(houseId, callback, context)
     end)
 end
 
-function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
+function OpenHousingMainMenu(houseId, isOwner, ownershipStatus, taxPaymentReleased)
     DBG:Info("Opening housing main menu for House ID: " .. tostring(houseId) .. ", Is Owner: " .. tostring(isOwner))
 
     if HandlePlayerDeathAndCloseMenu() then
         return
     end
 
+    if taxesAreOverdue(houseId) then
+        Notify(_U("taxesOverdue"), 'error', 5000)
+        return
+    end
+
+    local paymentOnly = taxPaymentReleased == true or taxPaymentIsReleased(houseId)
     local housingMainMenu = BCCHousingMenu:RegisterPage("bcc-housing:MainPage")
 
     housingMainMenu:RegisterElement('header', {
@@ -348,12 +536,50 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
 
     housingMainMenu:RegisterElement('line', { style = {} })
 
+    if paymentOnly then
+        housingMainMenu:RegisterElement('textdisplay', {
+            value = _U("taxPaymentReleasedPlayer"),
+            slot = "content",
+            style = {}
+        })
+
+        local ledgerTitle = getLedgerMenuLabels(houseId)
+        housingMainMenu:RegisterElement('button', {
+            label = ledgerTitle,
+            style = {}
+        }, function()
+            openLedgerMenu(houseId, isOwner, ownershipStatus, function()
+                OpenHousingMainMenu(houseId, isOwner, ownershipStatus, true)
+            end, true)
+        end)
+
+        housingMainMenu:RegisterElement('bottomline', { style = {}, slot = "footer" })
+        BCCHousingMenu:Open({ startupPage = housingMainMenu })
+        return
+    end
+
     -- House Inventory
     housingMainMenu:RegisterElement('button', {
         label = _U("houseInv"),
         style = {}
     }, function()
         openHousingInventoryPage(houseId, isOwner, housingMainMenu)
+    end)
+
+    housingMainMenu:RegisterElement('button', {
+        label = _U("previewHouseArea"),
+        style = {}
+    }, function()
+        local previewData = getHousePreviewData(houseId)
+        if not previewData or not StartHouseAreaPreview then
+            Notify(_U("houseAreaPreviewFailed"), 'error', 4000)
+            return
+        end
+
+        StartHouseAreaPreview(previewData)
+        SuppressHousePreviewStopOnMenuClose = true
+        Notify(_U("houseAreaPreviewStarted", tostring(houseId)), 'success', 4000)
+        BCCHousingMenu:Close()
     end)
 
     -- Enter/Exit TP House if available
@@ -377,6 +603,15 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
 
     -- Owner-only actions
     if isOwner then
+        local purchasedAt = getPurchasedAtForMenu(houseId)
+        if purchasedAt then
+            housingMainMenu:RegisterElement("html", {
+                value = { '<div style="padding: 8px 10px; font-size: 15px;">' .. _U("housePurchasedAt", purchasedAt) .. '</div>' },
+                slot = "content",
+                style = {}
+            })
+        end
+
         -- Access management entry
         housingMainMenu:RegisterElement('button', {
             label = _U('giveAccesstoHouse'),
@@ -838,68 +1073,73 @@ function OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
 
                 BCCHousingMenu:Open({ startupPage = SellHousePage })
             end)
+        elseif ownershipStatus == 'rented' then
+            housingMainMenu:RegisterElement('button', {
+                label = _U("cancelHouseRent"),
+                style = {}
+            }, function()
+                local unrentPage = BCCHousingMenu:RegisterPage('bcc-housing:unrent:page')
+
+                unrentPage:RegisterElement('header', {
+                    value = _U("cancelHouseRent"),
+                    slot = "header",
+                    style = {}
+                })
+
+                unrentPage:RegisterElement('line', {
+                    slot = "header",
+                    style = {}
+                })
+
+                unrentPage:RegisterElement('button', {
+                    label = _U("confirmYes"),
+                    style = {}
+                }, function()
+                    local success, err = BccUtils.RPC:CallAsync('bcc-housing:unrentHouse', { houseId = houseId })
+                    if not success then
+                        DBG:Info("unrentHouse RPC failed: " .. tostring(err and err.error))
+                    end
+                end)
+
+                unrentPage:RegisterElement('line', {
+                    style = {},
+                    slot = "footer"
+                })
+
+                unrentPage:RegisterElement('button', {
+                    label = _U("backButton"),
+                    slot = "footer",
+                    style = {}
+                }, function()
+                    housingMainMenu:RouteTo()
+                end)
+
+                unrentPage:RegisterElement('bottomline', {
+                    style = {},
+                    slot = "footer"
+                })
+
+                TextDisplay = unrentPage:RegisterElement('textdisplay', {
+                    value = _U("cancelHouseRentConfirm"),
+                    slot = "footer",
+                    style = {}
+                })
+
+                BCCHousingMenu:Open({ startupPage = unrentPage })
+            end)
         end
     end
 
+    local ledgerTitle = getLedgerMenuLabels(houseId)
+
     -- Ledger (both purchased / rented)
     housingMainMenu:RegisterElement('button', {
-        label = (ownershipStatus == "purchased") and _U("ledger") or _U("ledgerGold"),
+        label = ledgerTitle,
         style = {}
     }, function()
-        local ledgerPage = BCCHousingMenu:RegisterPage('bcc-housing:ledger:page')
-
-        ledgerPage:RegisterElement('header', {
-            value = (ownershipStatus == "purchased") and _U("ledger") or _U("ledgerGold"),
-            slot = "header",
-            style = {}
-        })
-
-        ledgerPage:RegisterElement('button', {
-            label = _U("checkledger"),
-            style = {}
-        }, function()
-            local success, err = BccUtils.RPC:CallAsync('bcc-housing:CheckLedger', { houseid = houseId })
-            if not success then
-                DBG:Info("CheckLedger RPC failed: " .. tostring(err and err.error))
-            end
-        end)
-
-        ledgerPage:RegisterElement('button', {
-            label = (ownershipStatus == "purchased") and _U("ledgerInsert") or _U("ledgerInsertGold"),
-            style = {}
-        }, function()
-            if houseId then
-                TriggerEvent('bcc-housing:addLedger', houseId, isOwner)
-            else
-                DBG:Error("Error: HouseId is undefined or invalid.")
-            end
-        end)
-
-        if ownershipStatus == "purchased" then
-            ledgerPage:RegisterElement('button', {
-                label = _U('removeFromLedger'),
-                style = {}
-            }, function()
-                if houseId then
-                    TriggerEvent('bcc-housing:removeLedger', houseId, isOwner)
-                else
-                    DBG:Error("Error: HouseId is undefined or invalid.")
-                end
-            end)
-        end
-
-        ledgerPage:RegisterElement('line', { slot = "footer", style = {} })
-        ledgerPage:RegisterElement('button', {
-            label = _U("backButton"),
-            slot = "footer",
-            style = {}
-        }, function()
+        openLedgerMenu(houseId, isOwner, ownershipStatus, function()
             OpenHousingMainMenu(houseId, isOwner, ownershipStatus)
-        end)
-        ledgerPage:RegisterElement('bottomline',
-            { style = {}, slot = "footer" })
-
-        BCCHousingMenu:Open({ startupPage = ledgerPage })
+        end, false)
     end)
 
     housingMainMenu:RegisterElement('bottomline', { style = {}, slot = "footer" })
@@ -918,6 +1158,11 @@ end
 function enterOrExitHouse(enter, tpHouseIndex)
     BCCHousingMenu.Close()
     if enter then
+        if taxesAreOverdue(HouseId) then
+            Notify(_U("taxesOverdue"), 'error', 5000)
+            return
+        end
+
         DBG:Info("Entering house with tpHouseIndex: " .. tostring(tpHouseIndex))
         local houseTable = Config.TpInteriors["Interior" .. tostring(tpHouseIndex)]
         CurrentTpHouse = tpHouseIndex
@@ -981,6 +1226,19 @@ AddEventHandler('bcc-housing:addLedger', function(houseId, isOwner)
             }) -- true for adding
             if not success then
                 DBG:Info("Ledger add RPC failed: " .. tostring(err and err.error))
+            else
+                if err and err.taxesPaid then
+                    local ctx = GetHouseContext and GetHouseContext(houseId)
+                    if ctx then
+                        ctx.taxesOverdue = false
+                        ctx.taxPaymentReleased = false
+                        SetActiveHouseContext(ctx)
+                    elseif HouseId and tonumber(houseId) == tonumber(HouseId) then
+                        HouseTaxesOverdue = false
+                        HouseTaxPaymentReleased = false
+                    end
+                end
+                BccUtils.RPC:CallAsync('bcc-housing:CheckIfHasHouse', {})
             end
             BCCHousingMenu:Close()
         else

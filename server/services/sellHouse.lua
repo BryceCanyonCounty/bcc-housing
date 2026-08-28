@@ -45,14 +45,14 @@ local function handleSellHouse(src, houseIdParam, cb)
         if houseData.ownershipStatus ~= 'purchased' then
             DBG:Info('handleSellHouse: house is not purchased, cannot be sold')
             NotifyClient(src, _U('rentedHouseCannotBeSold'), 4000, 'error')
-            if cbFn then cbFn(false, { error = 'not_purchased' }) end
+            if cbFn then cbFn(false) end
             return
         end
 
         if tostring(houseData.charidentifier) ~= tostring(charIdentifier) then
             DBG:Info('handleSellHouse: player does not own house ' .. tostring(houseId))
             NotifyClient(src, _U('noHouseOrNotOwner'), 4000, 'error')
-            if cbFn then cbFn(false, { error = 'not_owner' }) end
+            if cbFn then cbFn(false) end
             return
         end
 
@@ -60,14 +60,21 @@ local function handleSellHouse(src, houseIdParam, cb)
         if not houseConfig then
             DBG:Info('handleSellHouse: config not found for uniqueName ' .. tostring(houseData.uniqueName))
             NotifyClient(src, _U('houseCannotBeSold'), 4000, 'error')
-            if cbFn then cbFn(false, { error = 'config_missing' }) end
+            if cbFn then cbFn(false) end
             return
         end
 
         if not houseConfig.canSell then
             DBG:Info('handleSellHouse: house cannot be sold per config')
             NotifyClient(src, _U('houseCannotBeSold'), 4000, 'error')
-            if cbFn then cbFn(false, { error = 'cannot_sell' }) end
+            if cbFn then cbFn(false) end
+            return
+        end
+
+        if tonumber(houseConfig.currencyType) == 2 then
+            DBG:Info('handleSellHouse: rol currency houses cannot be sold')
+            NotifyClient(src, _U('houseCannotBeSold'), 4000, 'error')
+            if cbFn then cbFn(false) end
             return
         end
 
@@ -114,6 +121,68 @@ BccUtils.RPC:Register('bcc-housing:sellHouse', function(params, cb, src)
     handleSellHouse(src, params and params.houseId, cb)
 end)
 
+local function handleUnrentHouse(src, houseIdParam, cb)
+    local cbFn = type(cb) == 'function' and cb or nil
+    local houseId = tonumber(houseIdParam)
+    if not houseId then
+        if cbFn then cbFn(false, { error = 'invalid_house' }) end
+        return
+    end
+
+    local user = VORPcore.getUser(src)
+    local character = user and user.getUsedCharacter
+    if not user or not character then
+        if cbFn then cbFn(false, { error = 'no_character' }) end
+        return
+    end
+
+    local charIdentifier = character.charIdentifier
+
+    MySQL.query('SELECT * FROM bcchousing WHERE houseid = ?', { houseId }, function(result)
+        if not result or #result == 0 then
+            if cbFn then cbFn(false, { error = 'house_not_found' }) end
+            return
+        end
+
+        local houseData = result[1]
+        if houseData.ownershipStatus ~= 'rented' then
+            if cbFn then cbFn(false, { error = 'not_rented' }) end
+            return
+        end
+
+        if tostring(houseData.charidentifier) ~= tostring(charIdentifier) then
+            NotifyClient(src, _U('noHouseOrNotOwner'), 4000, 'error')
+            if cbFn then cbFn(false) end
+            return
+        end
+
+        MySQL.update('DELETE FROM bcchousing WHERE houseid = ?', { houseData.houseid })
+
+        if houseData.doors and houseData.doors ~= 'none' then
+            local decodeOk, doorIdsJson = pcall(json.decode, houseData.doors)
+            if decodeOk and type(doorIdsJson) == 'table' then
+                for _, doorId in ipairs(doorIdsJson) do
+                    MySQL.update('DELETE FROM doorlocks WHERE doorid = ?', { doorId })
+                end
+            end
+        end
+
+        NotifyClient(src, _U('rentalEndedSuccess'), 4000, 'success')
+        Discord:sendMessage('House rental ended by charIdentifier: ' .. tostring(charIdentifier) .. '\nHouse ID: ' .. tostring(houseId))
+
+        BccUtils.RPC:Notify('bcc-housing:StopPropertyCheck', {}, src)
+        BccUtils.RPC:Notify('bcc-housing:clearBlips', { houseId = houseId }, src)
+        BccUtils.RPC:Notify('bcc-housing:ReinitializeChecksAfterSale', {}, src)
+        BccUtils.RPC:Notify('bcc-housing:ClientRecHouseLoad', {}, src)
+
+        if cbFn then cbFn(true, { houseId = houseId }) end
+    end)
+end
+
+BccUtils.RPC:Register('bcc-housing:unrentHouse', function(params, cb, src)
+    handleUnrentHouse(src, params and params.houseId, cb)
+end)
+
 
 -- Sell House With Inventory
 local function handleSellHouseToPlayerWithInventory(src, houseIdParam, targetPlayerIdParam, salePriceParam, cb)
@@ -124,19 +193,19 @@ local function handleSellHouseToPlayerWithInventory(src, houseIdParam, targetPla
 
     if not houseId then
         NotifyClient(src, 'Invalid house ID.', 4000, 'error')
-        if cbFn then cbFn(false, { error = 'invalid_house' }) end
+        if cbFn then cbFn(false) end
         return
     end
 
     if not targetPlayerId or not GetPlayerName(targetPlayerId) then
         NotifyClient(src, 'Target player not found.', 4000, 'error')
-        if cbFn then cbFn(false, { error = 'target_not_found' }) end
+        if cbFn then cbFn(false) end
         return
     end
 
     if not salePrice or salePrice <= 0 then
         NotifyClient(src, 'Invalid sale price.', 4000, 'error')
-        if cbFn then cbFn(false, { error = 'invalid_price' }) end
+        if cbFn then cbFn(false) end
         return
     end
 
@@ -144,7 +213,7 @@ local function handleSellHouseToPlayerWithInventory(src, houseIdParam, targetPla
     local targetUser = VORPcore.getUser(targetPlayerId)
     if not user or not targetUser then
         NotifyClient(src, _U('houseNotOwnedOrExist'), 4000, 'error')
-        if cbFn then cbFn(false, { error = 'user_missing' }) end
+        if cbFn then cbFn(false) end
         return
     end
 
@@ -161,7 +230,15 @@ local function handleSellHouseToPlayerWithInventory(src, houseIdParam, targetPla
     MySQL.query('SELECT * FROM bcchousing WHERE houseid = ? AND charidentifier = ?', { houseId, charIdentifier }, function(result)
         if not result or #result == 0 then
             NotifyClient(src, _U('houseNotOwnedOrExist'), 4000, 'error')
-            if cbFn then cbFn(false, { error = 'house_not_owned' }) end
+            if cbFn then cbFn(false) end
+            return
+        end
+
+        local houseData = result[1]
+        local houseConfig = findHouseConfigByUniqueName(houseData.uniqueName)
+        if not houseConfig or not houseConfig.canSell or tonumber(houseConfig.currencyType) == 2 then
+            NotifyClient(src, _U('houseCannotBeSold'), 4000, 'error')
+            if cbFn then cbFn(false) end
             return
         end
 
@@ -169,22 +246,22 @@ local function handleSellHouseToPlayerWithInventory(src, houseIdParam, targetPla
         if #ownedByTarget >= Config.Setup.MaxHousePerChar then
             NotifyClient(src, _U('buyerMaxHouses'), 4000, 'error')
             NotifyClient(targetPlayerId, _U('maxHouses'), 4000, 'error')
-            if cbFn then cbFn(false, { error = 'buyer_house_limit' }) end
+            if cbFn then cbFn(false) end
             return
         end
 
         if targetCharacter.money < salePrice then
             NotifyClient(src, _U('buyerNoMoney'), 4000, 'error')
             NotifyClient(targetPlayerId, _U('notEnoughMoney'), 4000, 'error')
-            if cbFn then cbFn(false, { error = 'buyer_no_money' }) end
+            if cbFn then cbFn(false) end
             return
         end
 
         targetCharacter.removeCurrency(0, salePrice)
 
         local affectedRows = MySQL.update.await(
-            'UPDATE bcchousing SET charidentifier = ? WHERE houseid = ?',
-            { targetCharIdentifier, houseId }
+            'UPDATE bcchousing SET charidentifier = ?, purchaseCurrencyType = ? WHERE houseid = ?',
+            { targetCharIdentifier, 0, houseId }
         )
 
         if affectedRows == 0 then
@@ -192,6 +269,9 @@ local function handleSellHouseToPlayerWithInventory(src, houseIdParam, targetPla
             if cbFn then cbFn(false, { error = 'update_failed' }) end
             return
         end
+
+        RemoveHousePropertyDocument(src, houseId)
+        GiveHousePropertyDocument(targetPlayerId, targetCharacter, houseConfig, houseId, houseData.ownershipStatus)
 
         local params = {
             ['@houseid'] = houseId,
@@ -236,19 +316,19 @@ local function handleSellHouseToPlayerWithoutInventory(src, houseIdParam, target
 
     if not houseId then
         NotifyClient(src, 'Invalid house ID.', 4000, 'error')
-        if cbFn then cbFn(false, { error = 'invalid_house' }) end
+        if cbFn then cbFn(false) end
         return
     end
 
     if not targetPlayerId or not GetPlayerName(targetPlayerId) then
         NotifyClient(src, 'Target player not found.', 4000, 'error')
-        if cbFn then cbFn(false, { error = 'target_not_found' }) end
+        if cbFn then cbFn(false) end
         return
     end
 
     if not salePrice or salePrice <= 0 then
         NotifyClient(src, 'Invalid sale price.', 4000, 'error')
-        if cbFn then cbFn(false, { error = 'invalid_price' }) end
+        if cbFn then cbFn(false) end
         return
     end
 
@@ -256,7 +336,7 @@ local function handleSellHouseToPlayerWithoutInventory(src, houseIdParam, target
     local targetUser = VORPcore.getUser(targetPlayerId)
     if not user or not targetUser then
         NotifyClient(src, _U('noHouseOrNotOwner'), 4000, 'error')
-        if cbFn then cbFn(false, { error = 'user_missing' }) end
+        if cbFn then cbFn(false) end
         return
     end
 
@@ -273,7 +353,15 @@ local function handleSellHouseToPlayerWithoutInventory(src, houseIdParam, target
     MySQL.query('SELECT * FROM bcchousing WHERE houseid = ? AND charidentifier = ?', { houseId, charIdentifier }, function(result)
         if not result or #result == 0 then
             NotifyClient(src, _U('noHouseOrNotOwner'), 4000, 'error')
-            if cbFn then cbFn(false, { error = 'house_not_owned' }) end
+            if cbFn then cbFn(false) end
+            return
+        end
+
+        local houseData = result[1]
+        local houseConfig = findHouseConfigByUniqueName(houseData.uniqueName)
+        if not houseConfig or not houseConfig.canSell or tonumber(houseConfig.currencyType) == 2 then
+            NotifyClient(src, _U('houseCannotBeSold'), 4000, 'error')
+            if cbFn then cbFn(false) end
             return
         end
 
@@ -281,22 +369,22 @@ local function handleSellHouseToPlayerWithoutInventory(src, houseIdParam, target
         if #ownedByTarget >= Config.Setup.MaxHousePerChar then
             NotifyClient(src, _U('buyerMaxHouses'), 4000, 'error')
             NotifyClient(targetPlayerId, _U('maxHouses'), 4000, 'error')
-            if cbFn then cbFn(false, { error = 'buyer_house_limit' }) end
+            if cbFn then cbFn(false) end
             return
         end
 
         if targetCharacter.money < salePrice then
             NotifyClient(src, _U('buyerNoMoney'), 4000, 'error')
             NotifyClient(targetPlayerId, _U('noMoneyToBuyHouse'), 4000, 'error')
-            if cbFn then cbFn(false, { error = 'buyer_no_money' }) end
+            if cbFn then cbFn(false) end
             return
         end
 
         targetCharacter.removeCurrency(0, salePrice)
 
         local affectedRows = MySQL.update.await(
-            'UPDATE bcchousing SET charidentifier = ?, furniture = "none", doors = "none" WHERE houseid = ?',
-            { targetCharIdentifier, houseId }
+            'UPDATE bcchousing SET charidentifier = ?, furniture = "none", doors = "none", purchaseCurrencyType = ? WHERE houseid = ?',
+            { targetCharIdentifier, 0, houseId }
         )
 
         if affectedRows == 0 then
@@ -304,6 +392,9 @@ local function handleSellHouseToPlayerWithoutInventory(src, houseIdParam, target
             if cbFn then cbFn(false, { error = 'update_failed' }) end
             return
         end
+
+        RemoveHousePropertyDocument(src, houseId)
+        GiveHousePropertyDocument(targetPlayerId, targetCharacter, houseConfig, houseId, houseData.ownershipStatus)
 
         local params = {
             ['@houseid'] = houseId,
@@ -396,7 +487,7 @@ local function handleCollectHouseSaleMoney(src, cb)
         if cbFn then cbFn(true, { amount = totalAmount }) end
     else
         NotifyClient(src, _U('noMoneyToCollect'), 4000, 'error')
-        if cbFn then cbFn(false, { error = 'no_transactions' }) end
+        if cbFn then cbFn(false) end
     end
 end
 

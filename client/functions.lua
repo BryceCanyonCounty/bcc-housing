@@ -2,16 +2,156 @@
 VORPcore = exports.vorp_core:GetCore()
 
 FeatherMenu = exports["feather-menu"].initiate()
-BccUtils = exports["bcc-utils"].initiate()
 MiniGame = exports["bcc-minigames"].initiate()
 
-DBG = BccUtils.Debug:Get("bcc-housing", Config.DevMode)
-if Config.DevMode then 
-    DBG:Enable()
-end
-DBG:Info("Housing debug initialized (client)")
-
 HousingInstance = {}
+
+local function normalizePolyPoints(points)
+    if type(points) ~= "table" or #points < 3 then
+        return nil
+    end
+
+    local normalized = {}
+    for _, point in ipairs(points) do
+        local x = point.x or point[1]
+        local y = point.y or point[2]
+        if x and y then
+            local z = point.z or point[3]
+            local normalizedPoint = {
+                x = tonumber(x) or 0.0,
+                y = tonumber(y) or 0.0
+            }
+            if z then
+                normalizedPoint.z = tonumber(z) or 0.0
+            end
+            normalized[#normalized + 1] = normalizedPoint
+        end
+    end
+
+    if #normalized < 3 then
+        return nil
+    end
+
+    return normalized
+end
+
+function NormalizeHousingPolyPoints(points)
+    return normalizePolyPoints(points)
+end
+
+local function polyPointsHaveZ(points)
+    if type(points) ~= "table" then
+        return false
+    end
+
+    for _, point in ipairs(points) do
+        if point.z or point[3] then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function isPointInsidePolyXY(points, point)
+    local inside = false
+    local j = #points
+
+    for i = 1, #points do
+        local pi = points[i]
+        local pj = points[j]
+
+        if ((pi.y > point.y) ~= (pj.y > point.y)) then
+            local crossX = ((pj.x - pi.x) * (point.y - pi.y) / ((pj.y - pi.y) + 0.000001)) + pi.x
+            if point.x < crossX then
+                inside = not inside
+            end
+        end
+
+        j = i
+    end
+
+    return inside
+end
+
+local function getPointGroundZ(point)
+    if not point then
+        return nil
+    end
+
+    local foundGround, groundZ = GetGroundZAndNormalFor_3dCoord(point.x, point.y, (point.z or 0.0) + 3.0)
+    if foundGround then
+        return groundZ
+    end
+
+    return point.z
+end
+
+local function getPolyPointZRange(points)
+    local minZ, maxZ
+    for _, point in ipairs(points or {}) do
+        local pointZ = tonumber(point.z)
+        if pointZ then
+            minZ = minZ and math.min(minZ, pointZ) or pointZ
+            maxZ = maxZ and math.max(maxZ, pointZ) or pointZ
+        end
+    end
+
+    return minZ, maxZ
+end
+
+function CreateHousingPolyZone(name, points, minZ, maxZ, debugPoly)
+    local normalized = normalizePolyPoints(points)
+    if not normalized then
+        return nil
+    end
+
+    local vectors = {}
+    for _, point in ipairs(normalized) do
+        vectors[#vectors + 1] = vector2(point.x, point.y)
+    end
+
+    return PolyZone:Create(vectors, {
+        name = name or 'bcc-housing-zone',
+        minZ = tonumber(minZ),
+        maxZ = tonumber(maxZ),
+        debugPoly = debugPoly == true and not polyPointsHaveZ(normalized)
+    })
+end
+
+function IsPointInsideHousingArea(areaContext, point)
+    if not areaContext or not point then
+        return false
+    end
+
+    if polyPointsHaveZ(areaContext.polyPoints) then
+        local points = NormalizeHousingPolyPoints(areaContext.polyPoints)
+        if points and isPointInsidePolyXY(points, point) then
+            local lowestPointZ, highestPointZ = getPolyPointZRange(points)
+            local minZ = tonumber(areaContext.polyMinZ) or lowestPointZ
+            local maxZ = tonumber(areaContext.polyMaxZ) or (highestPointZ and highestPointZ + 5.0)
+            if minZ and maxZ then
+                return point.z >= (minZ - 2.0) and point.z <= (maxZ + 2.0)
+            end
+
+            return true
+        end
+
+        return false
+    end
+
+    if areaContext.zone and areaContext.zone.isPointInside then
+        return areaContext.zone:isPointInside(point)
+    end
+
+    local coords = areaContext.coords
+    local radius = tonumber(areaContext.radius)
+    if not coords or not radius or radius <= 0 then
+        return false
+    end
+
+    return GetDistanceBetweenCoords(point.x, point.y, point.z, coords.x, coords.y, coords.z, true) <= radius
+end
 
 function HousingInstance.Set(bucketId)
     bucketId = tonumber(bucketId) or 0
@@ -69,6 +209,13 @@ BCCHousingMenu = FeatherMenu:RegisterMenu("bcc:housing:mainmenu",
             DisplayRadar(true)
             ClearVendorPreview()
             EndCam()
+            if stopHouseAreaPreview then
+                if SuppressHousePreviewStopOnMenuClose then
+                    SuppressHousePreviewStopOnMenuClose = false
+                else
+                    stopHouseAreaPreview()
+                end
+            end
         end
     }
 )
@@ -196,21 +343,11 @@ end
 
 
 function showManageOpt(x, y, z, houseId, houseContext)
-    local contextTaxes = houseContext and houseContext.taxesOverdue
-    if contextTaxes == nil then
-        contextTaxes = HouseTaxesOverdue
-    end
-
-    if contextTaxes then
-        DBG:Info("Taxes overdue for House ID: " .. tostring(houseId) .. ". Skipping manage prompt.")
-        return
-    end
-
     RemoveManagePrompt(houseId)
 
     local promptGroup = BccUtils.Prompts:SetupPromptGroup()
     local promptHandle = promptGroup:RegisterPrompt(_U("openOwnerManage"), BccUtils.Keys[Config.keys.manage], 1, 1, true, 'click', nil)
-    local radiusValue = (houseContext and houseContext.radius) or HouseRadius or Config.DefaultMenuManageRadius or 2.0
+    local radiusValue = 2.0
     ManageHousePrompts[houseId] = {
         prompt = promptHandle,
         group = promptGroup,
@@ -235,14 +372,20 @@ function showManageOpt(x, y, z, houseId, houseContext)
     end
 
     Citizen.CreateThread(function()
+        local promptVisible = false
+        local lastOverdueNoticeAt = 0
         while true do
+            local sleep = 500
             local promptData = ManageHousePrompts[houseId]
             if not promptData or not promptData.active or not promptData.prompt then
                 break
             end
 
             local playerPed = PlayerPedId()
-            if IsEntityDead(playerPed) then goto END end
+            if IsEntityDead(playerPed) then
+                promptVisible = false
+                goto END
+            end
 
             if BreakHandleLoop then
                 DBG:Info("Breaking handle loop for House ID: " .. tostring(houseId))
@@ -252,8 +395,12 @@ function showManageOpt(x, y, z, houseId, houseContext)
             if houseExists then
                 local plc = GetEntityCoords(playerPed)
                 local dist = GetDistanceBetweenCoords(plc.x, plc.y, plc.z, x, y, z, true)
+                local openRadius = tonumber(promptData.radius) or 2.0
+                local closeRadius = openRadius + 0.35
 
-                if dist < Config.DefaultMenuManageRadius then
+                if dist < openRadius or (promptVisible and dist < closeRadius) then
+                    sleep = 0
+                    promptVisible = true
                     promptData.group:ShowGroup(_U("house"))
 
                     if promptData.prompt:HasCompleted() then
@@ -265,7 +412,27 @@ function showManageOpt(x, y, z, houseId, houseContext)
 
                         local successOwner, ownerData = BccUtils.RPC:CallAsync('bcc-housing:getHouseOwner', { houseId = houseId })
                         if successOwner and ownerData then
-                            OpenHousingMainMenu(houseId, ownerData.isOwner, ownerData.ownershipStatus)
+                            if ownerData.taxesOverdue then
+                                local now = GetGameTimer()
+                                if now - lastOverdueNoticeAt > 3000 then
+                                    lastOverdueNoticeAt = now
+                                    Notify(_U("taxesOverdue"), 'error', 5000)
+                                    Notify(_U("overdueDiscordContact"), 'info', 7000)
+                                end
+                                goto END
+                            end
+
+                            local ctx = GetHouseContext and GetHouseContext(houseId)
+                            if ctx then
+                                ctx.taxesOverdue = false
+                                ctx.taxPaymentReleased = ownerData.taxPaymentReleased == true
+                                SetActiveHouseContext(ctx)
+                            elseif HouseId and tonumber(houseId) == tonumber(HouseId) then
+                                HouseTaxesOverdue = false
+                                HouseTaxPaymentReleased = ownerData.taxPaymentReleased == true
+                            end
+
+                            OpenHousingMainMenu(houseId, ownerData.isOwner, ownerData.ownershipStatus, ownerData.taxPaymentReleased)
                         else
                             local err = ownerData and ownerData.error
                             if err then
@@ -273,14 +440,20 @@ function showManageOpt(x, y, z, houseId, houseContext)
                             end
                         end
                     end
-                elseif dist > 200 then
-                    Wait(2000)
+                else
+                    promptVisible = false
+                    if dist > 200 then
+                        sleep = 2000
+                    elseif dist < 50 then
+                        sleep = 100
+                    end
                 end
             else
-                Wait(1000)
+                promptVisible = false
+                sleep = 1000
             end
             ::END::
-            Citizen.Wait(5)
+            Citizen.Wait(sleep)
         end
 
         RemoveManagePrompt(houseId)
@@ -349,7 +522,7 @@ end)
 BccUtils.RPC:Register('bcc-housing:receiveHouseOwner', function(params)
     if not params then return end
     DBG:Info("Received house owner information via RPC for House ID: " .. tostring(params.houseId))
-    OpenHousingMainMenu(params.houseId, params.isOwner, params.ownershipStatus)
+    OpenHousingMainMenu(params.houseId, params.isOwner, params.ownershipStatus, params.taxPaymentReleased)
 end)
 
 function HandlePlayerDeathAndCloseMenu()

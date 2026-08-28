@@ -1,4 +1,6 @@
 -- Event to handle the purchasing of a house
+local pendingHousePurchases = {}
+
 local function coordsToPayload(vec)
     if not vec then
         return { x = 0.0, y = 0.0, z = 0.0 }
@@ -9,6 +11,35 @@ local function coordsToPayload(vec)
         y = vec.y or 0.0,
         z = vec.z or 0.0
     }
+end
+
+local function encodePolyPoints(points)
+    if type(points) ~= 'table' or #points < 3 then
+        return nil
+    end
+
+    local normalized = {}
+    for _, point in ipairs(points) do
+        local x = point.x or point[1]
+        local y = point.y or point[2]
+        if x and y then
+            local z = point.z or point[3]
+            local normalizedPoint = {
+                x = tonumber(x) or 0.0,
+                y = tonumber(y) or 0.0
+            }
+            if z then
+                normalizedPoint.z = tonumber(z) or 0.0
+            end
+            normalized[#normalized + 1] = normalizedPoint
+        end
+    end
+
+    if #normalized < 3 then
+        return nil
+    end
+
+    return json.encode(normalized)
 end
 
 local function handleHousePurchase(src, houseCoords, moneyTypeParam, cb)
@@ -38,7 +69,7 @@ local function handleHousePurchase(src, houseCoords, moneyTypeParam, cb)
     local ownedHouses = MySQL.query.await('SELECT * FROM bcchousing WHERE charidentifier=@charidentifier', { ['@charidentifier'] = character.charIdentifier })
     if #ownedHouses >= Config.Setup.MaxHousePerChar then
         NotifyClient(src, _U('youOwnMaximum'), 4000, 'error')
-        if cbFn then cbFn(false, { error = 'max_houses' }) end
+        if cbFn then cbFn(false) end
         return
     end
 
@@ -52,97 +83,125 @@ local function handleHousePurchase(src, houseCoords, moneyTypeParam, cb)
 
     if not selectedHouse then
         NotifyClient(src, _U('houseNotFound'), 4000, 'error')
-        if cbFn then cbFn(false, { error = 'house_not_found' }) end
+        if cbFn then cbFn(false) end
         return
     end
 
-    local rentalCurrency = selectedHouse.currencyType
-    if rentalCurrency == nil then
-        rentalCurrency = Config.Setup.DefaultRentalCurrency
+    local rentalEnabled = selectedHouse.allowRental
+    if rentalEnabled == nil then
+        rentalEnabled = true
     end
-    rentalCurrency = tonumber(rentalCurrency) or 1
-    if rentalCurrency ~= 0 then
-        rentalCurrency = 1
+    if isRental and not rentalEnabled then
+        NotifyClient(src, _U('rentalDisabledNotify'), 4000, 'error')
+        if cbFn then cbFn(false) end
+        return
     end
 
-    local currencyType = isRental and rentalCurrency or 0
+    local configuredCurrency = tonumber(selectedHouse.currencyType)
+    if configuredCurrency == nil then
+        configuredCurrency = isRental and tonumber(Config.Setup.DefaultRentalCurrency) or 0
+    end
+    if configuredCurrency ~= 0 and configuredCurrency ~= 1 and configuredCurrency ~= 2 then
+        configuredCurrency = 0
+    end
+
+    local currencyType = configuredCurrency
 
     local moneyAmount = isRental and selectedHouse.rentalDeposit or selectedHouse.price
     local hasFunds
     if currencyType == 0 then
         hasFunds = character.money >= moneyAmount
-    else
+    elseif currencyType == 1 then
         hasFunds = character.gold >= moneyAmount
+    else
+        hasFunds = (tonumber(character.rol) or 0) >= moneyAmount
     end
     if not hasFunds then
         if currencyType == 0 then
             NotifyClient(src, _U('notEnoughMoney'), 4000, 'error')
-        else
+        elseif currencyType == 1 then
             NotifyClient(src, _U('notEnoughGold'), 4000, 'error')
+        else
+            NotifyClient(src, _U('notEnoughRol'), 4000, 'error')
         end
-        if cbFn then cbFn(false, { error = 'insufficient_funds' }) end
+        if cbFn then cbFn(false) end
         return
     end
 
-    MySQL.query('SELECT * FROM bcchousing WHERE uniqueName = ?', { selectedHouse.uniqueName }, function(result)
-        if result and result[1] then
-            NotifyClient(src, _U('housePurchaseFailed'), 4000, 'error')
-            if cbFn then cbFn(false, { error = 'already_owned' }) end
-            return
-        end
+    if pendingHousePurchases[selectedHouse.uniqueName] then
+        NotifyClient(src, _U('housePurchaseFailed'), 4000, 'error')
+        if cbFn then cbFn(false) end
+        return
+    end
+    pendingHousePurchases[selectedHouse.uniqueName] = true
 
-        BccUtils.RPC:Notify('bcc-housing:clearBlips', { houseId = selectedHouse.houseId }, src)
+    local ownershipStatus = isRental and 'rented' or 'purchased'
+    local parameters = {
+        ['@charidentifier'] = character.charIdentifier,
+        ['@house_coords'] = houseCoordsJson,
+        ['@house_radius_limit'] = tonumber(selectedHouse.houseRadiusLimit) or 0,
+        ['@doors'] = '[]',
+        ['@invlimit'] = selectedHouse.invLimit,
+        ['@tax_amount'] = ownershipStatus == 'purchased' and selectedHouse.taxAmount or selectedHouse.rentCharge,
+        ['@tpInt'] = selectedHouse.tpInt,
+        ['@tpInstance'] = selectedHouse.tpInstance,
+        ['@uniqueName'] = selectedHouse.uniqueName,
+        ['@ownershipStatus'] = ownershipStatus,
+        ['@purchaseCurrencyType'] = currencyType,
+        ['@poly_points'] = encodePolyPoints(selectedHouse.polyPoints),
+        ['@poly_min_z'] = tonumber(selectedHouse.polyMinZ),
+        ['@poly_max_z'] = tonumber(selectedHouse.polyMaxZ),
+    }
 
-        local ownershipStatus = isRental and 'rented' or 'purchased'
-        local parameters = {
-            ['@charidentifier'] = character.charIdentifier,
-            ['@house_coords'] = houseCoordsJson,
-            ['@house_radius_limit'] = selectedHouse.houseRadiusLimit,
-            ['@doors'] = '[]',
-            ['@invlimit'] = selectedHouse.invLimit,
-            ['@tax_amount'] = ownershipStatus == 'purchased' and selectedHouse.taxAmount or selectedHouse.rentCharge,
-            ['@tpInt'] = selectedHouse.tpInt,
-            ['@tpInstance'] = selectedHouse.tpInstance,
-            ['@uniqueName'] = selectedHouse.uniqueName,
-            ['@ownershipStatus'] = ownershipStatus,
-        }
+    local insertOk, houseId = pcall(MySQL.insert.await, [[
+        INSERT INTO `bcchousing`
+            (`charidentifier`, `house_coords`, `house_radius_limit`, `doors`, `invlimit`, `tax_amount`,
+             `tpInt`, `tpInstance`, `uniqueName`, `ownershipStatus`, `purchaseCurrencyType`,
+             `poly_points`, `poly_min_z`, `poly_max_z`, `purchased_at`)
+        SELECT
+            @charidentifier, @house_coords, @house_radius_limit, @doors, @invlimit, @tax_amount,
+            @tpInt, @tpInstance, @uniqueName, @ownershipStatus, @purchaseCurrencyType,
+            @poly_points, @poly_min_z, @poly_max_z, NOW()
+        WHERE NOT EXISTS (SELECT 1 FROM `bcchousing` WHERE `uniqueName` = @uniqueName)
+    ]], parameters)
+    pendingHousePurchases[selectedHouse.uniqueName] = nil
 
-        MySQL.Async.execute(
-            'INSERT INTO `bcchousing` (`charidentifier`, `house_coords`, `house_radius_limit`, `doors`, `invlimit`, `tax_amount`, `tpInt`, `tpInstance`, `uniqueName`, `ownershipStatus`) VALUES (@charidentifier, @house_coords, @house_radius_limit, @doors, @invlimit, @tax_amount, @tpInt, @tpInstance, @uniqueName, @ownershipStatus)',
-            parameters,
-            function(rowsChanged)
-                if rowsChanged > 0 then
-                    MySQL.Async.fetchScalar('SELECT houseid FROM bcchousing WHERE house_coords = ?', { houseCoordsJson }, function(houseId)
-                        insertHouseDoors(selectedHouse.doors, character.charIdentifier, houseId, selectedHouse.uniqueName)
-                    end)
-                else
-                    DBG:Info('handleHousePurchase: failed to insert house for uniqueName ' .. tostring(selectedHouse.uniqueName))
-                end
-            end
-        )
+    if not insertOk or not houseId or tonumber(houseId) == 0 then
+        DBG:Info('handleHousePurchase: house already owned or insert failed for ' .. tostring(selectedHouse.uniqueName))
+        NotifyClient(src, _U('housePurchaseFailed'), 4000, 'error')
+        if cbFn then cbFn(false) end
+        return
+    end
 
-        character.removeCurrency(currencyType, moneyAmount)
+    character.removeCurrency(currencyType, moneyAmount)
+    insertHouseDoors(selectedHouse.doors, character.charIdentifier, houseId, selectedHouse.uniqueName)
+    GiveHousePropertyDocument(src, character, selectedHouse, houseId, ownershipStatus)
 
-        local coordsPayload = coordsToPayload(selectedHouse.houseCoords)
-        BccUtils.RPC:Notify('bcc-housing:housePurchased', { houseCoords = coordsPayload }, src)
+    BccUtils.RPC:Notify('bcc-housing:clearBlips', { houseId = selectedHouse.houseId }, src)
+    BccUtils.RPC:Notify('bcc-housing:housePurchased', { houseCoords = coordsToPayload(selectedHouse.houseCoords) }, src)
 
-        local amountSuffix = currencyType == 0 and ('$' .. tostring(moneyAmount)) or (tostring(moneyAmount) .. ' ' .. _U('currencyGold'))
-        local displayAmount = amountSuffix
+    local displayAmount
+    if currencyType == 0 then
+        displayAmount = '$' .. tostring(moneyAmount)
+    elseif currencyType == 1 then
+        displayAmount = tostring(moneyAmount) .. ' ' .. _U('currencyGold')
+    else
+        displayAmount = tostring(moneyAmount) .. ' ' .. _U('currencyRol')
+    end
 
-        if ownershipStatus == 'purchased' then
-            NotifyClient(src, _U('housePurchaseSuccess', selectedHouse.name, moneyAmount), 4000, 'success')
-        else
-            NotifyClient(src, _U('houseRentSuccess', selectedHouse.name, displayAmount), 4000, 'success')
-        end
+    if ownershipStatus == 'purchased' then
+        NotifyClient(src, _U('housePurchaseSuccessCurrency', selectedHouse.name, displayAmount), 4000, 'success')
+    else
+        NotifyClient(src, _U('houseRentSuccess', selectedHouse.name, displayAmount), 4000, 'success')
+    end
 
-        Discord:sendMessage('House purchased by charIdentifier: ' .. tostring(character.charIdentifier) ..
-            '\nHouse: ' .. selectedHouse.name .. ' was **' .. ownershipStatus .. '** for ' .. displayAmount ..
-            '\nCharacter Name: ' .. tostring(character.firstname) .. ' ' .. tostring(character.lastname))
+    Discord:sendMessage('House purchased by charIdentifier: ' .. tostring(character.charIdentifier) ..
+        '\nHouse: ' .. selectedHouse.name .. ' was **' .. ownershipStatus .. '** for ' .. displayAmount ..
+        '\nCharacter Name: ' .. tostring(character.firstname) .. ' ' .. tostring(character.lastname))
 
-        BccUtils.RPC:Notify('bcc-housing:ClientRecHouseLoad', {}, src)
+    BccUtils.RPC:Notify('bcc-housing:ClientRecHouseLoad', {}, src)
 
-        if cbFn then cbFn(true, { uniqueName = selectedHouse.uniqueName, ownershipStatus = ownershipStatus }) end
-    end)
+    if cbFn then cbFn(true, { uniqueName = selectedHouse.uniqueName, ownershipStatus = ownershipStatus }) end
 end
 
 BccUtils.RPC:Register('bcc-housing:buyHouse', function(params, cb, src)

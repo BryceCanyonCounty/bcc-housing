@@ -1,17 +1,23 @@
--- NPC Real Estate Agents
-
 local AgentPrompt
-local AgentGroup = GetRandomIntInRange(0, 0xffffff)
+local AgentPromptGroupObj
 
 local function StartAgentPrompt()
-    AgentPrompt = UiPromptRegisterBegin()
-    UiPromptSetControlAction(AgentPrompt, BccUtils.Keys[Config.keys.collect])
-    UiPromptSetText(AgentPrompt, CreateVarString(10, 'LITERAL_STRING', _U("collectFromDealer")))
-    UiPromptSetEnabled(AgentPrompt, true)
-    UiPromptSetVisible(AgentPrompt, true)
-    UiPromptSetHoldMode(AgentPrompt, 2000)
-    UiPromptSetGroup(AgentPrompt, AgentGroup, 0)
-    UiPromptRegisterEnd(AgentPrompt)
+    AgentPromptGroupObj = BccUtils.Prompts:SetupPromptGroup()
+    AgentPrompt = AgentPromptGroupObj:RegisterPrompt(
+        _U("collectFromDealer"),
+        BccUtils.Keys[Config.keys.collect],
+        1,
+        1,
+        true,
+        'customhold',
+        {
+            holdtime = 2000,
+            tabIndex = 0
+        }
+    )
+    if AgentPrompt and AgentPrompt.SetGroup then
+        AgentPrompt:SetGroup(AgentPromptGroupObj.PromptGroup, 0)
+    end
 end
 
 local function ManageShopBlips(shop, closed)
@@ -19,40 +25,69 @@ local function ManageShopBlips(shop, closed)
 
     if (closed and not shopCfg.blip.show.closed) or (not shopCfg.blip.show.open) then
         if Agents[shop].Blip then
-            RemoveBlip(Agents[shop].Blip)
+            Agents[shop].Blip:Remove()
             Agents[shop].Blip = nil
         end
         return
     end
 
     if not Agents[shop].Blip then
-        shopCfg.Blip = Citizen.InvokeNative(0x554d9d53f696d002, 1664425300, shopCfg.npc.coords) -- BlipAddForCoords
-        SetBlipSprite(shopCfg.Blip, shopCfg.blip.sprite, true)
-        Citizen.InvokeNative(0x9CB1A1623062F402, shopCfg.Blip, shopCfg.blip.name) -- SetBlipNameFromPlayerString
+        local coords = shopCfg.npc.coords
+
+        Agents[shop].Blip = BccUtils.Blip:SetBlip(
+            shopCfg.blip.name,
+            shopCfg.blip.sprite,
+            shopCfg.blip.scale or 0.2,
+            coords.x,
+            coords.y,
+            coords.z
+        )
     end
 
     local color = shopCfg.blip.color.open
-    if shopCfg.shop.jobsEnabled then color = shopCfg.blip.color.job end
-    if closed then color = shopCfg.blip.color.closed end
-    Citizen.InvokeNative(0x662D364ABF16DE2F, Agents[shop].Blip, joaat(Config.BlipColors[color])) -- BlipAddModifier
+    if shopCfg.shop.jobsEnabled then
+        color = shopCfg.blip.color.job
+    end
+    if closed then
+        color = shopCfg.blip.color.closed
+    end
+
+    local colorModifier = Config.BlipColors[color]
+    if colorModifier and Agents[shop].Blip then
+        local modifier = BccUtils.Blip:AddBlipModifier(Agents[shop].Blip, colorModifier)
+        modifier:ApplyModifier()
+    end
 end
 
 local function AddShopNpcs(shop)
     local shopCfg = Agents[shop]
 
     if not shopCfg.NPC then
-        local modelName = shopCfg.npc.model
-        local model = joaat(modelName)
+        local coords = shopCfg.npc.coords
+        local model = shopCfg.npc.model
+        local heading = shopCfg.npc.heading
 
-        LoadModel(model, modelName)
+        -- Use BccUtils.Ped (PedAPI) to create the NPC
+        shopCfg.NPC = BccUtils.Ped:Create(
+            model,               -- modelhash (string or hash)
+            coords.x,
+            coords.y,
+            coords.z,            -- PedAPI will place on ground
+            heading,
+            'world',             -- location
+            true,                -- safeground
+            nil,                 -- options
+            shopCfg.npc.outfit,  -- optional outfit (can be nil)
+            false                -- networked
+            -- vector4 not needed
+        )
 
-        shopCfg.NPC = CreatePed(model, shopCfg.npc.coords.x, shopCfg.npc.coords.y, shopCfg.npc.coords.z -1, shopCfg.npc.heading, false, true, true, true)
-        Citizen.InvokeNative(0x283978A15512B2FE, shopCfg.NPC, true) -- SetRandomOutfitVariation
-        SetEntityCanBeDamaged(shopCfg.NPC, false)
-        SetEntityInvincible(shopCfg.NPC, true)
+        -- Extra flags like in your original code
+        shopCfg.NPC:CanBeDamaged(false)
+        shopCfg.NPC:Invincible(true)
         Wait(500)
-        FreezeEntityPosition(shopCfg.NPC, true)
-        SetBlockingOfNonTemporaryEvents(shopCfg.NPC, true)
+        shopCfg.NPC:Freeze(true)
+        shopCfg.NPC:SetBlockingOfNonTemporaryEvents(true)
     end
 end
 
@@ -60,13 +95,14 @@ local function RemoveShopNpcs(shop)
     local shopCfg = Agents[shop]
 
     if shopCfg.NPC then
-        DeleteEntity(shopCfg.NPC)
+        shopCfg.NPC:Remove()
         shopCfg.NPC = nil
     end
 end
 
 CreateThread(function()
     StartAgentPrompt()
+
     while true do
         local playerPed = PlayerPedId()
         local playerCoords = GetEntityCoords(playerPed)
@@ -77,7 +113,8 @@ CreateThread(function()
 
         for shop, shopCfg in pairs(Agents) do
             local distance = #(playerCoords - shopCfg.npc.coords)
-            local shopClosed = (shopCfg.shop.hours.active and hour >= shopCfg.shop.hours.close) or (shopCfg.shop.hours.active and hour < shopCfg.shop.hours.open)
+            local shopClosed = (shopCfg.shop.hours.active and hour >= shopCfg.shop.hours.close)
+                or (shopCfg.shop.hours.active and hour < shopCfg.shop.hours.open)
 
             if shopClosed then
                 ManageShopBlips(shop, true)
@@ -85,9 +122,23 @@ CreateThread(function()
 
                 if distance <= shopCfg.shop.distance then
                     sleep = 0
-                    UiPromptSetActiveGroupThisFrame(AgentGroup, CreateVarString(10, 'LITERAL_STRING', shopCfg.shop.name .. ' ' .. _U('hours') .. ' ' ..
-                    shopCfg.shop.hours.open .. _U('hundred') .. ' ' .. _U('to') .. ' ' .. shopCfg.shop.hours.close .. _U('hundred')))
-                    UiPromptSetEnabled(AgentPrompt, false)
+
+                    -- Show "closed / hours" text, disable prompt
+                    if AgentPromptGroupObj then
+                        AgentPromptGroupObj:ShowGroup(
+                            shopCfg.shop.name ..
+                            ' ' .. _U('hours') .. ' ' ..
+                            shopCfg.shop.hours.open .. _U('hundred') ..
+                            ' ' .. _U('to') .. ' ' ..
+                            shopCfg.shop.hours.close .. _U('hundred'),
+                            1, 0, 0, 0
+                        )
+                    end
+
+                    if AgentPrompt then
+                        AgentPrompt:EnabledPrompt(false)
+                        AgentPrompt:TogglePrompt(false)
+                    end
                 end
             else
                 ManageShopBlips(shop, false)
@@ -102,30 +153,44 @@ CreateThread(function()
 
                 if distance <= shopCfg.shop.distance then
                     sleep = 0
-                    UiPromptSetActiveGroupThisFrame(AgentGroup, CreateVarString(10, 'LITERAL_STRING', shopCfg.shop.prompt))
-                    UiPromptSetEnabled(AgentPrompt, true)
-                    if UiPromptHasHoldModeCompleted(AgentPrompt) then
-                        Wait(500) -- ensures it is not triggered multiple times
-                        if shopCfg.shop.jobsEnabled then
-                            local hasJob = BccUtils.RPC:CallAsync('bcc-housing:CheckJob', { location = shop })
-                            if not hasJob then
-                                Notify(_U('needJob'), "error", 4000)
-                                goto END
+
+                    -- Show "open" prompt text, enable prompt
+                    if AgentPromptGroupObj then
+                        AgentPromptGroupObj:ShowGroup(shopCfg.shop.prompt, 1, 0, 0, 0)
+                    end
+
+                    if AgentPrompt then
+                        AgentPrompt:EnabledPrompt(true)
+                        AgentPrompt:TogglePrompt(true)
+
+                        if AgentPrompt:HasCompleted(true) then
+                            Wait(500) -- ensures it is not triggered multiple times
+
+                            if shopCfg.shop.jobsEnabled then
+                                local hasJob = BccUtils.RPC:CallAsync(
+                                    'bcc-housing:CheckJob',
+                                    { location = shop }
+                                )
+                                if not hasJob then
+                                    Notify(_U('needJob'), "error", 4000)
+                                    goto END
+                                end
                             end
+
+                            OpenCollectMoneyMenu()
                         end
-                        OpenCollectMoneyMenu()
                     end
                 end
             end
         end
+
         ::END::
         Wait(sleep)
     end
 end)
 
-
 function OpenCollectMoneyMenu()
-    DBG:Error("Opening collect money menu")
+    DBG:Info("Opening collect money menu")
 
     if HandlePlayerDeathAndCloseMenu() then
         return
@@ -184,6 +249,14 @@ function OpenCollectMoneyMenu()
     end)
 
     collectMoneyMenu:RegisterElement('button', {
+        label = _U("issuePropertyDocument"),
+        style = {},
+        slot = "footer"
+    }, function()
+        OpenIssuePropertyDocumentMenu()
+    end)
+
+    collectMoneyMenu:RegisterElement('button', {
         label = _U("backButton"),
         style = {},
         slot = "footer"
@@ -198,3 +271,98 @@ function OpenCollectMoneyMenu()
 
     BCCHousingMenu:Open({ startupPage = collectMoneyMenu })
 end
+
+function OpenIssuePropertyDocumentMenu()
+    local success, houses = BccUtils.RPC:CallAsync('bcc-housing:GetOwnedPropertyDocuments', {})
+    if not success then
+        DBG:Error("Failed to fetch owned property documents: " .. tostring(houses and houses.error))
+        return
+    end
+
+    local documentMenu = BCCHousingMenu:RegisterPage("bcc-housing:IssuePropertyDocumentPage")
+
+    documentMenu:RegisterElement('header', {
+        value = _U("propertyDocuments"),
+        slot = 'header',
+        style = {}
+    })
+
+    documentMenu:RegisterElement('line', { style = {} })
+
+    if #houses > 0 then
+        for _, house in ipairs(houses) do
+            local status = house.hasDocument and _U("propertyDocumentExists") or _U("propertyDocumentMissing")
+            documentMenu:RegisterElement('button', {
+                label = _U(
+                    "propertyDocumentListLabel",
+                    house.name or _U("propertyDefaultHouseName"),
+                    tostring(house.houseId),
+                    status
+                ),
+                style = {},
+                slot = "content"
+            }, function()
+                local issued, response = BccUtils.RPC:CallAsync('bcc-housing:IssuePropertyDocument', {
+                    houseId = house.houseId
+                })
+                if not issued then
+                    DBG:Error("Failed to issue property document: " .. tostring(response and response.error))
+                    return
+                end
+                BCCHousingMenu:Close()
+            end)
+        end
+    else
+        documentMenu:RegisterElement('textdisplay', {
+            value = _U("noOwnedProperties"),
+            slot = 'content',
+            style = {}
+        })
+    end
+
+    documentMenu:RegisterElement('line', {
+        style = {},
+        slot = "footer"
+    })
+
+    documentMenu:RegisterElement('button', {
+        label = _U("backButton"),
+        style = {},
+        slot = "footer"
+    }, function()
+        OpenCollectMoneyMenu()
+    end)
+
+    documentMenu:RegisterElement('bottomline', {
+        style = {},
+        slot = "footer"
+    })
+
+    documentMenu:RouteTo()
+end
+
+AddEventHandler("onResourceStop", function(resource)
+    if resource ~= GetCurrentResourceName() then return end
+
+    if AgentPrompt and AgentPrompt.DeletePrompt then
+        AgentPrompt:DeletePrompt()
+        AgentPrompt = nil
+    end
+    AgentPromptGroupObj = nil
+
+    -- Remove all shop NPCs
+    for shop, shopCfg in pairs(Agents) do
+        if shopCfg.NPC then
+            shopCfg.NPC:Remove()
+            shopCfg.NPC = nil
+        end
+
+        -- Remove all shop blips
+        if shopCfg.Blip then
+            shopCfg.Blip:Remove()
+            shopCfg.Blip = nil
+        end
+    end
+
+    print("^3[NPC-AGENTS] Cleaned NPCs & Blips on resource stop.^0")
+end)

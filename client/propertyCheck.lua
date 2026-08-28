@@ -5,6 +5,7 @@ local propertyUISuppressed = false
 local lastSuppressed = nil
 local privateProperties = {}
 local currentPropertyKey = nil
+local propertyExitMisses = 0
 
 local menuVisible = false
 
@@ -32,22 +33,35 @@ local function propertyKeyFromVector(vec)
     return string.format("%.2f:%.2f:%.2f", vec.x, vec.y, vec.z)
 end
 
-local function registerPrivateProperty(coords, radius, houseId)
+local function registerPrivateProperty(coords, radius, houseId, polyPoints, polyMinZ, polyMaxZ, hasAccess)
     local vec = toVector3(coords)
     if not vec then
         DBG:Warning("Invalid coordinates supplied for private property registration.")
         return
     end
 
-    local key = propertyKeyFromVector(vec)
+    local key = houseId and ('house:%s'):format(tostring(houseId)) or propertyKeyFromVector(vec)
     local detectionRadius = tonumber(radius) or 0.0
     local exitRadius = detectionRadius + 2.0
     local houseIdNumber = tonumber(houseId)
+    local normalizedPoly = NormalizeHousingPolyPoints(polyPoints)
+    local zone = CreateHousingPolyZone(
+        ('bcc-housing-private-%s'):format(tostring(houseIdNumber or key)),
+        normalizedPoly,
+        polyMinZ,
+        polyMaxZ,
+        Config.DevMode == true
+    )
     privateProperties[key] = {
         coords = vec,
         enterRadius = detectionRadius,
         exitRadius = exitRadius,
         houseid = houseIdNumber,
+        polyPoints = normalizedPoly,
+        polyMinZ = tonumber(polyMinZ),
+        polyMaxZ = tonumber(polyMaxZ),
+        hasAccess = hasAccess == true,
+        zone = zone,
         spawnState = "cleared",
         devContextCreated = false
     }
@@ -62,12 +76,16 @@ local function devModeControlsProperty(entry, distance)
     if distance <= spawnRadius then
         OwnedHouseContexts = OwnedHouseContexts or {}
         if not OwnedHouseContexts[entry.houseid] then
-            OwnedHouseContexts[entry.houseid] = {
-                coords = entry.coords,
-                radius = entry.enterRadius or Config.DefaultMenuManageRadius or 2.0,
-                houseId = entry.houseid,
-                owner = "devmode",
-                ownershipStatus = "devmode"
+                            OwnedHouseContexts[entry.houseid] = {
+                                coords = entry.coords,
+                                radius = entry.enterRadius or Config.DefaultMenuManageRadius or 2.0,
+                                polyPoints = entry.polyPoints,
+                                polyMinZ = entry.polyMinZ,
+                                polyMaxZ = entry.polyMaxZ,
+                                zone = entry.zone,
+                                houseId = entry.houseid,
+                                owner = "devmode",
+                                ownershipStatus = "devmode"
             }
         end
 
@@ -94,7 +112,14 @@ end
 
 local function showPropertyUI()
     if not propertyUIVisible then
-        SendNUIMessage({ action = "showPropertyUI" })
+        SendNUIMessage({
+            action = "showPropertyUI",
+            propertyImage = {
+                visible = true,
+                title = _U("enteringPrivate") or "Private Property",
+                subtitle = ""
+            }
+        })
         propertyUIVisible = true
         DBG:Info("Property UI shown")
     end
@@ -102,13 +127,18 @@ end
 
 local function hidePropertyUI()
     if propertyUIVisible then
-        SendNUIMessage({ action = "hidePropertyUI" })
+        SendNUIMessage({
+            action = "hidePropertyUI",
+            propertyImage = {
+                visible = false
+            }
+        })
         propertyUIVisible = false
         DBG:Info("Property UI hidden")
     end
 end
 
-RegisterCommand('hidePropertyUI', function()
+RegisterCommand(Config.HidePropertyUICommand, function(_, args)
     hidePropertyUI()
 end, false)
 
@@ -196,6 +226,7 @@ CreateThread(function()
                 local playerCoords = GetEntityCoords(ped)
                 local insideKey = nil
                 local nearestDistance = nil
+                local currentInside = false
 
                 for key, data in pairs(privateProperties) do
                     if data.coords and data.enterRadius then
@@ -227,13 +258,22 @@ CreateThread(function()
                             end
                         end
 
-                        local threshold = data.enterRadius
-                        if isInsidePrivateProperty and currentPropertyKey == key then
-                            threshold = data.exitRadius or (data.enterRadius + 2.0)
+                        local hasPolyArea = type(data.polyPoints) == "table" and #data.polyPoints >= 3
+                        local insideArea = IsPointInsideHousingArea(data, playerCoords)
+                        if not insideArea and not hasPolyArea then
+                            local threshold = data.enterRadius
+                            if isInsidePrivateProperty and currentPropertyKey == key then
+                                threshold = data.exitRadius or (data.enterRadius + 2.0)
+                            end
+                            insideArea = threshold and threshold > 0 and distance <= threshold
                         end
 
-                        if distance <= threshold then
-                            if not nearestDistance or distance < nearestDistance then
+                        if insideArea and not data.hasAccess then
+                            if currentPropertyKey == key then
+                                currentInside = true
+                                nearestDistance = distance
+                                insideKey = key
+                            elseif not currentInside and (not nearestDistance or distance < nearestDistance) then
                                 nearestDistance = distance
                                 insideKey = key
                             end
@@ -242,6 +282,7 @@ CreateThread(function()
                 end
 
                 if insideKey then
+                    propertyExitMisses = 0
                     if not isInsidePrivateProperty or currentPropertyKey ~= insideKey then
                         isInsidePrivateProperty = true
                         currentPropertyKey = insideKey
@@ -254,29 +295,35 @@ CreateThread(function()
                         showPropertyUI()
                     end
                 elseif isInsidePrivateProperty then
-                    isInsidePrivateProperty = false
-                    currentPropertyKey = nil
-                    Notify(_U("leavingPrivate"), "info", 4000)
-                    hidePropertyUI()
-                    DBG:Info("Player has left private property.")
+                    propertyExitMisses = propertyExitMisses + 1
+                    if propertyExitMisses >= 3 then
+                        propertyExitMisses = 0
+                        isInsidePrivateProperty = false
+                        currentPropertyKey = nil
+                        Notify(_U("leavingPrivate"), "info", 4000)
+                        hidePropertyUI()
+                        DBG:Info("Player has left private property.")
+                    end
+                else
+                    propertyExitMisses = 0
                 end
             end
         end
     end
 end)
 
-local function startPrivatePropertyCheck(houseCoords, houseRadius, houseId)
+local function startPrivatePropertyCheck(houseCoords, houseRadius, houseId, polyPoints, polyMinZ, polyMaxZ, hasAccess)
     if not Config.EnablePrivatePropertyCheck then
         DBG:Info("Private property check is disabled in the config.")
         return
     end
 
-    if not houseCoords or not houseRadius then
-        DBG:Error("Error: Missing houseCoords or houseRadius.")
+    if not houseCoords then
+        DBG:Error("Error: Missing houseCoords.")
         return
     end
 
-    registerPrivateProperty(houseCoords, houseRadius, houseId)
+    registerPrivateProperty(houseCoords, houseRadius, houseId, polyPoints, polyMinZ, polyMaxZ, hasAccess)
 end
 
 local function stopPrivatePropertyCheck()
@@ -292,7 +339,7 @@ end
 
 BccUtils.RPC:Register('bcc-housing:PrivatePropertyCheckHandler', function(params)
     if not params or not params.coords then return end
-    startPrivatePropertyCheck(params.coords, params.radius, params.houseid)
+    startPrivatePropertyCheck(params.coords, params.radius, params.houseid, params.polyPoints, params.polyMinZ, params.polyMaxZ, params.hasAccess)
 end)
 
 BccUtils.RPC:Register('bcc-housing:StopPropertyCheck', function()
